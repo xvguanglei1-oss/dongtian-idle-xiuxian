@@ -109,7 +109,7 @@ function initFx(canvas) {
   const ctx = canvas.getContext("2d");
   const host = canvas.parentElement;
   let W = 0, H = 0, dpr = 1, raf = 0, last = 0, ready = false;
-  let motes = [];
+  let motes = [], streaks = [];
 
   const fit = () => {
     try {
@@ -145,7 +145,8 @@ function initFx(canvas) {
   }
   function prepare(cfgV) {
     while (motes.length < cfgV.mote.n) motes.push(mkMote(cfgV.mote));
-    motes.length = cfgV.mote.n;
+    while (streaks.length < cfgV.streak.n) streaks.push(mkStreak(cfgV.streak));
+    motes.length = cfgV.mote.n; streaks.length = cfgV.streak.n;
   }
   function respawnP(p, cfgV) {
     p.born = -rnd(0.8, 2.4);
@@ -158,6 +159,24 @@ function initFx(canvas) {
     p.x0 = rnd(-0.22, 0.22); p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
     p.f = rnd(0.55, 1.0); p.f2 = rnd(1.1, 1.8);
     p.amp = rnd(0.010, 0.024); p.s0 = rnd(0.8, 1.3);
+  }
+
+  /* 流光(2D点阵丝带): 软光点沿弯曲曲线密集排布→连续绸带感 */
+  function mkStreak(cfgV) {
+    const p = { dur: rnd(cfgV.dur[0], cfgV.dur[1]), born: 0, seed: Math.floor(rnd(0, 1e6)),
+      x0: rnd(-0.22, 0.22), y0: rnd(0.14, 0.26), rise: rnd(0.32, 0.42),
+      ph: rnd(0, 6.28), ph2: rnd(0, 6.28),
+      f: rnd(0.5, 0.9), f2: rnd(1.2, 1.8),
+      amp: rnd(0.024, 0.05), s0: rnd(0.9, 1.2), ln: rnd(0.95, 1.15),
+    };
+    return p;
+  }
+  function respawnStreak(p, cfgV) {
+    respawnP(p, cfgV);
+    p.x0 = rnd(-0.22, 0.22); p.y0 = rnd(0.14, 0.26);
+    p.rise = rnd(0.32, 0.42); p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
+    p.f = rnd(0.5, 0.9); p.f2 = rnd(1.2, 1.8);
+    p.amp = rnd(0.024, 0.05); p.s0 = rnd(0.9, 1.2); p.ln = rnd(0.95, 1.15);
   }
 
   function draw(t, dt) {
@@ -224,6 +243,41 @@ function initFx(canvas) {
       ctx.globalAlpha = al;
       const ic = tinted("mote", col);
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
+    }
+
+    /* ---- ② 流光: 2D点阵丝带(软光点沿弯曲曲线密集排布) ----
+       数学与WebGL版同源: 光带=正弦波弯曲的连续曲线;
+       每帧在曲线上布 ~44 个软光点(头部大而亮→尾部细淡),
+       点距近于重叠 → 视觉是连续发光绸带, 无接缝无切痕。 */
+    for (const p of streaks) {
+      p.born += dt;
+      if (p.born < 0) continue;
+      if (p.born > p.dur) { respawnStreak(p, cfgV.streak); continue; }
+      const u = p.born / p.dur, mv = easeIO(u);
+      const headY = cy + (p.y0 - p.rise * mv) * H;
+      const lenTotal = H * (0.16 + 0.05 * mv) * p.ln;
+      const baseX = cx + (p.x0 + Math.sin(t * p.f * 0.4 + p.ph) * 0.02 * mv) * W;
+      const waveSpeed = t * (0.65 + p.f2 * 0.3);
+      const col = pickStreak(p.seed, tCol, sCol);
+      const pk = safe(prof(u) * cfgV.streak.pk * breathe2, 0);
+      if (pk <= 0.01) continue;
+      const N = 44;
+      for (let k = 0; k < N; k++) {
+        const q = k / (N - 1);
+        const wave = Math.sin(q * 5.0 + waveSpeed + p.ph2)
+                   + 0.55 * Math.sin(q * 2.3 + waveSpeed * 0.6 + p.ph);
+        const amp = p.amp * W * (0.16 + q * q * 1.9);
+        const x = baseX + wave * amp;
+        const y = headY + q * lenTotal;
+        if (![x, y].every(Number.isFinite)) continue;
+        /* 头部大亮 → 尾部细淡 (彗星感) */
+        const taper = 1 - 0.6 * q;
+        const ds = H * 0.030 * p.s0 * taper;
+        const aa = pk * (0.35 + 0.65 * taper);
+        ctx.globalAlpha = safe(aa, 0);
+        const ic = tinted("mote", col);
+        if (ic) ctx.drawImage(ic, x - ds / 2, y - ds / 2, ds, ds);
+      }
     }
 
     ctx.globalAlpha = 1;

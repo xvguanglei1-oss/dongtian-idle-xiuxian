@@ -1619,16 +1619,6 @@ function initPlayerFx() {
     }
     import("./fx2d.js").then(m => { window.__auraFx = m.initFx(cv); })
       .catch(e => console.warn("粒子引擎不可用", e));
-    /* WebGL 层: 流光真贴图弯曲 */
-    let gv = document.getElementById("cultFxGl");
-    if (!gv) {
-      gv = document.createElement("canvas");
-      gv.id = "cultFxGl";
-      gv.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:2";   // GL流光在下, 2D金尘在上
-      cult.appendChild(gv);
-    }
-    import("./fxgl.js").then(m => m.initFxGl(gv).then(r => { window.__auraFxGl = r; }))
-      .catch(e => console.warn("流光GL不可用", e));
   } catch (e) { console.warn("粒子引擎初始化失败", e); }
 }
 
