@@ -132,9 +132,9 @@ function applyCounts() {
   while (sPts.length < cfg.sN) spawnSpark(sPts.length);
   sPts.length = cfg.sN;
   // 粒子几何
-  hPtsMat.geometry.setDrawRange(0, cfg.hN);
-  fPtsMat.geometry.setDrawRange(0, cfg.fN);
-  sPtsMat.geometry.setDrawRange(0, cfg.sN);
+  hPtsMat.geometry.setDrawRange(0, Math.max(0, Math.round(cfg.hN)));
+  fPtsMat.geometry.setDrawRange(0, Math.max(0, Math.round(cfg.fN)));
+  sPtsMat.geometry.setDrawRange(0, Math.max(0, Math.round(cfg.sN)));
   // ribbons 数
   while (ribbons.length < cfg.rN) ribbons.push(freshRibbon(cfg.c2, 0.5));
   while (ribbons.length > cfg.rN) { const rb = ribbons.pop(); group.remove(rb.line); rb.line.geometry.dispose(); rb.line.material.dispose(); }
@@ -288,20 +288,22 @@ export async function initFx3d(canvas) {
   const maxS = Math.max(...REALM_FX.map(x => x.sN));
   const geoH = new THREE.BufferGeometry();
   geoH.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(maxH * 3), 3));
-  const hMat = new THREE.PointsMaterial({ map: texDot, size: 9, transparent: true, opacity: .9, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false, vertexColors: false });
+  const hMat = new THREE.PointsMaterial({ map: texDot, size: 15, transparent: true, opacity: .9, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false, vertexColors: false });
   const hP = new THREE.Points(geoH, hMat); hPtsMat = { geometry: geoH, material: hMat }; group.add(hP);
   const geoF = new THREE.BufferGeometry();
   geoF.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(maxF * 3), 3));
-  const fMat = new THREE.PointsMaterial({ map: texDot, size: 6.5, transparent: true, opacity: .75, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false });
+  const fMat = new THREE.PointsMaterial({ map: texDot, size: 10, transparent: true, opacity: .75, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false });
   const fP = new THREE.Points(geoF, fMat); fPtsMat = { geometry: geoF, material: fMat }; group.add(fP);
   const geoS = new THREE.BufferGeometry();
   geoS.setAttribute("position", new THREE.Float32BufferAttribute(new Float32Array(maxS * 3), 3));
-  const sMat = new THREE.PointsMaterial({ map: texDot, size: 5, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false });
+  const sMat = new THREE.PointsMaterial({ map: texDot, size: 8, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false });
   const sP = new THREE.Points(geoS, sMat); sPtsMat = { geometry: geoS, material: sMat }; group.add(sP);
   // 每帧更新粒子颜色不可行(PointsMaterial单色) → 用混合: 粒子单色+几何z? 简化: 全部用近白, 分层染色不足。
   // 补充: 给三组初始不设色; 材质颜色在 morph 中更新为 cfg.c1 以呈现主色。
   resize();
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   ro = new ResizeObserver(resize); ro.observe(cv.parentElement);
+  applyCounts();   // 首帧即按初始境界建立粒子与 drawRange(避免顶点残留)
   if (!running) { running = true; last = performance.now(); raf = requestAnimationFrame(step); }
   return { destroy() { cancelAnimationFrame(raf); running = false; ro && ro.disconnect(); } };
 }
