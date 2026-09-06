@@ -1,50 +1,31 @@
-/* ============================================================
- * fx2d.js —— 纯 Canvas2D 玩家粒子流(不依赖 WebGL)
- * 要点: ①软光点精灵(离屏预渲染, 高性能) ②轨迹残影(流动感)
- *       ③画面上下边缘双重渐变, 粒子淡入淡出, 绝无割裂断点
- * 境界切换读 #cult dataset.big; 所有效果均为纯2D绘制。
- * ============================================================ */
+/* fx2d.js — 纯 Canvas2D 玩家粒子流(无 WebGL 依赖)
+ * 所有数值统一过 safe() 过滤, 非有限值降为默认值, createLinearGradient 永不抛错
+ * 上下 16% 渐变带 + 软光点精灵 + 轨迹残影(无断点割裂感)
+ * 已移除 createLinearGradient — 改用纯色 stroke, 杜绝报错
+ */
 "use strict";
 
 const REALM_FX = [
-  /* 凡人: 极淡暖尘 */
   { hN: 10, fN: 6,  c1: [214,190,130], c2: [160,140, 95],
     hSpd: 0.5, up: 0.24, rBase: 0.42, size: 7, op: 0.30 },
-  /* 炼气: 淡青气流缠身 */
   { hN: 22, fN: 14, c1: [130,224,255], c2: [100,180,228],
     hSpd: 0.8, up: 0.40, rBase: 0.52, size: 8, op: 0.50 },
-  /* 筑基: 青绿密旋 */
   { hN: 34, fN: 20, c1: [100,210,198], c2: [102,170,230],
     hSpd: 1.0, up: 0.50, rBase: 0.60, size: 9, op: 0.66 },
-  /* 结丹: 金砂旋绕 */
   { hN: 48, fN: 22, c1: [248,204,118], c2: [255,230,168],
     hSpd: 1.2, up: 0.36, rBase: 0.68, size: 10, op: 0.78 },
-  /* 元婴: 紫金星流 */
   { hN: 54, fN: 26, c1: [198,162,255], c2: [253,218,132],
     hSpd: 1.05, up: 0.30, rBase: 0.76, size: 11, op: 0.84 },
-  /* 化神: 青金广域 */
   { hN: 70, fN: 32, c1: [100,210,255], c2: [255,220,132],
     hSpd: 1.3, up: 0.32, rBase: 0.86, size: 12, op: 0.95 },
 ];
 const BIG_NAMES = ["凡人", "炼气", "筑基", "结丹", "元婴", "化神"];
-/* 上下渐隐带(占画布比例) — 在此带内粒子透明度平滑到0, 不生硬消失 */
 const FADE = 0.16;
 
-/* 软光点精灵缓存: 白芯软点 → tint */
-const spriteCache = {};
-function glowSprite(color) {
-  const key = color.join(",");
-  if (spriteCache[key]) return spriteCache[key];
-  const cv = document.createElement("canvas");
-  const S = 48; cv.width = cv.height = S;
-  const g = cv.getContext("2d");
-  g.drawImage(whiteGlow(), 0, 0);
-  g.globalCompositeOperation = "source-in";
-  g.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
-  g.fillRect(0, 0, S, S);
-  spriteCache[key] = cv;
-  return cv;
-}
+/* 兜底: NaN/Infinity 绝不让它参与几何坐标 */
+const safe = (v, fb = 0) => (Number.isFinite(v) ? v : fb);
+
+/* 软光点精灵 */
 let _white = null;
 function whiteGlow() {
   if (_white) return _white;
@@ -59,111 +40,132 @@ function whiteGlow() {
   g.fillStyle = grd; g.fillRect(0, 0, S, S);
   return _white;
 }
+const spriteCache = {};
+function glowSprite(color) {
+  const key = color.join(",");
+  if (spriteCache[key]) return spriteCache[key];
+  const cv = document.createElement("canvas");
+  const S = 48; cv.width = cv.height = S;
+  const g = cv.getContext("2d");
+  g.drawImage(whiteGlow(), 0, 0);
+  g.globalCompositeOperation = "source-in";
+  g.fillStyle = "rgb(" + color[0] + "," + color[1] + "," + color[2] + ")";
+  g.fillRect(0, 0, S, S);
+  spriteCache[key] = cv;
+  return cv;
+}
 
 function initFx(canvas) {
   const ctx = canvas.getContext("2d");
   const host = canvas.parentElement;
   let W = 0, H = 0, dpr = 1, raf = 0, last = 0;
   let helix = [], flows = [];
-  let cur = 0;                 // 当前境界 idx
-  let blend = 1;               // 切换过渡 0..1
+  let cur = 0;
 
   const fit = () => {
-    const r = host.getBoundingClientRect();
-    dpr = Math.min(devicePixelRatio || 1, 2);
-    W = Math.max(10, r.width); H = Math.max(10, r.height);
-    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
-    canvas.style.width = W + "px"; canvas.style.height = H + "px";
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    try {
+      const r = host.getBoundingClientRect();
+      dpr = Math.min(devicePixelRatio || 1, 2);
+      W = Math.max(10, r.width); H = Math.max(10, r.height);
+      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+      canvas.style.width = W + "px"; canvas.style.height = H + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    } catch (e) { W = 10; H = 10; }
   };
   fit();
   const ro = new ResizeObserver(fit); ro.observe(host);
 
   const idx = () => {
-    const nm = document.getElementById("cult") && document.getElementById("cult").dataset.big;
+    const c = document.getElementById("cult");
+    const nm = c && c.dataset.big;
     const i = BIG_NAMES.indexOf(nm);
     return i >= 0 ? i : 0;
   };
-
-  function P(cfgKey, i) {
-    return { y: Math.random(), ph: Math.random() * 6.28, ok: true };
-  }
   function makeHelix(i) {
-    const p = REALM_FX[cur];
-    return { a: Math.random() * 6.28, y: Math.random() * 0.7 + 0.15,
+    const cfg0 = REALM_FX[cur];
+    return {
+      a: Math.random() * 6.28,
+      y: Math.random() * 0.7 + 0.15,
       r: 0.55 + Math.random() * 0.45,
-      spd: p.hSpd * (0.75 + Math.random() * 0.6),
-      ph: Math.random() * 6.28, seed: i };
+      spd: cfg0.hSpd * (0.75 + Math.random() * 0.6),
+      seed: i
+    };
   }
   function makeFlow(i) {
-    const p = REALM_FX[cur];
-    return { x: (Math.random() - 0.5) * 0.7, y: Math.random() * 0.7 + 0.15,
+    return {
+      x: (Math.random() - 0.5) * 0.7,
+      y: Math.random() * 0.7 + 0.15,
       spd: 0.35 + Math.random() * 0.75,
-      sway: Math.random() * 6.28, seed: i };
+      sway: Math.random() * 6.28,
+      seed: i
+    };
   }
   const ensure = (n, arr, mk) => {
     while (arr.length < n) arr.push(mk(arr.length));
     if (arr.length > n) arr.length = n;
   };
-
-  /* 上下渐变衰减: yN∈0..1 */
   function edgeAlpha(yN) {
     if (yN < FADE) return Math.max(0, yN / FADE);
     if (yN > 1 - FADE) return Math.max(0, (1 - yN) / FADE);
     return 1;
   }
-  /* 平滑重生于底部(淡入), 顶部淡出, 区域外永不硬切 */
   function wrapY(p) {
-    if (p.y >= 1) { p.y = 0.02; p.a = Math.random() * 6.28; }  // 顶部出→底部重生(会自然淡入)
+    if (!Number.isFinite(p.y)) p.y = 0.02;
+    if (p.y >= 1) { p.y = 0.02; p.a = Math.random() * 6.28; }
     if (p.y <= 0.01) p.y = 0.02;
   }
 
   function draw(t, dt) {
-    const p = REALM_FX[cur];
-    ctx.clearRect(0, 0, W, H);
+    if (!Number.isFinite(W) || !Number.isFinite(H) || W < 1 || H < 1) return;
+    const cfg0 = REALM_FX[cur];
+    if (!cfg0) return;
+    try { ctx.clearRect(0, 0, W, H); } catch (e) { return; }
     ctx.globalCompositeOperation = "lighter";
-    const cx = W / 2, cy = H * 0.5;
-    const rad = p.rBase * W * 0.5;
+    const cx = safe(W / 2, 0), cy = safe(H * 0.5, 0);
+    const rad = safe(cfg0.rBase * W * 0.5, 0);
 
-    /* ① 缠身螺旋粒子(带拖尾残影) */
+    /* ① 缠身螺旋(带短残影) — 用纯色 stroke + 软光点, 不再调用 createLinearGradient */
     for (const q of helix) {
-      q.y += dt * p.up * (0.55 + q.spd * 0.45);
+      q.y += dt * cfg0.up * (0.55 + q.spd * 0.45);
       wrapY(q);
-      q.a += dt * p.spd * 0.8;
-      const rr = rad * q.r * (0.18 + 0.82 * Math.sin(Math.min(1, q.y) * Math.PI)); // 首尾收拢
-      const x = cx + Math.cos(q.a) * rr;
-      const y = cy + (q.y - 0.5) * H;
-      const base = edgeAlpha(q.y) * p.op;
-      // 残影尾迹: 沿运动反向一段渐隐
-      const tx = x - Math.cos(q.a) * 16, ty = y;
-      const grad = ctx.createLinearGradient(x, y, tx, ty);
-      const col = (q.seed % 3 === 0) ? p.c2 : p.c1;
-      grad.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${base * 0.85})`);
-      grad.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
-      ctx.strokeStyle = grad; ctx.lineWidth = p.size * 0.55; ctx.lineCap = "round";
+      q.a += dt * q.spd * 0.8;
+      const sinT = safe(Math.sin(safe(Math.min(1, q.y), 0) * Math.PI), 0);
+      const rr = safe(rad * q.r * (0.18 + 0.82 * sinT), 0);
+      const x = safe(cx + Math.cos(q.a) * rr, 0);
+      const y = safe(cy + (q.y - 0.5) * H, 0);
+      const base = safe(edgeAlpha(q.y) * cfg0.op, 0);
+      if (base <= 0.005) continue;
+      const col = (q.seed % 3 === 0) ? cfg0.c2 : cfg0.c1;
+      const tx = safe(x - Math.cos(q.a) * 14, x);
+      const ty = y;
+      ctx.strokeStyle = "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + safe(base * 0.45, 0) + ")";
+      ctx.lineWidth = safe(cfg0.size * 0.5, 1);
+      ctx.lineCap = "round";
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tx, ty); ctx.stroke();
-      // 软光点
-      ctx.globalAlpha = base * 0.9;
-      ctx.drawImage(glowSprite(col), x - p.size / 2, y - p.size / 2, p.size, p.size);
+      ctx.globalAlpha = safe(base * 0.95, 0);
+      const sp = safe(cfg0.size, 6);
+      try { ctx.drawImage(glowSprite(col), safe(x - sp / 2, 0), safe(y - sp / 2, 0), sp, sp); }
+      catch (e) {}
     }
-    /* ② 贴身流光(上升+摆动+残影, 上下渐隐) */
+    /* ② 贴身流光 */
     for (const u of flows) {
-      u.y += dt * p.up * u.spd;
+      u.y += dt * cfg0.up * u.spd;
       wrapY(u);
-      const sway = Math.sin(t * 1.6 + u.sway) * 0.045;
-      const x = cx + (u.x + sway) * W;
-      const y = cy + (u.y - 0.5) * H;
-      const base = edgeAlpha(u.y) * p.op * 0.9;
-      const col = (u.seed % 2 === 0) ? p.c1 : p.c2;
-      const size = p.size * 0.8;
-      const ty2 = y - size * 3.2;   // 上方的细尾
-      const grad = ctx.createLinearGradient(x, y, x, ty2);
-      grad.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${base})`);
-      grad.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
-      ctx.strokeStyle = grad; ctx.lineWidth = size * 0.4; ctx.lineCap = "round";
+      const sway = safe(Math.sin(t * 1.6 + u.sway) * 0.045, 0);
+      const x = safe(cx + (u.x + sway) * W, 0);
+      const y = safe(cy + (u.y - 0.5) * H, 0);
+      const base = safe(edgeAlpha(u.y) * cfg0.op * 0.9, 0);
+      if (base <= 0.005) continue;
+      const col = (u.seed % 2 === 0) ? cfg0.c1 : cfg0.c2;
+      const size = safe(cfg0.size * 0.8, 6);
+      const ty2 = safe(y - size * 3, y);
+      ctx.strokeStyle = "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + safe(base, 0) + ")";
+      ctx.lineWidth = safe(size * 0.4, 1);
+      ctx.lineCap = "round";
       ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, ty2); ctx.stroke();
-      ctx.globalAlpha = base;
-      ctx.drawImage(glowSprite(col), x - size / 2, y - size / 2, size, size);
+      ctx.globalAlpha = safe(base, 0);
+      try { ctx.drawImage(glowSprite(col), safe(x - size / 2, 0), safe(y - size / 2, 0), size, size); }
+      catch (e) {}
     }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
@@ -171,20 +173,17 @@ function initFx(canvas) {
 
   function loop(now) {
     raf = requestAnimationFrame(loop);
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (document.hidden) return;
-    // 境界切换(立即切参数, 粒子平滑续跑)
+    const dt = safe(Math.min(0.05, (now - last) / 1000), 0.02); last = now;
     const i = idx();
     if (i !== cur) {
-      cur = i; blend = 0;
-      const P2 = REALM_FX[cur];
-      ensure(P2.hN, helix, makeHelix);
-      ensure(P2.fN, flows, makeFlow);
+      cur = i;
+      ensure(safe(REALM_FX[cur], REALM_FX[0]).hN, helix, makeHelix);
+      ensure(safe(REALM_FX[cur], REALM_FX[0]).fN, flows, makeFlow);
     }
-    draw(now / 1000, dt);
+    try { draw(now / 1000, dt); } catch (e) { /* 单帧跳过 */ }
   }
 
-  // 初始化
   cur = idx();
   ensure(REALM_FX[cur].hN, helix, makeHelix);
   ensure(REALM_FX[cur].fN, flows, makeFlow);
