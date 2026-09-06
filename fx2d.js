@@ -274,6 +274,7 @@ function initFx(canvas) {
       const piece = lenTotal / SEG;         // 每片在屏幕上的高
       const syPer = ic.height / SEG;        // 源贴图每片截取高度
       ctx.globalAlpha = al;
+      let prev = { x: baseX, y: headY };    // 首片斜率为0
       for (let i = 0; i < SEG; i++) {
         const q = i / SEG;
         /* 丝带曲率: 沿长度正弦弯曲, 尾部(下方)摆幅更大 → 飘动感 */
@@ -308,7 +309,9 @@ function initFx(canvas) {
       const cfgV = REALM_VIS[idx()];
       prepare(cfgV);
       draw(now / 1000, dt);
-    } catch (e) {}
+    } catch (e) {
+      if (!window.__fxErr) window.__fxErr = "fx2d: " + (e && e.message || e);
+    }
   }
 
   loadAll().then(() => { ready = true; });
