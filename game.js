@@ -285,7 +285,7 @@ const MAIN_STORY = [
 ];
 
 /* ============ 存档 ============ */
-let state = { realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], lastTs: Date.now() };
+let state = { realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], journal: [], lastTs: Date.now() };
 let breaking = false;
 let lastReadyHint = false;
 const SAVE_KEY = "dongtian_xiuxian_v2";
@@ -307,7 +307,10 @@ function save() {
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (s && Array.isArray(s.arts)) state = s;
+    if (s && Array.isArray(s.arts)) {
+      if (!Array.isArray(s.journal)) s.journal = [];
+      state = s;
+    }
   } catch (e) {}
 }
 
@@ -408,6 +411,7 @@ function doBreak() {
     const nr = realm();
     const greet = ["金丹凝形！", "元婴出窍！", "化神之姿！", "踏入筑基！"][nr.bigIdx - 2] || "";
     pushMsg("main", `<span class="g">${nr.big}</span>！${greet || "修行又进一步"}`);
+    taleFor(nr.big);
   }, 950);
 }
 function manualBreak() { doBreak(); }
@@ -439,46 +443,67 @@ function pushMsg(side, html) {
   setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, life + 250);
 }
 
-/* ============ 剧情纲目(按境界分卷) ============ */
+/* ============ 修行录: 主角亲身经历(未历不显·绝不剧透) ============ */
+const REALM_TALES = [
+  { big: "凡人", key: "origin", kind: "开篇", title: "灵根初启",
+    text: "残碑前你第一次感应到天地灵气，如涓流汇入丹田。自这一刻起，山野凡人亦敢问道长生——洞天仙途，由此而始。" },
+  { big: "炼气", key: "qichong", kind: "突破", title: "引气入体",
+    text: "灵气自百会灌体而下，沿周天缓缓流转。你正式踏入炼气之境，吐纳有法，御物可期。" },
+  { big: "筑基", key: "zhuji", kind: "突破", title: "筑基成道",
+    text: "真元在丹田凝而成液，轰然冲开仙凡之隔。筑基一成，方算真正踏上仙途——御剑乘风，皆可期矣。" },
+  { big: "结丹", key: "jiedan", kind: "突破", title: "金丹大道",
+    text: "丹火淬炼百日，一粒金丹于丹田凝成，宝光内敛。自此寿元大增，已可称一声真人。" },
+  { big: "元婴", key: "yuanying", kind: "突破", title: "元婴出窍",
+    text: "金丹应声而碎，元婴于紫府中睁眼。神魂可离体夜游，天地法则的轮廓，第一次向你展开。" },
+  { big: "化神", key: "huashen", kind: "突破", title: "人界之巅",
+    text: "元婴与天地相合，神念瞬息千里，一念动而风雨相随。人界之巅已在脚下——飞升之日，静待来朝。" },
+];
+
+function addJournal(entry) {
+  entry.ts = Date.now();
+  state.journal.push(entry);
+  if (state.journal.length > 80) state.journal.shift();
+  save();
+}
+function taleFor(bigName) {
+  const t = REALM_TALES.find(x => x.big === bigName);
+  if (!t || state.journal.some(j => j.key === t.key)) return;
+  addJournal({ key: t.key, big: t.big, kind: t.kind, title: t.title, text: t.text });
+  pushMsg("main", `<span class="b">${t.big} · ${t.title}</span>｜${t.text}`);
+}
+
 function openStory() {
   const m = $("storyModal");
   if (!m) return;
+  renderStory();
   m.classList.add("show");
-  buildChips();
 }
 function closeStory() {
   const m = $("storyModal");
   if (m) m.classList.remove("show");
 }
-function buildChips() {
-  const wrap = $("storyChips");
-  if (!wrap || wrap.dataset.built) return;
-  wrap.dataset.built = "1";
+function renderStory() {
   const body = $("storyBody");
-  const secs = document.querySelectorAll("#storyBody section");
-  secs.forEach((s, i) => {
-    const c = document.createElement("div");
-    c.className = "chip" + (i === 0 ? " on" : "");
-    c.textContent = s.dataset.n;
-    c.onclick = () => {
-      wrap.querySelectorAll(".chip").forEach(x => x.classList.remove("on"));
-      c.classList.add("on");
-      s.scrollIntoView({ behavior: "smooth", block: "start" });
-    };
-    wrap.appendChild(c);
-  });
-  if (body) {
-    let t;
-    body.addEventListener("scroll", () => {
-      clearTimeout(t);
-      t = setTimeout(() => {
-        const top0 = body.getBoundingClientRect().top;
-        let cur = 0;
-        secs.forEach((s, i) => { if (s.getBoundingClientRect().top - top0 < 100) cur = i; });
-        wrap.querySelectorAll(".chip").forEach((x, i) => x.classList.toggle("on", i === cur));
-      }, 120);
-    }, { passive: true });
+  if (!body) return;
+  const bi = Math.min(bigIdx(), REALM_TALES.length - 1);
+  const walked = REALM_TALES.slice(0, bi + 1).map(x => x.big).join(" → ");
+  let html = `<div class="story-sum">已历仙途：<b>${walked}</b>` +
+    (state.realmIdx >= TOTAL_SEGS - 1 ? "（人界之巅 · 静候飞升）" : "") + `</div>`;
+  if (!state.journal.length) {
+    html += `<div class="empty-hint">尚无记载。<br>仙途伊始，一切从你打坐感应灵气开始。</div>`;
+  } else {
+    const pad = n => String(n).padStart(2, "0");
+    for (const j of state.journal.slice().reverse()) {
+      const tm = new Date(j.ts);
+      html += `<div class="j-card k-${j.kind || "际遇"}">` +
+        `<div class="j-head"><span class="j-big">${j.big || ""}</span>` +
+        `<span class="j-kind k-${j.kind || "际遇"}">${j.kind || "际遇"}</span>` +
+        `<span class="j-time">${pad(tm.getMonth() + 1)}-${pad(tm.getDate())} ${pad(tm.getHours())}:${pad(tm.getMinutes())}</span></div>` +
+        `<h5>${j.title || "仙途拾遗"}</h5><p>${j.text || ""}</p></div>`;
+    }
   }
+  body.innerHTML = html;
+  body.scrollTop = 0;
 }
 
 /* 历险(分身·左栏) */
@@ -574,7 +599,9 @@ function applyOffline() {
     const r = realm();
     if (r.isBigEnd) break; // 大境界之间不自动渡劫, 等你亲手
     if (state.exp + gainExp >= r.need && state.realmIdx < TOTAL_SEGS - 1) {
+      const pb = r.bigIdx;
       state.realmIdx++; state.exp = 0;
+      if (realm().bigIdx > pb) taleFor(realm().big); // 离线自动跨小境(凡人→炼气等)也记修行录
     } else break;
   }
   state.exp += gainExp; state.spirit += gainSpirit;
@@ -583,6 +610,21 @@ function applyOffline() {
   $("offlineText").innerHTML =
     `你离开了 <b>${h ? h + " 小时 " : ""}${m ? m + " 分钟" : "片刻"}</b>。<br>` +
     `分身闭关，修为 +<span class="num"> ${fmt(gainExp)}</span><br>灵石 +<span class="num"> ${fmt(gainSpirit)}</span>`;
+  // 离线际遇: 与在线同样的叙事池, 随离线时长缓慢累积(每满一小时左右一段, 至多3段)
+  const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
+  const bigName = REALM_TALES[bi] ? REALM_TALES[bi].big : "";
+  const cnt = Math.min(3, Math.max(1, Math.floor(dt / 3600)));
+  const lines = [];
+  for (let i = 0; i < cnt; i++) {
+    const line = pickNoRepeat(MAIN_STORY[bi], "off" + bi);
+    lines.push(line);
+    addJournal({ key: "off-" + Date.now() + "-" + i, big: bigName, kind: "游历", title: "洞天游历", text: line });
+  }
+  const taleEl = $("offlineTale");
+  if (taleEl && lines.length) {
+    taleEl.style.display = "block";
+    taleEl.innerHTML = `<b>离线际遇</b>${lines.map(x => `<br>· ${x}`).join("")}`;
+  }
   $("offlineModal").classList.add("show");
   updateRealmUI(); updateHUD();
 }
@@ -657,8 +699,10 @@ function loop(dt) {
     let guard = 0;
     while (!breaking && state.exp >= r.need && !r.isBigEnd && state.realmIdx < TOTAL_SEGS - 1 && guard++ < 8) {
       state.exp -= r.need;
+      const pb = realm().bigIdx;
       state.realmIdx++;
       const nr = realm();
+      if (nr.bigIdx > pb) taleFor(nr.big); // 自动跨入新大境(如凡人→炼气)
       pushMsg("main", `修为精进 → <span class="g">${nr.big === "炼气" ? "炼气" + cnNum(nr.segNo) + "层" : nr.label}</span>`);
       updateRealmUI();
     }
@@ -675,6 +719,7 @@ applyOffline();
 updateRealmUI();
 updateHUD();
 updateArts();
+if (!state.journal.some(j => j.key === "origin")) taleFor("凡人"); // 新/旧档都补一笔起点
 setInterval(save, 8000);
 addEventListener("pagehide", save);
 initBg();
@@ -696,5 +741,7 @@ window.__game = {
   mainMoment: () => mainMoment(),
   makeArt: () => makeArt(),
   updateArts: h => updateArts(h),
-  pushMsg, save, load,
+  applyOffline: () => applyOffline(),
+  taleFor: n => taleFor(n),
+  openStory, pushMsg, save, load,
 };
