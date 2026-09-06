@@ -15,31 +15,31 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const easeIO = u => u * u * (3 - 2 * u);
 const WHITE = [255, 255, 255];
 
-/* ---------- 境界视觉配置(数量大·动作慢) ---------- */
+/* ---------- 境界视觉配置(数量大·动作慢·化神大胆) ---------- */
 const REALM_VIS = [
-  { t: [232, 210, 156], s: [255, 246, 214],
-    mote:   { n: 12, pk: .34, dur: [3.2, 4.4] },
-    streak: { n: 1,  pk: .55, dur: [2.4, 3.2] },
+  { t: [232, 210, 156], s: [255, 246, 214], gold: .5,
+    mote:   { n: 16, pk: .36, dur: [3.0, 4.2] },
+    streak: { n: 1,  pk: .56, dur: [2.3, 3.1] },
     core: .10, haze: .08, beam: 0, ray: 0, rayA: 0 },
-  { t: [128, 222, 255], s: [226, 250, 255],
-    mote:   { n: 26, pk: .46, dur: [3.0, 4.2] },
-    streak: { n: 3,  pk: .66, dur: [2.2, 3.0] },
+  { t: [128, 222, 255], s: [226, 250, 255], gold: .45,
+    mote:   { n: 32, pk: .48, dur: [2.8, 4.0] },
+    streak: { n: 3,  pk: .66, dur: [2.1, 2.9] },
     core: .14, haze: .11, beam: 0, ray: 0, rayA: 0 },
-  { t: [108, 218, 200], s: [178, 252, 226],
-    mote:   { n: 38, pk: .54, dur: [2.8, 4.0] },
-    streak: { n: 4,  pk: .72, dur: [2.1, 2.9] },
+  { t: [108, 218, 200], s: [178, 252, 226], gold: .55,
+    mote:   { n: 48, pk: .56, dur: [2.6, 3.8] },
+    streak: { n: 4,  pk: .72, dur: [2.0, 2.8] },
     core: .18, haze: .14, beam: 0, ray: 0, rayA: 0 },
-  { t: [250, 202, 108], s: [255, 244, 200],
-    mote:   { n: 52, pk: .60, dur: [2.6, 3.8] },
-    streak: { n: 5,  pk: .76, dur: [2.0, 2.8] },
+  { t: [250, 202, 108], s: [255, 244, 200], gold: .7,
+    mote:   { n: 66, pk: .62, dur: [2.4, 3.6] },
+    streak: { n: 5,  pk: .76, dur: [1.9, 2.7] },
     core: .22, haze: .17, beam: .30, ray: 0, rayA: 0 },
-  { t: [206, 168, 255], s: [255, 228, 162],
-    mote:   { n: 66, pk: .66, dur: [2.4, 3.6] },
-    streak: { n: 6,  pk: .80, dur: [1.9, 2.7] },
+  { t: [206, 168, 255], s: [255, 228, 162], gold: .6,
+    mote:   { n: 90, pk: .68, dur: [2.2, 3.4] },
+    streak: { n: 6,  pk: .80, dur: [1.8, 2.6] },
     core: .26, haze: .20, beam: .36, ray: 3, rayA: .05 },
-  { t: [120, 216, 255], s: [255, 230, 156],
-    mote:   { n: 82, pk: .72, dur: [2.2, 3.4] },
-    streak: { n: 7,  pk: .84, dur: [1.8, 2.6] },
+  { t: [120, 216, 255], s: [255, 230, 150], gold: .78,
+    mote:   { n: 132, pk: .76, dur: [2.0, 3.2] },
+    streak: { n: 8,  pk: .86, dur: [1.7, 2.5] },
     core: .30, haze: .24, beam: .42, ray: 5, rayA: .07 },
 ];
 const BIG_NAMES = ["凡人", "炼气", "筑基", "结丹", "元婴", "化神"];
@@ -86,11 +86,12 @@ function pickStreak(seed, t, s) {
   if (r < 72) return s;
   return WHITE;
 }
-/* 金尘配色: 主/亮 均衡 */
-function pickMote(seed, t, s) {
+/* 金尘配色: gold 权重决定金色(亮色)占比, 化神高 → 金光粒子多 */
+function pickMote(seed, t, s, gold) {
   const r = (seed * 2654435761 % 100 + 100) % 100;
-  if (r < 55) return t;
-  return s;
+  const gw = (gold == null) ? 0.5 : gold;
+  if (r < gw * 100) return s;
+  return t;
 }
 /* 三段透明度: 峰0.32, 缓落(慢呼吸) */
 function prof(x) {
@@ -142,17 +143,17 @@ function initFx(canvas) {
       amp: rnd(0.010, 0.024), s0: rnd(0.8, 1.3),
     };
   }
-  /* 流光: 光条(粗而可见), 从腿侧缓缓上浮 */
+  /* 流光: 光条(粗而可见), 从腿侧缓缓上浮, 切丝带弯曲 */
   function mkStreak(cfgV) {
     return {
       dur: rnd(cfgV.dur[0], cfgV.dur[1]), born: 0,
       seed: Math.floor(rnd(0, 1e6)),
       x0: rnd(-0.22, 0.22),
       y0: rnd(0.14, 0.26), rise: rnd(0.32, 0.42),
-      ph: rnd(0, 6.28), f: rnd(0.8, 1.4),     // 低频摆动
-      amp: rnd(0.02, 0.04),
+      ph: rnd(0, 6.28), ph2: rnd(0, 6.28),
+      f: rnd(0.5, 0.9), f2: rnd(1.3, 2.0),  // 慢速弯曲频率
+      amp: rnd(0.028, 0.05),               // 弯曲幅度(大→丝带明显)
       s0: rnd(0.9, 1.2),
-      tilt: rnd(-0.08, 0.08),
       ln: rnd(0.95, 1.15),
     };
   }
@@ -170,9 +171,10 @@ function initFx(canvas) {
     p.dur = rnd(cfgV.dur[0], cfgV.dur[1]);
     p.seed = Math.floor(rnd(0, 1e6));
     p.x0 = rnd(-0.22, 0.22); p.y0 = rnd(0.14, 0.26);
-    p.rise = rnd(0.32, 0.42); p.ph = rnd(0, 6.28); p.f = rnd(0.8, 1.4);
-    p.amp = rnd(0.02, 0.04); p.s0 = rnd(0.9, 1.2);
-    p.tilt = rnd(-0.08, 0.08); p.ln = rnd(0.95, 1.15);
+    p.rise = rnd(0.32, 0.42); p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
+    p.f = rnd(0.5, 0.9); p.f2 = rnd(1.3, 2.0);
+    p.amp = rnd(0.028, 0.05); p.s0 = rnd(0.9, 1.2);
+    p.ln = rnd(0.95, 1.15);
   }
   function prepare(cfgV) {
     while (motes.length < cfgV.mote.n) motes.push(mkMote(cfgV.mote));
@@ -239,34 +241,59 @@ function initFx(canvas) {
       const x = cx + (p.x0 + drift * (1 + mv)) * W;
       const y = cy + (p.y0 - p.rise * mv) * H + Math.sin(t * 1.0 + p.ph2) * H * 0.004;
       const sz = H * 0.016 * p.s0 * (1 - 0.28 * u);     // <7px 细碎
-      const col = pickMote(p.seed, tCol, sCol);
+      const col = pickMote(p.seed, tCol, sCol, cfgV.gold);
       const al = safe(prof(u) * cfgV.mote.pk * breathe2, 0);
       ctx.globalAlpha = al;
       const ic = tinted("mote", col);
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
     }
 
-    /* ---- ② 流光: 柔光条(粗+长), 从腿侧缓缓上浮, 曲线摆动 ---- */
+    /* ---- ② 流光: 柔光条(丝带式弯曲), 从腿侧缓缓上浮 ----
+       图片本身变形: 沿长度切成 14 片, 每片按空间正弦曲率
+       横向偏移并沿局部切线旋转 → 上升中像被气流扭动的绸带 */
     for (const p of streaks) {
       p.born += dt;
       if (p.born < 0) continue;
       if (p.born > p.dur) { respawnStreak(p, cfgV.streak); continue; }
       const u = p.born / p.dur, mv = easeIO(u);
-      const yTop = cy + (p.y0 - p.rise * mv) * H;
-      const swayX = Math.sin(t * p.f + p.ph) * p.amp * (0.5 + mv);
-      const xMid = cx + (p.x0 + swayX) * W;
-      const ang = p.tilt + Math.cos(t * p.f + p.ph) * p.amp * 0.5 * (0.5 + mv);
-      const len = H * (0.15 + 0.06 * mv) * p.ln;      // 加长
-      const wid = len * 0.13;                          // 加粗(13%)
-      const al = safe(prof(u) * cfgV.streak.pk * breathe2, 0);
       const col = pickStreak(p.seed, tCol, sCol);
-      ctx.save();
-      ctx.translate(xMid, yTop);
-      ctx.rotate(ang);
-      ctx.globalAlpha = al;
       const ic = tinted("streak", col);
-      if (ic) ctx.drawImage(ic, -wid / 2, -len * 0.62, wid, len);
-      ctx.restore();
+      if (!ic) continue;
+      const al = safe(prof(u) * cfgV.streak.pk * breathe2, 0);
+      if (al <= 0.01) continue;
+
+      /* 光条顶部位置(头上行) + 整体横向摆动 */
+      const headY = cy + (p.y0 - p.rise * mv) * H;
+      const lenTotal = H * (0.15 + 0.05 * mv) * p.ln;
+      const wid = lenTotal * 0.13;
+      const baseX = cx + (p.x0 + Math.sin(t * p.f * 0.5 + p.ph) * 0.02 * mv) * W;
+
+      /* 弯曲相位随时间流动 */
+      const bendPh = t * 0.9;
+      const SEG = 14;                       // 切片数
+      const piece = lenTotal / SEG;         // 每片在屏幕上的高
+      const syPer = ic.height / SEG;        // 源贴图每片截取高度
+      ctx.globalAlpha = al;
+      for (let i = 0; i < SEG; i++) {
+        const q = i / SEG;
+        /* 丝带曲率: 沿长度正弦弯曲, 尾部(下方)摆幅更大 → 飘动感 */
+        const wave = Math.sin(bendPh + p.f2 * 2.0 + p.ph2 + q * 5.2)
+                   + 0.6 * Math.sin(bendPh * 0.7 + p.ph + q * 2.6);
+        const amp = p.amp * W * (0.25 + q * q * 1.6);
+        const x = baseX + wave * amp;
+        const y = headY + q * lenTotal + piece / 2;
+        /* 该片局部斜率 → 微旋转, 让贴图跟着弯曲方向 */
+        const dx = x - prev.x, dy = y - prev.y;
+        const ang = Math.atan2(dx, dy) * 0.55;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(ang);
+        ctx.drawImage(ic,
+          0, i * syPer, ic.width, syPer,      // 源: 纵向切片
+          -wid / 2, -piece / 2, wid, piece);  // 目标: 对齐拼接
+        ctx.restore();
+        prev.x = x; prev.y = y;
+      }
     }
 
     ctx.globalAlpha = 1;
