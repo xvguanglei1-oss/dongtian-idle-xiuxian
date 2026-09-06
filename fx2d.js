@@ -257,44 +257,52 @@ function initFx(canvas) {
       if (p.born > p.dur) { respawnStreak(p, cfgV.streak); continue; }
       const u = p.born / p.dur, mv = easeIO(u);
       const col = pickStreak(p.seed, tCol, sCol);
-      const ic = tinted("streak", col);
-      if (!ic) continue;
       const al = safe(prof(u) * cfgV.streak.pk * breathe2, 0);
       if (al <= 0.01) continue;
 
-      /* 光条顶部位置(头上行) + 整体横向摆动 */
+      /* ===== 整条光带 = 连续弯曲路径(零接缝), 上升中沿波流动 ===== */
       const headY = cy + (p.y0 - p.rise * mv) * H;
-      const lenTotal = H * (0.15 + 0.05 * mv) * p.ln;
-      const wid = lenTotal * 0.13;
-      const baseX = cx + (p.x0 + Math.sin(t * p.f * 0.5 + p.ph) * 0.02 * mv) * W;
+      const lenTotal = H * (0.16 + 0.05 * mv) * p.ln;
+      const wid = lenTotal * 0.15;
+      const baseX = cx + (p.x0 + Math.sin(t * p.f * 0.4 + p.ph) * 0.03 * mv) * W;
+      if (![headY, lenTotal, baseX].every(Number.isFinite)) continue;
 
-      /* 弯曲相位随时间流动 */
-      const bendPh = t * 0.9;
-      const SEG = 14;                       // 切片数
-      const piece = lenTotal / SEG;         // 每片在屏幕上的高
-      const syPer = ic.height / SEG;        // 源贴图每片截取高度
-      ctx.globalAlpha = al;
-      let prev = { x: baseX, y: headY };    // 首片斜率为0
-      for (let i = 0; i < SEG; i++) {
-        const q = i / SEG;
-        /* 丝带曲率: 沿长度正弦弯曲, 尾部(下方)摆幅更大 → 飘动感 */
-        const wave = Math.sin(bendPh + p.f2 * 2.0 + p.ph2 + q * 5.2)
-                   + 0.6 * Math.sin(bendPh * 0.7 + p.ph + q * 2.6);
-        const amp = p.amp * W * (0.25 + q * q * 1.6);
-        const x = baseX + wave * amp;
-        const y = headY + q * lenTotal + piece / 2;
-        /* 该片局部斜率 → 微旋转, 让贴图跟着弯曲方向 */
-        const dx = x - prev.x, dy = y - prev.y;
-        const ang = Math.atan2(dx, dy) * 0.55;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(ang);
-        ctx.drawImage(ic,
-          0, i * syPer, ic.width, syPer,      // 源: 纵向切片
-          -wid / 2, -piece / 2, wid, piece);  // 目标: 对齐拼接
-        ctx.restore();
-        prev.x = x; prev.y = y;
+      /* 曲线: 光带在空间按正弦波弯曲(尾部摆幅大), 波形随时间向前流动 */
+      const K = 26;
+      const waveSpeed = t * (0.65 + p.f2 * 0.3);
+      const pts = new Array(K);
+      for (let k = 0; k < K; k++) {
+        const q = k / (K - 1);
+        const wave = Math.sin(q * 5.0 + waveSpeed + p.ph2)
+                   + 0.55 * Math.sin(q * 2.3 + waveSpeed * 0.6 + p.ph);
+        const amp = p.amp * W * (0.16 + q * q * 1.9);
+        pts[k] = { x: baseX + wave * amp, y: headY + q * lenTotal };
       }
+      /* 纵向渐变: 头部(顶)亮 → 尾部拖淡 */
+      const gTop = headY - lenTotal * 0.1;
+      const grd = ctx.createLinearGradient(0, gTop, 0, gTop + lenTotal * 1.2);
+      grd.addColorStop(0, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",1)");
+      grd.addColorStop(0.45, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",.62)");
+      grd.addColorStop(1, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",0)");
+      const trace = () => {
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let k = 1; k < K; k++) ctx.lineTo(pts[k].x, pts[k].y);
+      };
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = grd;
+      ctx.globalAlpha = al;
+      trace(); ctx.lineWidth = wid * 2.4; ctx.stroke();          // 外光晕
+      trace(); ctx.lineWidth = wid * 0.9; ctx.stroke();          // 主体
+      ctx.strokeStyle = "rgba(255,255,255,.85)";                  // 白亮内芯
+      ctx.globalAlpha = al * 0.5;
+      trace(); ctx.lineWidth = wid * 0.26; ctx.stroke();
+      /* 头部光点(彗头) */
+      ctx.globalAlpha = al * 0.9;
+      const hc = tinted("mote", col);
+      const hs = H * 0.02 * p.s0;
+      if (hc) ctx.drawImage(hc, pts[0].x - hs / 2, pts[0].y - hs / 2, hs, hs);
     }
 
     ctx.globalAlpha = 1;
