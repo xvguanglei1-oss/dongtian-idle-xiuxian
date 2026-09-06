@@ -1604,7 +1604,7 @@ function initPlayerFx() {
       cv.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:3";
       cult.appendChild(cv);
     }
-    import("./fx3d.js").then(m => { window.__auraFx = m.initFx3d(cv); })
+    import("./fx2d.js").then(m => { window.__auraFx = m.initFx(cv); })
       .catch(e => console.warn("粒子引擎不可用", e));
   } catch (e) { console.warn("粒子引擎初始化失败", e); }
 }
