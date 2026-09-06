@@ -1206,28 +1206,78 @@ function closeStory() {
   const m = $("storyModal");
   if (m) m.classList.remove("show");
 }
-function renderStory() {
+/* 修行录渲染: 分章(chips) + 章内滚动分批, 避免一次注入大量 DOM 卡顿 */
+const STORY_PAGE = 12;
+let _storyChap = "";
+function storyItemHtml(j) {
+  const pad = n => String(n).padStart(2, "0");
+  const tm = new Date(j.ts);
+  return `<div class="j-card k-${j.kind || "际遇"}">` +
+    `<div class="j-head"><span class="j-big">${j.big || ""}</span>` +
+    `<span class="j-kind k-${j.kind || "际遇"}">${j.kind || "际遇"}</span>` +
+    `<span class="j-time">${pad(tm.getMonth() + 1)}-${pad(tm.getDate())} ${pad(tm.getHours())}:${pad(tm.getMinutes())}</span></div>` +
+    `<h5>${j.title || "仙途拾遗"}</h5><p>${j.text || ""}</p></div>`;
+}
+function storyLoadMore(reset) {
   const body = $("storyBody");
   if (!body) return;
+  const big = body.dataset.big || _storyChap;
+  if (!big) return;
+  const list = state.journal.filter(j => j.big === big).reverse(); // 最新在前
+  let page = parseInt(body.dataset.page || "0", 10);
+  if (reset) { page = 0; body.innerHTML = ""; }
+  const slice = list.slice(page * STORY_PAGE, (page + 1) * STORY_PAGE);
+  if (reset || slice.length) { page++; body.dataset.page = String(page); }
+  if (slice.length) body.insertAdjacentHTML("beforeend", slice.map(storyItemHtml).join(""));
+  if (reset) body.scrollTop = 0;
+  if (reset && !slice.length) {
+    body.innerHTML = `<div class="empty-hint">${big}期的际遇尚未写就。<br>先修行，路会自己走出来。</div>`;
+  }
+}
+function showChapter(bigName) {
+  const chips = $("storyChips");
+  const body = $("storyBody");
+  if (!body) return;
+  _storyChap = bigName;
+  body.dataset.big = bigName;
+  body.onscroll = () => {
+    if (body.scrollTop + body.clientHeight >= body.scrollHeight - 60) storyLoadMore(false);
+  };
+  if (chips) chips.querySelectorAll(".chip").forEach(x => x.classList.toggle("on", x.textContent === bigName));
+  storyLoadMore(true);
+}
+function renderStory() {
+  const body = $("storyBody");
+  const chips = $("storyChips");
+  if (!body || !chips) return;
   const bi = Math.min(bigIdx(), PLOT.length - 1);
   const walked = PLOT.slice(0, bi + 1).map(x => x[0].big).join(" → ");
-  let html = `<div class="story-sum">已历仙途：<b>${walked}</b>` +
-    (state.realmIdx >= TOTAL_SEGS - 1 ? "（人界之巅 · 静候飞升）" : "") + `</div>`;
-  if (!state.journal.length) {
-    html += `<div class="empty-hint">尚无记载。<br>仙途伊始，一切从你打坐感应灵气开始。</div>`;
-  } else {
-    const pad = n => String(n).padStart(2, "0");
-    for (const j of state.journal.slice().reverse()) {
-      const tm = new Date(j.ts);
-      html += `<div class="j-card k-${j.kind || "际遇"}">` +
-        `<div class="j-head"><span class="j-big">${j.big || ""}</span>` +
-        `<span class="j-kind k-${j.kind || "际遇"}">${j.kind || "际遇"}</span>` +
-        `<span class="j-time">${pad(tm.getMonth() + 1)}-${pad(tm.getDate())} ${pad(tm.getHours())}:${pad(tm.getMinutes())}</span></div>` +
-        `<h5>${j.title || "仙途拾遗"}</h5><p>${j.text || ""}</p></div>`;
-    }
+  let sum = $("storySum");
+  if (!sum) {
+    sum = document.createElement("div");
+    sum.className = "story-sum"; sum.id = "storySum";
+    chips.parentNode.insertBefore(sum, chips);
   }
-  body.innerHTML = html;
-  body.scrollTop = 0;
+  sum.innerHTML = `已历仙途：<b>${walked}</b>` +
+    (state.realmIdx >= TOTAL_SEGS - 1 ? "（人界之巅 · 静候飞升）" : "");
+  // 只显示有记载的大境章
+  const order = PLOT.slice(0, bi + 1).map(v => v[0].big);
+  const chapters = order.filter(b => state.journal.some(j => j.big === b));
+  chips.innerHTML = "";
+  if (!chapters.length) {
+    body.innerHTML = `<div class="empty-hint">尚无记载。<br>仙途伊始，一切从你打坐感应灵气开始。</div>`;
+    return;
+  }
+  chapters.forEach(name => {
+    const c = document.createElement("div");
+    c.className = "chip";
+    c.textContent = name;
+    c.onclick = () => showChapter(name);
+    chips.appendChild(c);
+  });
+  // 默认打开当前大境章, 否则最后一章
+  const last = state.journal[state.journal.length - 1];
+  showChapter(chapters.includes(realm().big) ? realm().big : (last && last.big) || chapters[0]);
 }
 
 /* 历险(分身·左栏) */
