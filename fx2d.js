@@ -1,13 +1,12 @@
 /* ============================================================
- * fx2d.js —— 玩家身上的特效流 v5
- * 依据仓库贴图/脚本特性:
- *   fx_gold_streak (64x256 细长光条) → 流光: 亮光条快速上窜,
- *       上窜中带横向正弦摆动 → 曲线运动(非直射)
- *   fx_gold_mote   (32x32 小圆点)    → 金尘: 细碎光点群, 飘浮布朗感
- *   fx_gold_star   (64x64 四角星)    → 星闪: 原地脉动闪烁
- *   fx_gold_beam/ray/haze/core       → 静态层(背后光柱/放射/柔光)
- *   (fx_gold_smoke 已弃用——烟团观感不可控)
- * 原则: 该看的看得见, 点状小粒子做密度, 线状粒子做显眼流动。
+ * fx2d.js —— 玩家身上的特效流 v6
+ * 依据反馈收敛:
+ *   ✂ 移除 star(四角星"爆炸感") / smoke 全部
+ *   ✔ 流光 streak 加粗加长, 可见的灵气流动
+ *   ✔ 金尘 mote 缩小(<7px) 且密度大幅提高 → 细腻星尘感
+ *   ✔ 全体降速(慢上浮+低频摆动) → 呼吸感
+ *   ✔ 全局呼吸调制: 光点明暗随 ~0.45Hz 正弦轻微涨落
+ *   ✔ 粒子只在角色躯干带内活动(不越屏不乱飞)
  * ============================================================ */
 "use strict";
 
@@ -16,43 +15,31 @@ const rnd = (a, b) => a + Math.random() * (b - a);
 const easeIO = u => u * u * (3 - 2 * u);
 const WHITE = [255, 255, 255];
 
-/* ---------- 境界视觉配置(数量递进·流光明亮可见) ---------- */
+/* ---------- 境界视觉配置(数量大·动作慢) ---------- */
 const REALM_VIS = [
-  /* 凡人: 几缕暖尘 */
   { t: [232, 210, 156], s: [255, 246, 214],
-    mote:  { n: 6,  pk: .30, dur: [1.8, 2.6], sz: 1.0 },
-    streak:{ n: 0,  pk: .0,  dur: [1.1, 1.6], ln: 1.0 },
-    star:  { n: 0,  pk: .0,  dur: [.5, .85] },
+    mote:   { n: 12, pk: .34, dur: [3.2, 4.4] },
+    streak: { n: 1,  pk: .55, dur: [2.4, 3.2] },
     core: .10, haze: .08, beam: 0, ray: 0, rayA: 0 },
-  /* 炼气: 淡青光点初现 + 一缕流光 */
   { t: [128, 222, 255], s: [226, 250, 255],
-    mote:  { n: 14, pk: .40, dur: [1.6, 2.4], sz: 1.0 },
-    streak:{ n: 2,  pk: .60, dur: [1.1, 1.6], ln: 1.0 },
-    star:  { n: 1,  pk: .55, dur: [.5, .8] },
+    mote:   { n: 26, pk: .46, dur: [3.0, 4.2] },
+    streak: { n: 3,  pk: .66, dur: [2.2, 3.0] },
     core: .14, haze: .11, beam: 0, ray: 0, rayA: 0 },
-  /* 筑基: 灵气成雾点群 */
   { t: [108, 218, 200], s: [178, 252, 226],
-    mote:  { n: 20, pk: .48, dur: [1.4, 2.2], sz: 1.05 },
-    streak:{ n: 3,  pk: .66, dur: [1.0, 1.5], ln: 1.05 },
-    star:  { n: 2,  pk: .62, dur: [.5, .8] },
+    mote:   { n: 38, pk: .54, dur: [2.8, 4.0] },
+    streak: { n: 4,  pk: .72, dur: [2.1, 2.9] },
     core: .18, haze: .14, beam: 0, ray: 0, rayA: 0 },
-  /* 结丹: 金芒丹光流转 */
   { t: [250, 202, 108], s: [255, 244, 200],
-    mote:  { n: 28, pk: .56, dur: [1.3, 2.0], sz: 1.1 },
-    streak:{ n: 4,  pk: .72, dur: [1.0, 1.5], ln: 1.1 },
-    star:  { n: 2,  pk: .66, dur: [.45, .8] },
+    mote:   { n: 52, pk: .60, dur: [2.6, 3.8] },
+    streak: { n: 5,  pk: .76, dur: [2.0, 2.8] },
     core: .22, haze: .17, beam: .30, ray: 0, rayA: 0 },
-  /* 元婴: 紫金婴辉 */
   { t: [206, 168, 255], s: [255, 228, 162],
-    mote:  { n: 34, pk: .62, dur: [1.2, 1.9], sz: 1.15 },
-    streak:{ n: 5,  pk: .76, dur: [1.0, 1.5], ln: 1.15 },
-    star:  { n: 3,  pk: .72, dur: [.45, .8] },
+    mote:   { n: 66, pk: .66, dur: [2.4, 3.6] },
+    streak: { n: 6,  pk: .80, dur: [1.9, 2.7] },
     core: .26, haze: .20, beam: .36, ray: 3, rayA: .05 },
-  /* 化神: 青金万灵归身 */
   { t: [120, 216, 255], s: [255, 230, 156],
-    mote:  { n: 42, pk: .68, dur: [1.1, 1.8], sz: 1.2 },
-    streak:{ n: 6,  pk: .80, dur: [.95, 1.45], ln: 1.2 },
-    star:  { n: 4,  pk: .78, dur: [.4, .75] },
+    mote:   { n: 82, pk: .72, dur: [2.2, 3.4] },
+    streak: { n: 7,  pk: .84, dur: [1.8, 2.6] },
     core: .30, haze: .24, beam: .42, ray: 5, rayA: .07 },
 ];
 const BIG_NAMES = ["凡人", "炼气", "筑基", "结丹", "元婴", "化神"];
@@ -63,9 +50,8 @@ const TEX = {
   core: "assets/fx/fx_bloom_core_soft.png",
   ray:  "assets/fx/fx_bloom_ray_soft.png",
   beam: "assets/fx/fx_gold_beam_soft.png",
-  streak:"assets/fx/fx_gold_streak.png",
+  streak: "assets/fx/fx_gold_streak.png",
   mote: "assets/fx/fx_gold_mote.png",
-  star: "assets/fx/fx_gold_star.png",
 };
 let imgs = {};
 function loadAll() {
@@ -93,19 +79,25 @@ function tinted(keyTex, color) {
   tintedCache[ck] = cv;
   return cv;
 }
-/* 色彩分层: 主色t / 亮色s / 白 按 seed hash (45/40/15) */
-function pickCol(seed, t, s) {
+/* 流光专用配色: 亮色为主(保证可见), 少量白珠光 */
+function pickStreak(seed, t, s) {
   const r = (seed * 2654435761 % 100 + 100) % 100;
-  if (r < 45) return t;
-  if (r < 85) return s;
+  if (r < 18) return t;
+  if (r < 72) return s;
   return WHITE;
 }
-/* 三段透明度: 峰0.3, 缓落 */
+/* 金尘配色: 主/亮 均衡 */
+function pickMote(seed, t, s) {
+  const r = (seed * 2654435761 % 100 + 100) % 100;
+  if (r < 55) return t;
+  return s;
+}
+/* 三段透明度: 峰0.32, 缓落(慢呼吸) */
 function prof(x) {
   if (x <= 0 || x >= 1) return 0;
-  if (x < 0.3) { const u = x / 0.3; return u * u * (3 - 2 * u); }
-  if (x < 0.78) { const u = (x - 0.3) / 0.48; return 1 - 0.42 * u; }
-  const u = (x - 0.78) / 0.22;
+  if (x < 0.32) { const u = x / 0.32; return u * u * (3 - 2 * u); }
+  if (x < 0.8) { const u = (x - 0.32) / 0.48; return 1 - 0.38 * u; }
+  const u = (x - 0.8) / 0.2;
   return (1 - u) * (1 - u);
 }
 
@@ -116,7 +108,7 @@ function initFx(canvas) {
   const ctx = canvas.getContext("2d");
   const host = canvas.parentElement;
   let W = 0, H = 0, dpr = 1, raf = 0, last = 0, ready = false;
-  let streaks = [], motes = [], stars = [];
+  let streaks = [], motes = [];
 
   const fit = () => {
     try {
@@ -138,72 +130,54 @@ function initFx(canvas) {
     return i >= 0 ? i : 0;
   };
 
-  /* 金尘 mote: 细碎光点, 飘浮双频 */
+  /* 金尘: 细碎小点, 慢飘 */
   function mkMote(cfgV) {
     return {
       dur: rnd(cfgV.dur[0], cfgV.dur[1]), born: 0,
       seed: Math.floor(rnd(0, 1e6)),
-      y0: rnd(-0.03, 0.12), rise: rnd(0.13, 0.24),
-      x0: rnd(-0.20, 0.20),
+      y0: rnd(-0.04, 0.13), rise: rnd(0.10, 0.20),
+      x0: rnd(-0.22, 0.22),
       ph: rnd(0, 6.28), ph2: rnd(0, 6.28),
-      f: rnd(1.0, 2.0), f2: rnd(2.4, 3.6),
-      amp: rnd(0.012, 0.028), s0: rnd(0.8, 1.2),
+      f: rnd(0.55, 1.0), f2: rnd(1.1, 1.8),   // 低频 → 慢
+      amp: rnd(0.010, 0.024), s0: rnd(0.8, 1.3),
     };
   }
-  /* 流光 streak: 细长光条(贴图), 从脚下快速上窜, x正弦摆动 */
+  /* 流光: 光条(粗而可见), 从腿侧缓缓上浮 */
   function mkStreak(cfgV) {
     return {
       dur: rnd(cfgV.dur[0], cfgV.dur[1]), born: 0,
       seed: Math.floor(rnd(0, 1e6)),
-      x0: rnd(-0.22, 0.22),              // 出生横向偏移(躯干内)
-      y0: rnd(0.16, 0.28),               // 起点: cy+y0H (腿侧, 屏内~0.7H)
-      rise: rnd(0.34, 0.44),             // 上窜到 cy+(y0-rise)H (~0.25~0.35H 胸口/肩)
-      ph: rnd(0, 6.28), f: rnd(1.4, 2.2),
-      amp: rnd(0.02, 0.045),             // 摆动幅度(比mote大→曲线可见)
-      s0: rnd(0.85, 1.15),
-      tilt: rnd(-0.10, 0.10),
-      ln: rnd(0.9, 1.1) * cfgV.ln,
+      x0: rnd(-0.22, 0.22),
+      y0: rnd(0.14, 0.26), rise: rnd(0.32, 0.42),
+      ph: rnd(0, 6.28), f: rnd(0.8, 1.4),     // 低频摆动
+      amp: rnd(0.02, 0.04),
+      s0: rnd(0.9, 1.2),
+      tilt: rnd(-0.08, 0.08),
+      ln: rnd(0.95, 1.15),
     };
-  }
-  /* 星闪 */
-  function mkStar(cfgV) {
-    return {
-      dur: rnd(cfgV.dur[0], cfgV.dur[1]), born: 0,
-      seed: Math.floor(rnd(0, 1e6)),
-      x0: rnd(-0.20, 0.20), y0: rnd(-0.08, 0.14),
-      s: rnd(0.6, 1.1), ang: rnd(0, 3.14), rot: rnd(-0.4, 0.4), pk: rnd(0.85, 1.1),
-    };
-  }
-  function respawnP(p, cfgV) {
-    p.born = -rnd(0.5, 1.5);
-    p.dur = rnd(cfgV.dur[0], cfgV.dur[1]);
-    p.seed = Math.floor(rnd(0, 1e6));
   }
   function respawnMote(p, cfgV) {
-    respawnP(p, cfgV);
-    p.y0 = rnd(-0.03, 0.12); p.rise = rnd(0.13, 0.24);
-    p.x0 = rnd(-0.20, 0.20); p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
-    p.f = rnd(1.0, 2.0); p.f2 = rnd(2.4, 3.6);
-    p.amp = rnd(0.012, 0.028); p.s0 = rnd(0.8, 1.2);
+    p.born = -rnd(0.8, 2.4);
+    p.dur = rnd(cfgV.dur[0], cfgV.dur[1]);
+    p.seed = Math.floor(rnd(0, 1e6));
+    p.y0 = rnd(-0.04, 0.13); p.rise = rnd(0.10, 0.20);
+    p.x0 = rnd(-0.22, 0.22); p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
+    p.f = rnd(0.55, 1.0); p.f2 = rnd(1.1, 1.8);
+    p.amp = rnd(0.010, 0.024); p.s0 = rnd(0.8, 1.3);
   }
   function respawnStreak(p, cfgV) {
-    respawnP(p, cfgV);
-    p.x0 = rnd(-0.22, 0.22); p.y0 = rnd(0.16, 0.28);
-    p.rise = rnd(0.34, 0.44); p.ph = rnd(0, 6.28); p.f = rnd(1.4, 2.2);
-    p.amp = rnd(0.02, 0.045); p.s0 = rnd(0.85, 1.15);
-    p.tilt = rnd(-0.10, 0.10); p.ln = rnd(0.9, 1.1) * cfgV.ln;
-  }
-  function respawnStar(p, cfgV) {
-    p.born = -rnd(0.9, 2.0);
+    p.born = -rnd(0.7, 2.0);
     p.dur = rnd(cfgV.dur[0], cfgV.dur[1]);
-    p.x0 = rnd(-0.20, 0.20); p.y0 = rnd(-0.08, 0.14);
-    p.s = rnd(0.6, 1.1); p.seed = Math.floor(rnd(0, 1e6));
+    p.seed = Math.floor(rnd(0, 1e6));
+    p.x0 = rnd(-0.22, 0.22); p.y0 = rnd(0.14, 0.26);
+    p.rise = rnd(0.32, 0.42); p.ph = rnd(0, 6.28); p.f = rnd(0.8, 1.4);
+    p.amp = rnd(0.02, 0.04); p.s0 = rnd(0.9, 1.2);
+    p.tilt = rnd(-0.08, 0.08); p.ln = rnd(0.95, 1.15);
   }
   function prepare(cfgV) {
     while (motes.length < cfgV.mote.n) motes.push(mkMote(cfgV.mote));
     while (streaks.length < cfgV.streak.n) streaks.push(mkStreak(cfgV.streak));
-    while (stars.length < cfgV.star.n) stars.push(mkStar(cfgV.star));
-    motes.length = cfgV.mote.n; streaks.length = cfgV.streak.n; stars.length = cfgV.star.n;
+    motes.length = cfgV.mote.n; streaks.length = cfgV.streak.n;
   }
 
   function draw(t, dt) {
@@ -213,27 +187,28 @@ function initFx(canvas) {
     try { ctx.clearRect(0, 0, W, H); } catch (e) { return; }
     ctx.globalCompositeOperation = "lighter";
     const cx = W / 2, cy = H * 0.50;
-    const breathe = 0.5 + 0.5 * Math.sin(t * 1.1);
+    const breathe = 0.5 + 0.5 * Math.sin(t * 0.8);       // 慢呼吸
+    const breathe2 = 0.88 + 0.12 * Math.sin(t * 0.45);   // 粒子明暗呼吸
     const tCol = cfgV.t, sCol = cfgV.s;
 
     /* 0) 背后柔光(静态呼吸) + 光柱 + 放射 */
     const hazeCv = tinted("haze", tCol);
     if (hazeCv && cfgV.haze > 0.01) {
-      const sz = W * (0.62 + 0.05 * breathe);
+      const sz = W * (0.60 + 0.07 * breathe);
       ctx.globalAlpha = safe(cfgV.haze * (0.7 + 0.3 * breathe), 0);
       ctx.drawImage(hazeCv, cx - sz / 2, cy - sz / 2, sz, sz);
     }
     const coreCv = tinted("core", sCol);
     if (coreCv && cfgV.core > 0.01) {
-      const sz = W * (0.30 + 0.04 * breathe);
-      ctx.globalAlpha = safe(cfgV.core * (0.65 + 0.35 * breathe), 0);
+      const sz = W * (0.28 + 0.05 * breathe);
+      ctx.globalAlpha = safe(cfgV.core * (0.6 + 0.4 * breathe), 0);
       ctx.drawImage(coreCv, cx - sz / 2, cy - sz / 2, sz, sz);
     }
     if (cfgV.beam > 0.01) {
       const bCv = tinted("beam", sCol);
       if (bCv) {
-        const bw = W * 0.028 * (1 + 0.2 * breathe);
-        const bh = H * 0.36 * (1 + 0.05 * breathe);
+        const bw = W * 0.03 * (1 + 0.18 * breathe);
+        const bh = H * 0.34 * (1 + 0.05 * breathe);
         ctx.globalAlpha = safe(cfgV.beam * (0.5 + 0.5 * breathe), 0);
         ctx.drawImage(bCv, cx - bw / 2, cy - bh * 0.5, bw, bh);
       }
@@ -242,76 +217,55 @@ function initFx(canvas) {
       const rCv = tinted("ray", sCol);
       if (rCv) {
         for (let i = 0; i < cfgV.ray; i++) {
-          const ang = (i / Math.max(1, cfgV.ray - 1) - 0.5) * 1.5 + Math.sin(t * 0.25 + i) * 0.05;
-          const len = W * 0.26;
+          const ang = (i / Math.max(1, cfgV.ray - 1) - 0.5) * 1.4 + Math.sin(t * 0.2 + i) * 0.05;
+          const len = W * 0.24;
           ctx.save();
           ctx.translate(cx, cy - H * 0.12);
           ctx.rotate(ang);
-          ctx.globalAlpha = safe(cfgV.rayA * (0.55 + 0.45 * Math.sin(t * 0.4 + i * 1.7)), 0);
+          ctx.globalAlpha = safe(cfgV.rayA * (0.55 + 0.45 * Math.sin(t * 0.35 + i * 1.7)), 0);
           ctx.drawImage(rCv, -len * 0.2, -len * 0.5, len * 0.4, len);
           ctx.restore();
         }
       }
     }
 
-    /* ---- ① 流光 streak: 细长光条快速上窜, x正弦摆动(曲线流动) ---- */
-    for (const p of streaks) {
-      p.born += dt;
-      if (p.born < 0) continue;
-      if (p.born > p.dur) { respawnStreak(p, cfgV.streak); continue; }
-      const u = p.born / p.dur, mv = easeIO(u);
-      /* 上窜 y: 从身下到肩/头侧; x: 正弦摆动 → 曲线 */
-      const yTop = cy + (p.y0 - p.rise * mv) * H;
-      const swayX = Math.sin(t * p.f + p.ph) * p.amp * (0.6 + mv);
-      const xMid = cx + (p.x0 + swayX) * W;
-      const ang = p.tilt + Math.cos(t * p.f + p.ph) * p.amp * 0.7 * (0.5 + mv);
-      const len = H * (0.11 + 0.05 * mv) * p.ln;
-      const wid = len * 0.085;
-      const al = safe(prof(u) * cfgV.streak.pk, 0);
-      const col = pickCol(p.seed, tCol, sCol);
-      ctx.save();
-      ctx.translate(xMid, yTop);
-      ctx.rotate(ang);
-      ctx.globalAlpha = al;
-      const ic = tinted("streak", col);
-      /* 贴图较长: 尾端朝上(-y), 让可见的主体在下方 2/3 */
-      if (ic) ctx.drawImage(ic, -wid / 2, -len * 0.62, wid, len);
-      ctx.restore();
-    }
-
-    /* ---- ② 金尘 mote: 细碎小光点群, 双频飘浮 ---- */
+    /* ---- ① 金尘: 细碎星尘(小+密), 极慢飘浮, 呼吸明暗 ---- */
     for (const p of motes) {
       p.born += dt;
       if (p.born < 0) continue;
       if (p.born > p.dur) { respawnMote(p, cfgV.mote); continue; }
       const u = p.born / p.dur, mv = easeIO(u);
-      const drift = Math.sin(t * p.f + p.ph) * p.amp + Math.sin(t * p.f2 + p.ph2) * p.amp * 0.55;
+      const drift = Math.sin(t * p.f + p.ph) * p.amp + Math.sin(t * p.f2 + p.ph2) * p.amp * 0.5;
       const x = cx + (p.x0 + drift * (1 + mv)) * W;
-      const y = cy + (p.y0 - p.rise * mv) * H + Math.sin(t * 1.4 + p.ph2) * H * 0.005;
-      const sz = H * 0.022 * p.s0 * cfgV.mote.sz * (1 - 0.3 * u);
-      const col = pickCol(p.seed, tCol, sCol);
-      const al = safe(prof(u) * cfgV.mote.pk, 0);
+      const y = cy + (p.y0 - p.rise * mv) * H + Math.sin(t * 1.0 + p.ph2) * H * 0.004;
+      const sz = H * 0.016 * p.s0 * (1 - 0.28 * u);     // <7px 细碎
+      const col = pickMote(p.seed, tCol, sCol);
+      const al = safe(prof(u) * cfgV.mote.pk * breathe2, 0);
       ctx.globalAlpha = al;
       const ic = tinted("mote", col);
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
     }
 
-    /* ---- ③ 星闪 star: 原地脉动 ---- */
-    for (const p of stars) {
+    /* ---- ② 流光: 柔光条(粗+长), 从腿侧缓缓上浮, 曲线摆动 ---- */
+    for (const p of streaks) {
       p.born += dt;
       if (p.born < 0) continue;
-      if (p.born > p.dur) { respawnStar(p, cfgV.star); continue; }
-      const u = p.born / p.dur;
-      const x = cx + p.x0 * W, y = cy + p.y0 * H;
-      const sz = H * 0.075 * p.s * (1 + 0.35 * u);
-      const col = pickCol(p.seed, tCol, sCol);
-      const al = safe(prof(u) * cfgV.star.pk * p.pk, 0);
-      ctx.globalAlpha = al;
+      if (p.born > p.dur) { respawnStreak(p, cfgV.streak); continue; }
+      const u = p.born / p.dur, mv = easeIO(u);
+      const yTop = cy + (p.y0 - p.rise * mv) * H;
+      const swayX = Math.sin(t * p.f + p.ph) * p.amp * (0.5 + mv);
+      const xMid = cx + (p.x0 + swayX) * W;
+      const ang = p.tilt + Math.cos(t * p.f + p.ph) * p.amp * 0.5 * (0.5 + mv);
+      const len = H * (0.15 + 0.06 * mv) * p.ln;      // 加长
+      const wid = len * 0.13;                          // 加粗(13%)
+      const al = safe(prof(u) * cfgV.streak.pk * breathe2, 0);
+      const col = pickStreak(p.seed, tCol, sCol);
       ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(p.ang + p.rot * u);
-      const ic = tinted("star", col);
-      if (ic) ctx.drawImage(ic, -sz / 2, -sz / 2, sz, sz);
+      ctx.translate(xMid, yTop);
+      ctx.rotate(ang);
+      ctx.globalAlpha = al;
+      const ic = tinted("streak", col);
+      if (ic) ctx.drawImage(ic, -wid / 2, -len * 0.62, wid, len);
       ctx.restore();
     }
 
