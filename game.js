@@ -411,7 +411,7 @@ function doBreak() {
     const nr = realm();
     const greet = ["金丹凝形！", "元婴出窍！", "化神之姿！", "踏入筑基！"][nr.bigIdx - 2] || "";
     pushMsg("main", `<span class="g">${nr.big}</span>！${greet || "修行又进一步"}`);
-    taleFor(nr.big);
+    realmPlot();
   }, 950);
 }
 function manualBreak() { doBreak(); }
@@ -443,20 +443,71 @@ function pushMsg(side, html) {
   setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, life + 250);
 }
 
-/* ============ 修行录: 主角亲身经历(未历不显·绝不剧透) ============ */
-const REALM_TALES = [
-  { big: "凡人", key: "origin", kind: "开篇", title: "灵根初启",
-    text: "残碑前你第一次感应到天地灵气，如涓流汇入丹田。自这一刻起，山野凡人亦敢问道长生——洞天仙途，由此而始。" },
-  { big: "炼气", key: "qichong", kind: "突破", title: "引气入体",
-    text: "灵气自百会灌体而下，沿周天缓缓流转。你正式踏入炼气之境，吐纳有法，御物可期。" },
-  { big: "筑基", key: "zhuji", kind: "突破", title: "筑基成道",
-    text: "真元在丹田凝而成液，轰然冲开仙凡之隔。筑基一成，方算真正踏上仙途——御剑乘风，皆可期矣。" },
-  { big: "结丹", key: "jiedan", kind: "突破", title: "金丹大道",
-    text: "丹火淬炼百日，一粒金丹于丹田凝成，宝光内敛。自此寿元大增，已可称一声真人。" },
-  { big: "元婴", key: "yuanying", kind: "突破", title: "元婴出窍",
-    text: "金丹应声而碎，元婴于紫府中睁眼。神魂可离体夜游，天地法则的轮廓，第一次向你展开。" },
-  { big: "化神", key: "huashen", kind: "突破", title: "人界之巅",
-    text: "元婴与天地相合，神念瞬息千里，一念动而风雨相随。人界之巅已在脚下——飞升之日，静待来朝。" },
+/* ============ 修行录: 主角亲身剧情(凡人→化神 六卷, 未历不显·不剧透) ============
+ * 以凡人修仙传式际遇为骨(夺舍/小瓶/禁地/乱星海/虚天殿/踏月救人/坠魔谷…),
+ * 主角一律为"你"。PLOT[i] = 该大境剧情卷, 每个 beat 绑境界内小层门槛 seg(1-based):
+ *   在线/离线推进到对应小层才会经历 → 大境之门须手动渡劫,
+ *   故离线最多走完当前卷, 绝不提前进入下一卷。
+ */
+const PLOT = [
+  [ // 凡人卷
+    { key: "origin", big: "凡人", seg: 1, kind: "开篇", title: "灵根初启",
+      text: "残碑前你第一次感应到天地灵气，如涓流汇入丹田。山野凡人，自此也敢问道长生。" },
+  ],
+  [ // 炼气卷(13层)
+    { key: "lq1", big: "炼气", seg: 1, kind: "突破", title: "引气入体",
+      text: "灵气自百会灌体而下，沿周天缓缓流转。你踏入炼气，从此吐纳有法、御物可期。" },
+    { key: "lq2", big: "炼气", seg: 3, kind: "际遇", title: "神秘小瓶",
+      text: "是夜你于山溪边拾得一只青瓷小瓶，瓶中有露，可一夜催活枯药。你隐隐觉得——此物将是你此生最大的秘密。" },
+    { key: "lq3", big: "炼气", seg: 5, kind: "际遇", title: "夺舍之祸",
+      text: "药谷里那位老供奉待你忽而亲厚，你却在他丹房暗格里翻见满纸“夺舍”的笔记。你将计就计、反客为主——那一夜，你第一次真切感到修仙界的森冷。" },
+    { key: "lq4", big: "炼气", seg: 7, kind: "际遇", title: "坊市起家",
+      text: "你以瓶中灵液催活枯药，于坊市悄然换购修炼之物。财不露白，你始终只作个不起眼的低阶散修。" },
+    { key: "lq5", big: "炼气", seg: 9, kind: "际遇", title: "升仙入谷",
+      text: "一场门派倾轧中你护下半卷藏经，得引荐入青枫谷为记名弟子。伪灵根不受人待见，你便只管埋头打理药园。" },
+    { key: "lq6", big: "炼气", seg: 11, kind: "际遇", title: "筑基之愿",
+      text: "炼气将满，你盯着那份筑基丹方看了整夜。禁地试炼的告示已贴在谷口——你收拾好行囊，按下心头波澜。" },
+  ],
+  [ // 筑基卷(前中后圆满)
+    { key: "zj1", big: "筑基", seg: 1, kind: "突破", title: "筑基成道",
+      text: "真元凝而成液，轰然冲开仙凡之隔。筑基一成，方算真正踏上仙途——御剑乘风，皆可期矣。" },
+    { key: "zj2", big: "筑基", seg: 2, kind: "际遇", title: "血色禁地",
+      text: "筑基初成，你随队进入血色禁地寻一味主药。秘境深处，一位被群修围攻的清冷女修与你背靠背死战脱险——她留下一句“来日相报”，你当时并未放在心上。" },
+    { key: "zj3", big: "筑基", seg: 3, kind: "际遇", title: "魔道压境",
+      text: "魔道大举南侵，青枫谷一夜倾覆。你被当作弃子抛在断崖，只得跃下崖底那座上古传送阵——白光卷过，你落进一片腥咸的海风里。" },
+    { key: "zj4", big: "筑基", seg: 4, kind: "际遇", title: "乱星海立足",
+      text: "乱星海岛屿林立、修士如蝗。你隐姓埋名，靠一手催熟灵药的本事在坊市站稳脚跟。夜里望月，你只想着：金丹，还远。" },
+  ],
+  [ // 结丹卷
+    { key: "jd1", big: "结丹", seg: 1, kind: "突破", title: "金丹大道",
+      text: "丹火淬炼百日，一粒金丹于丹田凝成，宝光内敛。自此寿元大增，已可称一声真人。" },
+    { key: "jd2", big: "结丹", seg: 2, kind: "际遇", title: "虚天殿",
+      text: "传闻三百年一开的虚天殿现于海眼。你本只想碰碰运气，却在殿中夺得一件人人眼红的至宝——消息走漏那刻，你便知这乱星海再难安生。" },
+    { key: "jd3", big: "结丹", seg: 3, kind: "际遇", title: "外海潜修",
+      text: "你远遁外海，猎妖取丹、炼药服气，数十年弹指而过。海上风暴与成群妖兽，都成了你的磨刀石。" },
+    { key: "jd4", big: "结丹", seg: 4, kind: "际遇", title: "风雷双翼",
+      text: "妖修设局围你，欲夺你性命。你反手破局，缴下一对可裂空而行的风雷双翼——自此遁速倍增，天下大可去得。" },
+  ],
+  [ // 元婴卷
+    { key: "yy1", big: "元婴", seg: 1, kind: "突破", title: "元婴出窍",
+      text: "金丹应声而碎，元婴于紫府中睁眼。神魂可离体夜游，天地法则的轮廓，第一次向你展开。" },
+    { key: "yy2", big: "元婴", seg: 2, kind: "际遇", title: "潜归天南",
+      text: "你悄然潜回天南，化名寄身一座小宗潜修。旧日故人，皆以为你早已殒身海外。" },
+    { key: "yy3", big: "元婴", seg: 3, kind: "际遇", title: "踏月三千里",
+      text: "一封血书送到你案前——禁地那位故人被困于宗门禁地，命悬一线。你踏月夜行三千里，于众目睽睽之下将她带走。这一夜，天南都知道你回来了。" },
+    { key: "yy4", big: "元婴", seg: 4, kind: "际遇", title: "坠魔谷之战",
+      text: "魔修大举压境，天南危如累卵。你于坠魔谷外布下剑阵，一战成名——自此，再无人敢小觑这个从海外归来的散修。" },
+  ],
+  [ // 化神卷
+    { key: "hs1", big: "化神", seg: 1, kind: "突破", title: "人界之巅",
+      text: "元婴与天地相合，神念瞬息千里，一念动而风雨相随。人界之巅已在脚下——飞升，成了你唯一的念想。" },
+    { key: "hs2", big: "化神", seg: 2, kind: "际遇", title: "灵气枯竭",
+      text: "你遍访名山大川，只见灵脉渐枯、灵气日薄。大限之前，你开始遍阅古籍，只为寻一条通往上界的路。" },
+    { key: "hs3", big: "化神", seg: 3, kind: "际遇", title: "空间节点",
+      text: "传闻某处海域存在可撕裂虚空的节点。你亲往探查，于风暴眼中，感应到那一线若有若无的界面气息。" },
+    { key: "hs4", big: "化神", seg: 4, kind: "际遇", title: "静候飞升",
+      text: "你在洞府中炼化护体之宝，回望百年仙途——从残碑前那个懵懂少年到人界之巅，一路风雨，皆是自己一步一步走出来的。飞升之日，静待来朝。" },
+  ],
 ];
 
 function addJournal(entry) {
@@ -465,11 +516,18 @@ function addJournal(entry) {
   if (state.journal.length > 80) state.journal.shift();
   save();
 }
-function taleFor(bigName) {
-  const t = REALM_TALES.find(x => x.big === bigName);
-  if (!t || state.journal.some(j => j.key === t.key)) return;
-  addJournal({ key: t.key, big: t.big, kind: t.kind, title: t.title, text: t.text });
-  pushMsg("main", `<span class="b">${t.big} · ${t.title}</span>｜${t.text}`);
+/* 剧情推进器: 触发当前大境卷内所有"已达小层且未经历"的节点 */
+function realmPlot() {
+  const r = realm();
+  const vol = PLOT[Math.min(r.bigIdx, PLOT.length - 1)];
+  if (!vol) return;
+  for (const b of vol) {
+    if (state.journal.some(j => j.key === b.key)) continue;
+    if (b.seg <= r.segNo) {
+      addJournal({ key: b.key, big: b.big, kind: b.kind, title: b.title, text: b.text });
+      pushMsg("main", `<span class="b">${b.big} · ${b.title}</span>｜${b.text}`);
+    }
+  }
 }
 
 function openStory() {
@@ -485,8 +543,8 @@ function closeStory() {
 function renderStory() {
   const body = $("storyBody");
   if (!body) return;
-  const bi = Math.min(bigIdx(), REALM_TALES.length - 1);
-  const walked = REALM_TALES.slice(0, bi + 1).map(x => x.big).join(" → ");
+  const bi = Math.min(bigIdx(), PLOT.length - 1);
+  const walked = PLOT.slice(0, bi + 1).map(x => x[0].big).join(" → ");
   let html = `<div class="story-sum">已历仙途：<b>${walked}</b>` +
     (state.realmIdx >= TOTAL_SEGS - 1 ? "（人界之巅 · 静候飞升）" : "") + `</div>`;
   if (!state.journal.length) {
@@ -597,14 +655,13 @@ function applyOffline() {
   let guard = 0;
   while (guard++ < 60) {
     const r = realm();
-    if (r.isBigEnd) break; // 大境界之间不自动渡劫, 等你亲手
+    if (r.isBigEnd) break; // 大境界之间不自动渡劫, 等你亲手 → 离线最多走完当前卷剧情
     if (state.exp + gainExp >= r.need && state.realmIdx < TOTAL_SEGS - 1) {
-      const pb = r.bigIdx;
       state.realmIdx++; state.exp = 0;
-      if (realm().bigIdx > pb) taleFor(realm().big); // 离线自动跨小境(凡人→炼气等)也记修行录
     } else break;
   }
   state.exp += gainExp; state.spirit += gainSpirit;
+  realmPlot(); // 离线推进后, 触发当前大境卷内所有"已到小层"的剧情节点(绝不越卷)
   save();
   const h = Math.floor(dt / 3600), m = Math.floor(dt % 3600 / 60);
   $("offlineText").innerHTML =
@@ -612,7 +669,7 @@ function applyOffline() {
     `分身闭关，修为 +<span class="num"> ${fmt(gainExp)}</span><br>灵石 +<span class="num"> ${fmt(gainSpirit)}</span>`;
   // 离线际遇: 与在线同样的叙事池, 随离线时长缓慢累积(每满一小时左右一段, 至多3段)
   const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
-  const bigName = REALM_TALES[bi] ? REALM_TALES[bi].big : "";
+  const bigName = realm().big;
   const cnt = Math.min(3, Math.max(1, Math.floor(dt / 3600)));
   const lines = [];
   for (let i = 0; i < cnt; i++) {
@@ -699,13 +756,12 @@ function loop(dt) {
     let guard = 0;
     while (!breaking && state.exp >= r.need && !r.isBigEnd && state.realmIdx < TOTAL_SEGS - 1 && guard++ < 8) {
       state.exp -= r.need;
-      const pb = realm().bigIdx;
       state.realmIdx++;
       const nr = realm();
-      if (nr.bigIdx > pb) taleFor(nr.big); // 自动跨入新大境(如凡人→炼气)
       pushMsg("main", `修为精进 → <span class="g">${nr.big === "炼气" ? "炼气" + cnNum(nr.segNo) + "层" : nr.label}</span>`);
       updateRealmUI();
     }
+    realmPlot(); // 到新小层即推进当前卷剧情(跨大境须手动渡劫 → 剧情也绝不越卷)
   }
   updateHUD();
   if (Math.random() < dt * 0.35) adventure();
@@ -719,7 +775,11 @@ applyOffline();
 updateRealmUI();
 updateHUD();
 updateArts();
-if (!state.journal.some(j => j.key === "origin")) taleFor("凡人"); // 新/旧档都补一笔起点
+realmPlot(); // 启动即按当前境界推进已及剧情
+if (state.journal.length && !state.journal.some(j => j.key === "origin") && bigIdx() > 0) {
+  const o = PLOT[0][0];
+  addJournal({ key: o.key, big: o.big, kind: o.kind, title: o.title, text: o.text }); // 老档补记起点
+}
 setInterval(save, 8000);
 addEventListener("pagehide", save);
 initBg();
@@ -742,6 +802,6 @@ window.__game = {
   makeArt: () => makeArt(),
   updateArts: h => updateArts(h),
   applyOffline: () => applyOffline(),
-  taleFor: n => taleFor(n),
+  realmPlot: () => realmPlot(),
   openStory, pushMsg, save, load,
 };
