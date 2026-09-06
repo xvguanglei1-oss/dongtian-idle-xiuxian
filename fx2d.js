@@ -245,38 +245,47 @@ function initFx(canvas) {
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
     }
 
-    /* ---- ② 流光: 2D点阵丝带(软光点沿弯曲曲线密集排布) ----
-       数学与WebGL版同源: 光带=正弦波弯曲的连续曲线;
-       每帧在曲线上布 ~44 个软光点(头部大而亮→尾部细淡),
-       点距近于重叠 → 视觉是连续发光绸带, 无接缝无切痕。 */
+    /* ---- ② 流光: 整张 fx_gold_streak PNG 绕支点旋转扫动 ----
+       贴图本体是一条带锥形拖尾的柔光带。不改其内部像素:
+       让它绕角色腰侧支点做缓慢大幅扇扫(摇头摆尾) →
+       头尾在空间划出弧线, 产生"光带在周身飞舞"的动感。
+       锥尖(亮段)朝外, 尾端收在腰侧。 */
     for (const p of streaks) {
       p.born += dt;
       if (p.born < 0) continue;
       if (p.born > p.dur) { respawnStreak(p, cfgV.streak); continue; }
       const u = p.born / p.dur, mv = easeIO(u);
-      const headY = cy + (p.y0 - p.rise * mv) * H;
-      const lenTotal = H * (0.16 + 0.05 * mv) * p.ln;
-      const baseX = cx + (p.x0 + Math.sin(t * p.f * 0.4 + p.ph) * 0.02 * mv) * W;
-      const waveSpeed = t * (0.65 + p.f2 * 0.3);
       const col = pickStreak(p.seed, tCol, sCol);
-      const pk = safe(prof(u) * cfgV.streak.pk * breathe2, 0);
-      if (pk <= 0.01) continue;
-      const N = 44;
-      for (let k = 0; k < N; k++) {
-        const q = k / (N - 1);
-        const wave = Math.sin(q * 5.0 + waveSpeed + p.ph2)
-                   + 0.55 * Math.sin(q * 2.3 + waveSpeed * 0.6 + p.ph);
-        const amp = p.amp * W * (0.16 + q * q * 1.9);
-        const x = baseX + wave * amp;
-        const y = headY + q * lenTotal;
-        if (![x, y].every(Number.isFinite)) continue;
-        /* 头部大亮 → 尾部细淡 (彗星感) */
-        const taper = 1 - 0.6 * q;
-        const ds = H * 0.030 * p.s0 * taper;
-        const aa = pk * (0.35 + 0.65 * taper);
-        ctx.globalAlpha = safe(aa, 0);
-        const ic = tinted("mote", col);
-        if (ic) ctx.drawImage(ic, x - ds / 2, y - ds / 2, ds, ds);
+      const ic = tinted("streak", col);
+      if (!ic) continue;
+      const al = safe(prof(u) * cfgV.streak.pk * breathe2, 0);
+      if (al <= 0.01) continue;
+
+      const lenTotal = H * (0.20 + 0.06 * mv) * p.ln;   // 光带长
+      const wid = lenTotal * 0.11;
+      /* 支点: 角色腰侧(左或右), 随生命略上浮 */
+      const px = cx + p.x0 * W;
+      const py = H * (0.58 - 0.16 * mv);
+      /* 大幅缓慢摆扫: 相对竖直 ±(0.5~0.75 rad) */
+      const swing = Math.sin(t * (0.32 + p.f * 0.25) + p.ph) * (0.55 + p.f2 * 0.12);
+      const ang = safe(swing, 0);
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(ang);
+      ctx.globalAlpha = al;
+      /* 光带从支点上方伸出: 头(亮段v0.3)在远端, 尾(透明)在支点 */
+      const sy = ic.height * 0.30;
+      const sh = ic.height * 0.66;
+      ctx.drawImage(ic, 0, sy, ic.width, sh, -wid / 2, -lenTotal, wid, lenTotal);
+      ctx.restore();
+      /* 远端小亮点 */
+      const hx = px + Math.sin(ang) * lenTotal;
+      const hy = py - Math.cos(ang) * lenTotal;
+      const hs = H * 0.017 * p.s0;
+      const hc = tinted("mote", col);
+      if (hc) {
+        ctx.globalAlpha = al * 0.95;
+        ctx.drawImage(hc, hx - hs / 2, hy - hs / 2, hs, hs);
       }
     }
 
