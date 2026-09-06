@@ -74,14 +74,29 @@
   .btn.ready{animation:btnPulse 1.7s ease-in-out infinite;border-color:rgba(255,228,160,.95);box-shadow:0 0 18px rgba(240,205,120,.35)}
   @keyframes btnPulse{0%,100%{box-shadow:0 0 12px rgba(240,205,120,.35)}50%{box-shadow:0 0 28px rgba(240,205,120,.95)}}
 
-  /* 日志 */
-  .log{position:fixed;left:0;right:0;bottom:112px;z-index:9;display:flex;justify-content:center;padding:0 14px;pointer-events:none}
-  .log-line{max-width:520px;background:rgba(8,13,26,.68);border:1px solid rgba(255,255,255,.06);border-radius:10px;
-    padding:7px 12px;font-size:12px;color:#c6cfe2;line-height:1.5;backdrop-filter:blur(6px);opacity:0;transform:translateY(6px);
-    transition:opacity .5s,transform .5s}
-  .log-line.show{opacity:1;transform:translateY(0)}
-  .log-line .r{color:var(--gold);font-weight:700}
-  .log-line .g{color:#7fe0c3;font-weight:700}
+  /* 双栏叙事流: 左=分身经历(低对比·渐隐·不抢视觉)  右=主角主线探险游历 */
+  .feed{position:fixed;bottom:114px;z-index:9;display:flex;flex-direction:column-reverse;gap:7px;
+    pointer-events:none;width:min(196px,42vw);max-height:200px;overflow:hidden}
+  .feed-avatar{left:10px}
+  .feed-main{right:10px}
+  .fmsg{padding:7px 11px;border-radius:11px;font-size:11.5px;line-height:1.55;
+    overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
+    background:rgba(10,16,30,.32);backdrop-filter:blur(4px);transform-origin:bottom center;
+    will-change:opacity,transform}
+  .fmsg .r{color:#d9b45f;font-weight:700}
+  .fmsg .g{color:#7fe0c3;font-weight:700}
+  .fmsg .b{color:#8fb6ff;font-weight:700}
+  /* 左·分身: 灰字低存在感, 渐显后缓缓上浮消散 */
+  .feed-avatar .fmsg{color:#a3b1c9;background:rgba(8,12,22,.40);font-size:11px;
+    animation:msgLifeA 6s cubic-bezier(.2,.55,.45,1) forwards}
+  .feed-avatar .fmsg .r{color:#a8904f}
+  .feed-avatar .fmsg .g{color:#5aa88e}
+  /* 右·主线: 清晰金色主视觉 */
+  .feed-main .fmsg{color:#e6ebf6;background:rgba(14,20,36,.55);font-size:11.5px;
+    animation:msgLifeM 9s ease forwards}
+  @keyframes msgLifeA{0%{opacity:0;transform:translateY(7px) scale(.97)}10%{opacity:.7}18%{opacity:.95}
+    70%{opacity:.78}100%{opacity:0;transform:translateY(-12px)}}
+  @keyframes msgLifeM{0%{opacity:0;transform:translateY(8px)}8%{opacity:.98}80%{opacity:.9}100%{opacity:0;transform:translateY(-8px)}}
 
   /* 突破特效 */
   #burst{position:fixed;inset:0;z-index:30;pointer-events:none}
@@ -104,10 +119,13 @@
 
   .artifacts{position:fixed;left:0;right:0;top:96px;z-index:9;display:flex;justify-content:center;padding:0 10px}
   .art-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:520px}
-  .art{font-size:10.5px;padding:4px 9px;border-radius:8px;background:rgba(10,16,30,.72);border:1px solid rgba(255,255,255,.09);
+  .art{font-size:10.5px;padding:4px 9px;border-radius:8px;background:rgba(12,18,34,.40);border:1px solid rgba(255,255,255,.07);
     color:#d8dff0;backdrop-filter:blur(5px);display:flex;gap:4px;align-items:center}
   .art .q{font-weight:800}
   .q1{color:#b9c2d4}.q2{color:#5d9e5f}.q3{color:#5f8fe6}.q4{color:#b06ce0}.q5{color:#e8a13c}.q6{color:#ff5c5c}
+  .art.new{animation:artIn .9s ease-out}
+  @keyframes artIn{0%{transform:scale(.55);box-shadow:0 0 0 rgba(232,197,107,0)}40%{transform:scale(1.06);
+    box-shadow:0 0 16px 2px rgba(232,197,107,.65)}100%{transform:scale(1);box-shadow:0 0 6px rgba(232,197,107,.28)}}
 
   /* WebGL 降级: 纯 CSS 星空 */
   body.no-webgl::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -148,7 +166,9 @@
   </div>
 </div>
 
-<div class="log"><div class="log-line" id="logLine"></div></div>
+<!-- 左:分身经历(渐隐低存在感)  右:主角主线游历 -->
+<div class="feed feed-avatar" id="avatarFeed"></div>
+<div class="feed feed-main" id="mainFeed"></div>
 <div class="actions">
   <button class="btn" id="btnArray" onclick="tapArray()">聚灵阵 Lv.<span id="arrayLv">1</span></button>
   <button class="btn primary" id="btnBreak" onclick="manualBreak()">☯ 立即突破</button>

@@ -1,4 +1,4 @@
-/* 洞天 · 挂机修仙 —— game.js v2(凡人体系) */
+/* 洞天 · 挂机修仙 —— game.js v3(双栏叙事) */
 "use strict";
 
 /* ============ 境界体系(凡人修仙传风) ============
@@ -116,6 +116,15 @@ const EVENTS = [
   ],
 ];
 
+/* 主角主线小事件(低频·右栏) */
+const MAIN_MOMENTS = [
+  "你默运《长春功》行遍周天，经脉中暖流涌动",
+  "盘坐洞府悬顶，心神沉入丹田，灵机暗生",
+  "参悟半卷残诀，醍醐灌顶，修为微进",
+  "静观星河入定，灵台澄明，真元自转",
+  "吐纳灵泉之气，气息悠长，修为渐厚",
+];
+
 /* ============ 存档 ============ */
 let state = { realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], lastTs: Date.now() };
 let breaking = false;
@@ -203,7 +212,7 @@ function updateHUD() {
   if (can && !lastReadyHint) {
     lastReadyHint = true;
     const nextBig = seg(state.realmIdx + 1).big;
-    log(`<span class="r">${r.big}·${段名(r)}已圆满</span>——你随时可亲手渡劫，踏入<span class="g">${nextBig}</span>`);
+    pushMsg("main", `<span class="r">${r.big}·${段名(r)}已圆满</span>——你随时可亲手渡劫，踏入<span class="g">${nextBig}</span>`);
   }
   if (!can) lastReadyHint = false;
 }
@@ -227,7 +236,7 @@ function doBreak() {
   $("realmUpT").style.fontSize = next.big.length > 2 ? "30px" : "40px";
   up.classList.remove("show"); void up.offsetWidth; up.classList.add("show");
   burstBoom();
-  log(`<span class="r">天劫降临！</span>${r.label} → <span class="r">${next.label}</span>`);
+  pushMsg("main", `<span class="r">天劫降临！</span>${r.label} → <span class="r">${next.label}</span>`);
   setTimeout(() => {
     state.realmIdx++;
     state.exp = 0;
@@ -235,7 +244,7 @@ function doBreak() {
     updateRealmUI(); updateHUD(); save();
     const nr = realm();
     const greet = ["金丹凝形！", "元婴出窍！", "化神之姿！", "踏入筑基！"][nr.bigIdx - 2] || "";
-    log(`<span class="g">${nr.big}</span>！${greet || "修行又进一步"}`);
+    pushMsg("main", `<span class="g">${nr.big}</span>！${greet || "修行又进一步"}`);
   }, 950);
 }
 function manualBreak() { doBreak(); }
@@ -243,17 +252,28 @@ function manualBreak() { doBreak(); }
 /* 聚灵阵 */
 function tapArray() {
   const cost = 60 * Math.pow(state.arrayLv, 1.8);
-  if (state.spirit >= cost) { state.spirit -= cost; state.arrayLv++; save(); updateHUD(); }
-  else log(`灵石不足(需 ${fmt(cost)})，<span class="r">分身正在四处寻矿</span>…`);
+  if (state.spirit >= cost) {
+    state.spirit -= cost; state.arrayLv++; save(); updateHUD();
+    pushMsg("main", `聚灵阵升至 <span class="g">Lv.${state.arrayLv}</span>，灵脉奔涌！`);
+  } else {
+    pushMsg("main", `灵石不足(需 ${fmt(cost)})，分身正在四处寻矿…`);
+  }
 }
 
-/* 日志 */
-let logQueue = [];
-function log(html) {
-  logQueue.push(html); if (logQueue.length > 3) logQueue.shift();
-  const el = $("logLine");
-  el.innerHTML = logQueue.join("<br>");
-  el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+/* ============ 双栏叙事流 ============
+ * main   → 右栏: 主角主线(境界精进/渡劫/聚灵/顿悟)  清晰持久
+ * avatar → 左栏: 分身经历(历险奇遇/拾装/采矿)  低对比·渐隐
+ */
+function pushMsg(side, html) {
+  const box = $((side === "main") ? "mainFeed" : "avatarFeed");
+  if (!box) return;
+  const el = document.createElement("div");
+  el.className = "fmsg";
+  el.innerHTML = html;
+  box.insertBefore(el, box.firstChild); // column-reverse 下: 新消息出现在视觉底部
+  while (box.children.length > 6) box.removeChild(box.lastChild);
+  const life = (side === "main") ? 9200 : 6200;
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, life + 250);
 }
 
 /* 历险 */
@@ -265,32 +285,34 @@ function adventure() {
     const a = makeArt();
     state.arts.push(a);
     const r = QUALITY[a.q];
-    log(`分身历险拾得<span class="r">${a.name}</span>(<span class="${r.cls}">${r.name}</span>)，已自动装备`);
-    updateArts(); save();
+    pushMsg("avatar", `分身历险拾得<span class="r">${a.name}</span>(<span class="${r.cls}">${r.name}</span>)，已自动换上`);
+    updateArts(true); save();
   } else if (roll < 0.30) {
     const g = Math.round(8 + Math.random() * 30 + bigIdx() * 10);
     state.spirit += g;
-    log(`分身${EVENTS[bi][1 + Math.floor(Math.random() * Math.min(3, EVENTS[bi].length - 1))] || "采药得灵石"}, 获灵石 <span class="g">${g}</span>`);
+    pushMsg("avatar", `分身${EVENTS[bi][1 + Math.floor(Math.random() * Math.min(3, EVENTS[bi].length - 1))] || "采药得灵石"}, 获灵石 <span class="g">${g}</span>`);
   } else if (roll < 0.6) {
     const g = Math.round(14 + Math.random() * 50 + bigIdx() * 16);
     state.spirit += g;
-    log(`${EVENTS[bi][Math.floor(Math.random() * EVENTS[bi].length)]}，得灵石 <span class="g">${g}</span>`);
+    pushMsg("avatar", `分身${EVENTS[bi][Math.floor(Math.random() * EVENTS[bi].length)]}，得灵石 <span class="g">${g}</span>`);
   } else if (roll < 0.78) {
     const bonus = rateNow() * (4 + Math.random() * 8);
     state.exp += bonus;
-    log(`分身${EVENTS[bi][Math.floor(Math.random() * EVENTS[bi].length)]}，修为精进`);
+    pushMsg("avatar", `分身${EVENTS[bi][Math.floor(Math.random() * EVENTS[bi].length)]}，为主人争得修为精进`);
   } else if (roll < 0.9) {
-    log(`分身于洞府中静坐吐纳，灵力缓缓沉淀`);
+    pushMsg("avatar", `分身于洞府中静坐吐纳，灵力缓缓沉淀`);
   }
   state.spirit += spiritRate();
   updateHUD();
 }
 
-function updateArts() {
+function updateArts(highlight) {
   const row = $("artRow");
-  row.innerHTML = state.arts.slice(-6).map(a =>
-    `<span class="art"><span class="q ${QUALITY[a.q].cls}">${QUALITY[a.q].name}</span>${a.name}</span>`
-  ).join("");
+  const last6 = state.arts.slice(-6);
+  row.innerHTML = last6.map((a, i) => {
+    const isNew = !!(highlight && i === last6.length - 1);
+    return `<span class="art${isNew ? " new" : ""}"><span class="q ${QUALITY[a.q].cls}">${QUALITY[a.q].name}</span>${a.name}</span>`;
+  }).join("");
   while (state.arts.length > 6) {
     const old = state.arts.shift();
     state.spirit += Math.round(60 * Math.pow(1.6, old.q));
@@ -403,6 +425,12 @@ async function initBg3D() {
   })(performance.now());
 }
 
+function mainMoment() {
+  const txt = MAIN_MOMENTS[Math.floor(Math.random() * MAIN_MOMENTS.length)];
+  state.exp += rateNow() * 2.5;
+  pushMsg("main", `<span class="b">主线</span>·${txt}`);
+}
+
 /* ============ 主循环 ============ */
 function loop(dt) {
   const r = realm();
@@ -414,12 +442,13 @@ function loop(dt) {
       state.exp -= r.need;
       state.realmIdx++;
       const nr = realm();
-      log(`修为精进 → <span class="g">${nr.big === "炼气" ? "炼气" + cnNum(nr.segNo) + "层" : nr.label}</span>`);
+      pushMsg("main", `修为精进 → <span class="g">${nr.big === "炼气" ? "炼气" + cnNum(nr.segNo) + "层" : nr.label}</span>`);
       updateRealmUI();
     }
   }
   updateHUD();
   if (Math.random() < dt * 0.8) adventure();
+  if (Math.random() < dt * 0.035) mainMoment();
   tickBurst(dt);
 }
 
@@ -445,5 +474,10 @@ window.__game = {
   get state() { return state; },
   setRealm: i => { state.realmIdx = i; state.exp = 0; updateRealmUI(); updateHUD(); },
   giveExp: n => { state.exp += n; updateHUD(); },
-  save, load,
+  giveSpirit: n => { state.spirit += n; updateHUD(); },
+  adventure: () => adventure(),
+  mainMoment: () => mainMoment(),
+  makeArt: () => makeArt(),
+  updateArts: h => updateArts(h),
+  pushMsg, save, load,
 };
