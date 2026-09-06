@@ -1609,6 +1609,30 @@ function initPlayerFx() {
   } catch (e) { console.warn("粒子引擎初始化失败", e); }
 }
 
+/* 特效诊断浮层: 引擎错误/降级模式直接显示, 便于排查 */
+function initFxDiag() {
+  try {
+    let pill = document.getElementById("fxDiag");
+    if (!pill) {
+      pill = document.createElement("div");
+      pill.id = "fxDiag";
+      pill.style.cssText = "position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:99;"
+        + "max-width:86vw;background:rgba(120,20,20,.92);color:#ffd7d7;font-size:11px;"
+        + "padding:6px 12px;border-radius:999px;display:none;pointer-events:none";
+      document.body.appendChild(pill);
+    }
+    const show = msg => {
+      pill.textContent = msg; pill.style.display = "block";
+      clearTimeout(pill._t); pill._t = setTimeout(() => { pill.style.display = "none"; }, 6000);
+    };
+    window.addEventListener("error", e => show("运行错误: " + (e.message || e.type)));
+    setInterval(() => {
+      if (window.__fxMode === "2d") { show("特效模式: 2D 兜底 (WebGL不可用)"); window.__fxMode = null; }
+      if (window.__fxErr) { show("特效错误: " + window.__fxErr); window.__fxErr = null; }
+    }, 3500);
+  } catch (e) { console.warn(e); }
+}
+
 async function initBg() {
   try { await initBg3D(); }
   catch (e) { console.warn("WebGL 不可用，降级星空", e); document.body.classList.add("no-webgl"); }
@@ -1666,6 +1690,7 @@ setInterval(save, 8000);
 addEventListener("pagehide", save);
 initBg();
 initPlayerFx();
+initFxDiag();
 let lastLoop = performance.now();
 (function main() {
   const now = performance.now();

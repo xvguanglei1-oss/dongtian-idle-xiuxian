@@ -272,6 +272,7 @@ function step(now) {
 export async function initFx3d(canvas) {
   cv = canvas;
   THREE = await import("three");
+  try {
   renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
   renderer.setClearColor(0x000000, 0);
   scene = new THREE.Scene();
@@ -306,4 +307,88 @@ export async function initFx3d(canvas) {
   applyCounts();   // 首帧即按初始境界建立粒子与 drawRange(避免顶点残留)
   if (!running) { running = true; last = performance.now(); raf = requestAnimationFrame(step); }
   return { destroy() { cancelAnimationFrame(raf); running = false; ro && ro.disconnect(); } };
+  } catch (err) {
+    console.warn("[fx] WebGL 不可用, 降级 2D 粒子", err);
+    window.__fxMode = "2d";
+    window.__fxErr = String((err && err.message) || err);
+    try { return initFx2d(canvas); }
+    catch (e2) { window.__fxErr = String((e2 && e2.message) || e2); return { destroy() {} }; }
+  }
+}
+
+
+/* ---- 2D 兜底引擎(WebGL受限时保证能看到粒子) ---- */
+function initFx2d(canvas) {
+  const ctx = canvas.getContext("2d");
+  const host = canvas.parentElement;
+  let W = 0, H = 0, dpr = 1, raf = 0, last = 0;
+  let rings = [], ups = [], spark = [];
+  const fit = () => {
+    const r = host.getBoundingClientRect();
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    W = Math.max(10, r.width); H = Math.max(10, r.height);
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  fit();
+  const ro = new ResizeObserver(fit); ro.observe(host);
+  const cxx = () => W / 2, cyy = () => H * 0.5;
+  function idx() {
+    const nm = document.getElementById("cult") && document.getElementById("cult").dataset.big;
+    const i = BIG_NAMES.indexOf(nm); return i >= 0 ? i : 0;
+  }
+  function step(now) {
+    raf = requestAnimationFrame(step);
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (document.hidden) return;
+    const p = REALM_FX[idx()];
+    ctx.clearRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "lighter";
+    const cx = cxx(), cy = cyy();
+    const rad = p.hR * W * 0.5;
+    while (rings.length < p.hN) rings.push({ a: Math.random() * 6.28, y: Math.random(), spd: p.hSpd * (0.8 + Math.random() * .6), r: .85 + Math.random() * .4, col: Math.random() < .6 ? p.c1 : p.c2, ph: Math.random() * 6 });
+    rings.length = Math.round(p.hN);
+    for (const q of rings) {
+      q.y += dt * p.up * (0.6 + q.spd * .2); if (q.y > 1.05) q.y -= 1.1;
+      q.a += dt * q.spd * .7;
+      const rr = rad * q.r * Math.max(.1, Math.sin(q.y * Math.PI));
+      const x = cx + Math.cos(q.a) * rr, y = cy + (q.y - .5) * H;
+      ctx.fillStyle = `rgba(${q.col.join(",")},${(0.4 + 0.4 * Math.abs(Math.sin(now / 500 + q.ph))) * p.op})`;
+      ctx.beginPath(); ctx.arc(x, y, p.size * 1.1, 0, 7); ctx.fill();
+    }
+    while (ups.length < p.fN) ups.push({ x: (Math.random() - .5) * .5, y: Math.random(), spd: .3 + Math.random() * .7, sw: Math.random() * 6, col: Math.random() < .5 ? p.c2 : p.c3 });
+    ups.length = Math.round(p.fN);
+    for (const u of ups) {
+      u.y += dt * p.up * u.spd; if (u.y > 1.02) { u.y = -.05; u.x = (Math.random() - .5) * .5; }
+      const x = cx + u.x * W + Math.sin(now / 900 + u.sw) * 6;
+      const y = cy + (u.y - .5) * H;
+      ctx.fillStyle = `rgba(${u.col.join(",")},${0.5 * p.op})`;
+      ctx.beginPath(); ctx.arc(x, y, p.size * .9, 0, 7); ctx.fill();
+    }
+    // 丝带: 螺旋 stroke
+    if (p.rN > 0) {
+      ctx.strokeStyle = `rgba(${p.c2.join(",")},${0.5 * p.op})`;
+      ctx.lineWidth = 1.6;
+      for (let k = 0; k < 2; k++) {
+        ctx.beginPath();
+        const off = now / 1200 + k * Math.PI;
+        for (let i = 0; i <= 40; i++) {
+          const u = i / 40;
+          const y = cy + (u - .5) * H * 1.1;
+          const r = rad * Math.max(.08, Math.sin(u * Math.PI)) * (k === 1 ? .6 : 1);
+          const x = cx + Math.cos(off + u * Math.PI * 3) * r;
+          i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.globalCompositeOperation = "source-over";
+  }
+  if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) { cancelAnimationFrame(raf); raf = 0; }
+    else if (!raf) { last = performance.now(); raf = requestAnimationFrame(step); }
+  });
+  return { destroy() { cancelAnimationFrame(raf); ro.disconnect(); } };
 }

@@ -22,7 +22,7 @@ const VERT = /* glsl */ `
     float tw = 0.70 + 0.30 * sin(uTime * aSpeed + aPhase);
     float shimmer = 0.90 + 0.10 * sin(uTime * aSpeed * 0.61 + aPhase * 1.9);
     vColor = aColor * tw;
-    gl_PointSize = aSize * uPixelRatio * shimmer;
+    gl_PointSize = aSize * uPixelRatio * 2.1 * shimmer;
   }
 `;
 const FRAG = /* glsl */ `
@@ -177,9 +177,9 @@ async function initDeepSpace(canvas) {
 
   /* ============ 1. 三层视差星场 ============ */
   const SHELLS = [
-    { count: 140, R: 470,  size: [1.5, 3.4], bright: [0.45, 1.0], rot:  0.012, cool: [0.82, 0.90, 1.0], warm: [1.0, 0.90, 0.80] },
-    { count: 230, R: 720,  size: [1.0, 2.3], bright: [0.34, 0.85], rot: -0.008, cool: [0.88, 0.95, 1.0], warm: [1.0, 0.93, 0.85] },
-    { count: 320, R: 1010, size: [0.75, 1.7], bright: [0.24, 0.7], rot:  0.005, cool: [0.92, 0.97, 1.0], warm: [1.0, 0.96, 0.90] },
+    { count: 170, R: 470,  size: [3.2, 6.6], bright: [0.55, 1.0], rot:  0.012, cool: [0.82, 0.90, 1.0], warm: [1.0, 0.90, 0.80] },
+    { count: 260, R: 720,  size: [2.2, 4.6], bright: [0.45, 0.9], rot: -0.008, cool: [0.88, 0.95, 1.0], warm: [1.0, 0.93, 0.85] },
+    { count: 340, R: 1010, size: [1.6, 3.4], bright: [0.36, 0.78], rot:  0.005, cool: [0.92, 0.97, 1.0], warm: [1.0, 0.96, 0.90] },
   ];
   const starPoints = [];
   SHELLS.forEach((L, li) => {
