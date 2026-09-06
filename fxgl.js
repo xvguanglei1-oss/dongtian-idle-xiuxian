@@ -63,7 +63,7 @@ let stripTex = null;          // fx_gold_streak 纹理(白色原图, shader内�
 
 function idx() {
   const c = document.getElementById("cult");
-  const nm = c && c.dataset.big;
+  const nm = c && c.dataset && c.dataset.big;
   const i = BIG_NAMES.indexOf(nm);
   return i >= 0 ? i : 0;
 }
@@ -143,22 +143,26 @@ function fit() {
 
 /* 每帧: 每条光带独立 bufferData + 绘制 */
 function renderFixed() {
-  /* 正确实现: 每条独立 offset 推进, 空条填充零并跳过 */
+  /* 每条独立 offset 推进, 空条填充零并跳过 */
   const now = performance.now();
   const dt = safe(Math.min(0.05, (now - last) / 1000), 0.02);
   last = now;
-  if (!stripTex) return;
+  if (!stripTex || !gl) return;
   const cfgV = REALM_VIS[idx()];
+  if (!cfgV || !cfgV.streak || !cfgV.t || !cfgV.s) return;
+  const nStrips = cfgV.streak.n | 0;
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
-  if (!cfgV.streak.n) return;
-  syncCount(cfgV);
+  if (!nStrips) return;
+  try { syncCount(cfgV); } catch (e) { return; }
   const t = now / 1000;
-  const breathe = 0.9 + 0.1 * Math.sin(t * 0.45);
-  const cx = W / 2, cy = H * 0.50;
+  const breathe = 0.88 + 0.12 * Math.sin(t * 0.45);
+  const cx = safe(W / 2, 0), cy = safe(H * 0.50, 0);
 
   for (const p of strips) {
+    if (!p) continue;
     p.born += dt;
+    if (!Number.isFinite(p.dur) || p.dur <= 0) { respawnStrip(p, cfgV); continue; }
     if (p.born < 0) continue;
     if (p.born > p.dur) { respawnStrip(p, cfgV); continue; }
     const u = p.born / p.dur, mv = easeIO(u);
@@ -166,13 +170,16 @@ function renderFixed() {
     const lenTotal = H * (0.16 + 0.05 * mv) * p.s0;
     const wid = Math.max(2, lenTotal * (0.085 * p.wid));
     const baseX = cx + (p.x0 + Math.sin(t * p.f * 0.4 + p.ph) * 0.02 * mv) * W;
+    if (![headY, lenTotal, wid, baseX].every(Number.isFinite)) continue;
     const waveSpeed = t * (0.65 + p.f2 * 0.3);
     const col = pickStreak(p.seed, cfgV.t, cfgV.s);
+    if (!col || !Number.isFinite(col[0])) continue;
     const al = safe(prof(u) * cfgV.streak.pk * breathe, 0);
-    if (al <= 0.01) continue;
+    if (al <= 0.005) continue;
 
     const data = new Float32Array(V_PER_STRIP * 4);
     let o2 = 0;
+    let allFinite = true;
     for (let row = 0; row <= ROWS; row++) {
       const q = row / ROWS;
       const wave = Math.sin(q * 5.0 + waveSpeed + p.ph2)
@@ -180,14 +187,21 @@ function renderFixed() {
       const amp = p.amp * W * (0.16 + q * q * 1.9);
       const xc = baseX + wave * amp;
       const y = headY + q * lenTotal;
-      const v = 0.32 + q * 0.60;   // 头顶部用贴图亮段, 尾渐隐
+      const v = 0.32 + q * 0.60;
+      if (![xc, y, v].every(Number.isFinite)) { allFinite = false; break; }
       data[o2++] = xc - wid / 2; data[o2++] = y; data[o2++] = 0; data[o2++] = v;
       data[o2++] = xc + wid / 2; data[o2++] = y; data[o2++] = 1; data[o2++] = v;
     }
-    gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
-    gl.uniform4f(uLocs.color, col[0] / 212, col[1] / 212, col[2] / 212, 1);
-    gl.uniform1f(uLocs.a, al);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, V_PER_STRIP);
+    if (!allFinite) continue;
+    try {
+      gl.bufferData(gl.ARRAY_BUFFER, data, gl.DYNAMIC_DRAW);
+      gl.uniform4f(uLocs.color, col[0] / 212, col[1] / 212, col[2] / 212, 1);
+      gl.uniform1f(uLocs.a, al);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, V_PER_STRIP);
+    } catch (e) {
+      if (!window.__fxErr) window.__fxErr = "fxgl draw: " + (e && e.message || e);
+      break;
+    }
   }
 }
 
