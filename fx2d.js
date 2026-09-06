@@ -109,7 +109,7 @@ function initFx(canvas) {
   const ctx = canvas.getContext("2d");
   const host = canvas.parentElement;
   let W = 0, H = 0, dpr = 1, raf = 0, last = 0, ready = false;
-  let streaks = [], motes = [];
+  let motes = [];
 
   const fit = () => {
     try {
@@ -143,43 +143,9 @@ function initFx(canvas) {
       amp: rnd(0.010, 0.024), s0: rnd(0.8, 1.3),
     };
   }
-  /* 流光: 光条(粗而可见), 从腿侧缓缓上浮, 切丝带弯曲 */
-  function mkStreak(cfgV) {
-    return {
-      dur: rnd(cfgV.dur[0], cfgV.dur[1]), born: 0,
-      seed: Math.floor(rnd(0, 1e6)),
-      x0: rnd(-0.22, 0.22),
-      y0: rnd(0.14, 0.26), rise: rnd(0.32, 0.42),
-      ph: rnd(0, 6.28), ph2: rnd(0, 6.28),
-      f: rnd(0.5, 0.9), f2: rnd(1.3, 2.0),  // 慢速弯曲频率
-      amp: rnd(0.028, 0.05),               // 弯曲幅度(大→丝带明显)
-      s0: rnd(0.9, 1.2),
-      ln: rnd(0.95, 1.15),
-    };
-  }
-  function respawnMote(p, cfgV) {
-    p.born = -rnd(0.8, 2.4);
-    p.dur = rnd(cfgV.dur[0], cfgV.dur[1]);
-    p.seed = Math.floor(rnd(0, 1e6));
-    p.y0 = rnd(-0.04, 0.13); p.rise = rnd(0.10, 0.20);
-    p.x0 = rnd(-0.22, 0.22); p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
-    p.f = rnd(0.55, 1.0); p.f2 = rnd(1.1, 1.8);
-    p.amp = rnd(0.010, 0.024); p.s0 = rnd(0.8, 1.3);
-  }
-  function respawnStreak(p, cfgV) {
-    p.born = -rnd(0.7, 2.0);
-    p.dur = rnd(cfgV.dur[0], cfgV.dur[1]);
-    p.seed = Math.floor(rnd(0, 1e6));
-    p.x0 = rnd(-0.22, 0.22); p.y0 = rnd(0.14, 0.26);
-    p.rise = rnd(0.32, 0.42); p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
-    p.f = rnd(0.5, 0.9); p.f2 = rnd(1.3, 2.0);
-    p.amp = rnd(0.028, 0.05); p.s0 = rnd(0.9, 1.2);
-    p.ln = rnd(0.95, 1.15);
-  }
   function prepare(cfgV) {
     while (motes.length < cfgV.mote.n) motes.push(mkMote(cfgV.mote));
-    while (streaks.length < cfgV.streak.n) streaks.push(mkStreak(cfgV.streak));
-    motes.length = cfgV.mote.n; streaks.length = cfgV.streak.n;
+    motes.length = cfgV.mote.n;
   }
 
   function draw(t, dt) {
@@ -248,63 +214,6 @@ function initFx(canvas) {
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
     }
 
-    /* ---- ② 流光: 柔光条(丝带式弯曲), 从腿侧缓缓上浮 ----
-       图片本身变形: 沿长度切成 14 片, 每片按空间正弦曲率
-       横向偏移并沿局部切线旋转 → 上升中像被气流扭动的绸带 */
-    for (const p of streaks) {
-      p.born += dt;
-      if (p.born < 0) continue;
-      if (p.born > p.dur) { respawnStreak(p, cfgV.streak); continue; }
-      const u = p.born / p.dur, mv = easeIO(u);
-      const col = pickStreak(p.seed, tCol, sCol);
-      const al = safe(prof(u) * cfgV.streak.pk * breathe2, 0);
-      if (al <= 0.01) continue;
-
-      /* ===== 整条光带 = 连续弯曲路径(零接缝), 上升中沿波流动 ===== */
-      const headY = cy + (p.y0 - p.rise * mv) * H;
-      const lenTotal = H * (0.16 + 0.05 * mv) * p.ln;
-      const wid = lenTotal * 0.15;
-      const baseX = cx + (p.x0 + Math.sin(t * p.f * 0.4 + p.ph) * 0.03 * mv) * W;
-      if (![headY, lenTotal, baseX].every(Number.isFinite)) continue;
-
-      /* 曲线: 光带在空间按正弦波弯曲(尾部摆幅大), 波形随时间向前流动 */
-      const K = 26;
-      const waveSpeed = t * (0.65 + p.f2 * 0.3);
-      const pts = new Array(K);
-      for (let k = 0; k < K; k++) {
-        const q = k / (K - 1);
-        const wave = Math.sin(q * 5.0 + waveSpeed + p.ph2)
-                   + 0.55 * Math.sin(q * 2.3 + waveSpeed * 0.6 + p.ph);
-        const amp = p.amp * W * (0.16 + q * q * 1.9);
-        pts[k] = { x: baseX + wave * amp, y: headY + q * lenTotal };
-      }
-      /* 纵向渐变: 头部(顶)亮 → 尾部拖淡 */
-      const gTop = headY - lenTotal * 0.1;
-      const grd = ctx.createLinearGradient(0, gTop, 0, gTop + lenTotal * 1.2);
-      grd.addColorStop(0, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",1)");
-      grd.addColorStop(0.45, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",.62)");
-      grd.addColorStop(1, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",0)");
-      const trace = () => {
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let k = 1; k < K; k++) ctx.lineTo(pts[k].x, pts[k].y);
-      };
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = grd;
-      ctx.globalAlpha = al;
-      trace(); ctx.lineWidth = wid * 2.4; ctx.stroke();          // 外光晕
-      trace(); ctx.lineWidth = wid * 0.9; ctx.stroke();          // 主体
-      ctx.strokeStyle = "rgba(255,255,255,.85)";                  // 白亮内芯
-      ctx.globalAlpha = al * 0.5;
-      trace(); ctx.lineWidth = wid * 0.26; ctx.stroke();
-      /* 头部光点(彗头) */
-      ctx.globalAlpha = al * 0.9;
-      const hc = tinted("mote", col);
-      const hs = H * 0.02 * p.s0;
-      if (hc) ctx.drawImage(hc, pts[0].x - hs / 2, pts[0].y - hs / 2, hs, hs);
-    }
-
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = "source-over";
   }
@@ -332,4 +241,4 @@ function initFx(canvas) {
   return { destroy() { cancelAnimationFrame(raf); ro.disconnect(); } };
 }
 
-export { initFx };
+export { initFx, REALM_VIS, BIG_NAMES };
