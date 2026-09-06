@@ -317,10 +317,14 @@ function artMult() { return state.arts.reduce((m, a) => m * a.mult, 1); }
 function rateNow() { return 4 * realmMult() * artMult() * (1 + (state.arrayLv - 1) * 0.35); }
 function spiritRate() { return 0.15 + state.arrayLv * 0.06; }
 
+/* 品质与境界挂钩: 凡人只能粗制, 炼气→法器, 筑基→灵器, 结丹→古宝, 元婴→灵宝, 化神→玄天
+ * 杜绝“炼气期用筑基期法宝”的越境体验 */
+function maxQIdx() { return Math.min(bigIdx(), QUALITY.length - 1); }
 function pickQ() {
-  const t = QUALITY.reduce((s, r) => s + r.w, 0);
+  const pool = QUALITY.slice(0, maxQIdx() + 1);
+  const t = pool.reduce((s, r) => s + r.w, 0);
   let x = Math.random() * t;
-  for (let i = 0; i < QUALITY.length; i++) { x -= QUALITY[i].w; if (x <= 0) return i; }
+  for (let i = 0; i < pool.length; i++) { x -= pool[i].w; if (x <= 0) return i; }
   return 0;
 }
 function makeArt() {
@@ -433,6 +437,48 @@ function pushMsg(side, html) {
   while (box.children.length > 6) box.removeChild(box.lastChild);
   const life = (side === "main") ? 9200 : 6200;
   setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, life + 250);
+}
+
+/* ============ 剧情纲目(按境界分卷) ============ */
+function openStory() {
+  const m = $("storyModal");
+  if (!m) return;
+  m.classList.add("show");
+  buildChips();
+}
+function closeStory() {
+  const m = $("storyModal");
+  if (m) m.classList.remove("show");
+}
+function buildChips() {
+  const wrap = $("storyChips");
+  if (!wrap || wrap.dataset.built) return;
+  wrap.dataset.built = "1";
+  const body = $("storyBody");
+  const secs = document.querySelectorAll("#storyBody section");
+  secs.forEach((s, i) => {
+    const c = document.createElement("div");
+    c.className = "chip" + (i === 0 ? " on" : "");
+    c.textContent = s.dataset.n;
+    c.onclick = () => {
+      wrap.querySelectorAll(".chip").forEach(x => x.classList.remove("on"));
+      c.classList.add("on");
+      s.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    wrap.appendChild(c);
+  });
+  if (body) {
+    let t;
+    body.addEventListener("scroll", () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        const top0 = body.getBoundingClientRect().top;
+        let cur = 0;
+        secs.forEach((s, i) => { if (s.getBoundingClientRect().top - top0 < 100) cur = i; });
+        wrap.querySelectorAll(".chip").forEach((x, i) => x.classList.toggle("on", i === cur));
+      }, 120);
+    }, { passive: true });
+  }
 }
 
 /* 历险(分身·左栏) */

@@ -30,6 +30,10 @@
     padding:7px 13px;border-radius:999px;display:flex;flex-direction:column;gap:1px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
   .realm-badge .big{font-size:15px;font-weight:800;letter-spacing:.12em;color:var(--gold);line-height:1.2;text-shadow:0 0 12px rgba(232,197,107,.45)}
   .realm-badge .sub{font-size:10px;color:var(--dim);letter-spacing:.04em}
+  .story-btn{margin-top:6px;align-self:flex-start;pointer-events:auto;font-size:10px;padding:3px 10px;border-radius:999px;
+    border:1px solid rgba(232,197,107,.32);background:rgba(232,197,107,.12);color:var(--gold);letter-spacing:.08em;
+    cursor:pointer;backdrop-filter:blur(4px);transition:transform .12s}
+  .story-btn:active{transform:scale(.92)}
   .hud-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
   .spirit{background:rgba(12,18,34,.72);border:1px solid rgba(232,197,107,.3);border-radius:999px;padding:6px 12px;
     font-size:13px;font-weight:700;color:#7fe0c3;display:flex;gap:5px;align-items:center}
@@ -117,6 +121,24 @@
   .card .num{color:#7fe0c3;font-weight:800;font-size:17px}
   .card .btn{margin-top:16px;width:100%}
 
+  /* 剧情纲目弹层 */
+  .story-card{max-width:440px;width:94%;height:min(88vh,780px);display:flex;flex-direction:column;
+    padding:16px 16px 14px;text-align:left;overflow:hidden}
+  .story-card h3{margin-bottom:3px}
+  .story-tip{font-size:10.5px;color:var(--dim);margin-bottom:4px;line-height:1.6}
+  .chips-row{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+  .chips-row::-webkit-scrollbar{display:none}
+  .chip{flex:none;font-size:10.5px;padding:4px 10px;border-radius:999px;border:1px solid rgba(232,197,107,.28);
+    background:rgba(232,197,107,.10);color:#d9b45f;cursor:pointer;white-space:nowrap;transition:background .15s}
+  .chip.on{background:rgba(232,197,107,.30);color:#ffe9a8}
+  .story-body{flex:1;overflow-y:auto;padding:2px 8px 8px;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+  .story-body section{margin:16px 0;scroll-margin-top:4px}
+  .story-body section:first-child{margin-top:4px}
+  .story-body h4{color:var(--gold);font-size:13px;letter-spacing:.05em;margin:0 0 6px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .story-body h4 .vol{font-size:9.5px;color:#9fc3ff;font-weight:600;letter-spacing:.06em}
+  .story-body p{font-size:12px;color:#cdd6e6;line-height:1.85;margin:0 0 9px;text-align:justify}
+  .story-close{width:100%;margin-top:10px;flex:none}
+
   .artifacts{position:fixed;left:0;right:0;top:96px;z-index:9;display:flex;justify-content:center;padding:0 10px}
   .art-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:520px}
   .art{font-size:10.5px;padding:4px 9px;border-radius:8px;background:rgba(12,18,34,.40);border:1px solid rgba(255,255,255,.07);
@@ -148,7 +170,7 @@
 <div class="vignette"></div>
 
 <div class="hud">
-  <div class="realm-badge"><span class="big" id="realmName">凡人</span><span class="sub" id="realmSub">练气初期 · 洞天福地</span></div>
+  <div class="realm-badge"><span class="big" id="realmName">凡人</span><span class="sub" id="realmSub">练气初期 · 洞天福地</span><button class="story-btn" onclick="openStory()">📜 剧情纲目</button></div>
   <div class="hud-right">
     <div class="spirit">🪙 <span id="spirit">0</span></div>
     <div class="rate">修为 <b id="rateText">0</b>/秒</div>
@@ -188,6 +210,57 @@
     <h3>游历归来</h3>
     <p id="offlineText">离线…</p>
     <button class="btn primary" onclick="closeOffline()">收下机缘</button>
+  </div>
+</div>
+
+<div class="modal" id="storyModal">
+  <div class="card story-card">
+    <h3>凡人修仙传 · 剧情纲目</h3>
+    <p class="story-tip">取材自忘语《凡人修仙传》原著公开剧情梗概整理，按境界分卷。每一章标注了该段故事发生的境界区间 —— 修行当循境界而行，不可越境妄为。</p>
+    <div class="chips-row" id="storyChips"></div>
+    <div class="story-body" id="storyBody">
+      <section data-n="楔子 · 掌天瓶">
+        <h4><span class="vol">境界 · 凡人</span>楔子 · 掌天瓶</h4>
+        <p>天南越国，青牛镇。贫家少年韩立十岁被送进江湖门派七玄门谋生，因身具灵根，被神秘莫测的墨大夫收为弟子，修《长春功》。一次偶然，他捡到一只神秘的小绿瓶——瓶中灵液可催熟灵药、加速疗伤，从此握住了逆天改命的钥匙。</p>
+      </section>
+      <section data-n="壹 · 七玄门风云">
+        <h4><span class="vol">境界 · 凡人→炼气</span>壹 · 七玄门风云</h4>
+        <p>墨大夫收徒并非善念：他寿元将尽，本欲等韩立修炼小成后夺舍其躯。韩立察觉端倪，凭隐忍与心机反杀墨大夫及其背后附身的修士；此时他身中暗毒，为求解药远赴嘉元城，自此窥见修仙界一角。不久野狼帮夜袭七玄门，韩立挺身退敌，斩灭帮主请来的修仙者，从其遗物中得了神秘剑符与一枚「升仙」令牌。</p>
+      </section>
+      <section data-n="贰 · 黄枫谷潜修">
+        <h4><span class="vol">境界 · 炼气</span>贰 · 初踏修仙路</h4>
+        <p>韩立凭升仙令加入越国七大派之一的黄枫谷。四属性伪灵根的他在众弟子中毫不起眼，于是沉心打理百药园，靠掌天瓶灵液催熟灵药、默默炼丹积攒家底；他习得《青元剑诀》，日复一日打磨剑诀根基，资质虽凡，根基却打得极厚。他的目标只有一个——凑足灵药，筑基。</p>
+      </section>
+      <section data-n="叁 · 血色禁地">
+        <h4><span class="vol">境界 · 炼气→筑基</span>叁 · 血色禁地 · 魔道入侵</h4>
+        <p>炼气圆满后，为夺筑基丹灵药，韩立进入血色禁地试炼。秘境中他结识掩月宗女修南宫婉，一段意外之缘成为一生情劫的开端；试炼后他服丹筑基成功。数年后魔道六宗大举入侵越国，七派节节败退，韩立被当作弃子抛下，靠一座上古传送阵逃出生天，流落法则混乱的乱星海。</p>
+      </section>
+      <section data-n="肆 · 乱星海">
+        <h4><span class="vol">境界 · 筑基→结丹</span>肆 · 风起海外 · 乱星海百年</h4>
+        <p>乱星海弱肉强食。韩立以筑基之身隐姓埋名，炼丹猎妖、默默潜修，终在海外结成金丹；其间收得噬金虫、偶得金雷竹。结丹有成后恰逢虚天殿开启，他入殿夺宝，机缘下取走乱星海第一秘宝虚天鼎，引来全海觊觎。为避追杀他远遁外海，猎妖取丹数十载，又遭妖修胁迫炼器，反被他设计灭杀毒蛟，夺得逆天遁宝「风雷翅」，终偷渡回到天南。</p>
+      </section>
+      <section data-n="伍 · 天南称雄">
+        <h4><span class="vol">境界 · 结丹→元婴</span>伍 · 名震一方 · 落云宗结婴</h4>
+        <p>天南战乱暂平，已是结丹后期的韩立潜入落云宗潜修，二十余年结成元婴，跻身老怪之列。他为救南宫婉不惜闯掩月宗，又亲历天南第一凶地坠魔谷之变；大晋法士南侵，决战中他凭元婴初期的修为逆转战局。此后他迎战暗算南宫婉的阴罗宗长老并斩之，夺其至宝阴罗蟠，威名响彻天南。</p>
+      </section>
+      <section data-n="陆 · 纵横大晋">
+        <h4><span class="vol">境界 · 元婴</span>陆 · 纵横大晋 · 昆吾镇魔</h4>
+        <p>为求化神之机，已是元婴中期的韩立远走大晋：闯慕兰草原、探昆吾山魔劫，与诸多元婴老怪斗智斗法，重封真魔之气、斩圣祖化身，又从大衍神君的传承中补全功法。北冥一行更在极渊冰海间见识化神玄玉、万年玄冰之奇。</p>
+      </section>
+      <section data-n="柒 · 化神飞升">
+        <h4><span class="vol">境界 · 元婴→化神</span>柒 · 人界之巅 · 化神飞升</h4>
+        <p>韩立于坠魔谷闭关，终突破化神，成为人界数万年来首位化神修士。人界灵气日渐枯竭，寿元有尽的他不甘坐化，与冰凤联手闯入空间裂缝，在风暴中肉身几毁、勉强破界——凡人之路，自此踏入灵界。</p>
+      </section>
+      <section data-n="捌 · 灵界篇">
+        <h4><span class="vol">境界 · 炼虚→大乘</span>捌 · 灵界百族 · 斩仙称尊</h4>
+        <p>灵界广袤，异族林立。韩立从青罗沙漠的底层重新起步，重修肉身、苦炼神术，一路晋阶炼虚、合体；他镇守天渊城力抗魔族，闯广寒界、魔金山脉寻真灵之血，将青竹蜂云剑炼成七十二柄。真仙马良下界屠戮众生，韩立率灵界群强设两仪灭尘大阵死战，倾尽底牌斩杀真仙，被尊为灵界第一大乘。闭关八千年后，他渡飞升之劫，再踏仙界。</p>
+      </section>
+      <section data-n="玖 · 仙界篇">
+        <h4><span class="vol">境界 · 真仙→道祖</span>玖 · 时间道祖 · 超脱诸天</h4>
+        <p>北寒仙域，韩立一入仙界便遭金仙伏击，元婴被封、记忆尽失，跌落灵寰界化名厉飞雨，从底层再度崛起。恢复记忆后他重入北寒，参悟掌天瓶深处的时间法则，于轮回殿、天庭诸势力间博弈，自金仙而太乙、大罗。终局之战，他联手轮回殿主与魔主，对抗独断万古的时间旧道祖古或今，借众生愿力与圆满的时间法则将其击溃，成就新任时间道祖；随后他散道补天、修复三界法则，携南宫婉超脱诸天，相守长生。</p>
+      </section>
+    </div>
+    <button class="btn primary story-close" onclick="closeStory()">收下纲目 · 继续修行</button>
   </div>
 </div>
 
