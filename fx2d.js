@@ -1,55 +1,66 @@
 /* ============================================================
- * fx2d.js —— 玩家身上的特效流 v3 (复刻 Unity 仓库参考:
- *   CultivationBloomAura.ts / PlayerBodyAuraStatic.ts)
- * 铁律: 一切粒子只在角色躯干范围(屏内 y 0.12~0.62H)活动,
- *       绝不从画面外飞入; 数量克制; 尺寸小; 贴身体飘动。
- * 元素: haze/core 背后柔光晕(呼吸) · 光柱beam(弱) · 放射ray(弱)
- *       烟缕smoke(贴身上飘拉丝) · 流光streak(细条快穿)
- *       金尘mote(小点乱舞上浮) · 星闪star(原地一闪)
- * 流动感: 三段透明度吐息 + sin摆动路径 + 缩放缓动
+ * fx2d.js —— 玩家身上的特效流 v4 (复刻 Unity 仓库柔光配方)
+ * 精修点:
+ *   ① 点状粒子(mote/星)更小; 线状粒子(streak)更细更长
+ *   ② 数量按境界加大, 有"灵气浓度"递进
+ *   ③ 色彩双色分层: 主色(60%)/亮色(28%)/白珠光(12%), 同屏有层次
+ *   ④ 运动曲线区分——
+ *       流光 streak: 绕身螺旋上升的流线轨迹(丝带弯曲, 不直射)
+ *       烟缕 smoke : 低频大摆幅曲线袅袅上飘(幅度随高度张开)
+ *       金尘 mote  : 飘浮式布朗微动(双频正弦叠加, 像尘埃悬浮)
+ *       星闪 star  : 原地脉动闪烁
+ *   ⑤ 粒子只在躯干带(y 27%~68%H, x ±22%W), 不越界不乱飞
  * ============================================================ */
 "use strict";
 
 const safe = (v, fb = 0) => (Number.isFinite(v) ? v : fb);
+const rnd = (a, b) => a + Math.random() * (b - a);
+const easeIO = u => u * u * (3 - 2 * u);
+const WHITE = [255, 255, 255];
 
-/* ---------- 境界视觉配置(数量克制, 靠颜色/亮度/元素差异) ---------- */
+/* ---------- 境界视觉配置(数量递进·色彩分层) ---------- */
 const REALM_VIS = [
-  /*        t(主色)      s(点缀)     aura     smoke             mote          streak       star        core haze beam ray */
-  { t: [224, 204, 158], s: [178, 160, 116], a: "rgba(224,204,158,.18)",
-    smoke: { n: 1, sMin: .8, sMax: 1.0, pk: .16, dur: [2.6, 3.6] },
-    mote:  { n: 2, pk: .20, dur: [1.6, 2.4] },
-    streak:{ n: 0, pk: .0, dur: [1.0, 1.4] },
+  /* 凡人: 暖土尘, 仅一丝尘气 */
+  { t: [232, 208, 150], s: [255, 244, 208],
+    smoke: { n: 1, pk: .13, dur: [2.8, 3.8] },
+    mote:  { n: 5, pk: .22, dur: [1.8, 2.6] },
+    streak:{ n: 0, pk: .0, dur: [1.2, 1.7] },
     star:  { n: 0, pk: .0, dur: [.5, .8] },
-    core: .10, haze: .09, beam: 0, ray: 0, rayA: 0 },
-  { t: [150, 226, 255], s: [206, 244, 255], a: "rgba(150,226,255,.20)",
-    smoke: { n: 1, sMin: .8, sMax: 1.0, pk: .22, dur: [2.4, 3.4] },
-    mote:  { n: 3, pk: .28, dur: [1.5, 2.2] },
-    streak:{ n: 1, pk: .26, dur: [1.0, 1.5] },
-    star:  { n: 0, pk: .0, dur: [.5, .8] },
+    core: .10, haze: .08, beam: 0, ray: 0, rayA: 0 },
+  /* 炼气: 淡青气流开始绕体 */
+  { t: [128, 222, 255], s: [222, 248, 255],
+    smoke: { n: 2, pk: .20, dur: [2.5, 3.5] },
+    mote:  { n: 8, pk: .30, dur: [1.6, 2.4] },
+    streak:{ n: 1, pk: .28, dur: [1.2, 1.7] },
+    star:  { n: 1, pk: .45, dur: [.5, .8] },
     core: .14, haze: .11, beam: 0, ray: 0, rayA: 0 },
-  { t: [120, 218, 200], s: [176, 246, 214], a: "rgba(120,218,200,.24)",
-    smoke: { n: 2, sMin: .8, sMax: 1.05, pk: .28, dur: [2.2, 3.2] },
-    mote:  { n: 5, pk: .34, dur: [1.4, 2.1] },
-    streak:{ n: 1, pk: .32, dur: [1.0, 1.5] },
-    star:  { n: 1, pk: .50, dur: [.5, .8] },
+  /* 筑基: 青绿, 灵气明显浓 */
+  { t: [104, 216, 198], s: [172, 250, 222],
+    smoke: { n: 2, pk: .26, dur: [2.3, 3.3] },
+    mote:  { n: 11, pk: .38, dur: [1.4, 2.2] },
+    streak:{ n: 2, pk: .36, dur: [1.1, 1.6] },
+    star:  { n: 1, pk: .52, dur: [.5, .8] },
     core: .18, haze: .14, beam: 0, ray: 0, rayA: 0 },
-  { t: [250, 210, 126], s: [255, 238, 186], a: "rgba(250,210,126,.30)",
-    smoke: { n: 2, sMin: .85, sMax: 1.1, pk: .34, dur: [2.0, 3.0] },
-    mote:  { n: 6, pk: .42, dur: [1.3, 2.0] },
-    streak:{ n: 2, pk: .40, dur: [1.0, 1.5] },
-    star:  { n: 1, pk: .55, dur: [.45, .8] },
-    core: .22, haze: .18, beam: .30, ray: 0, rayA: 0 },
-  { t: [210, 176, 255], s: [255, 224, 156], a: "rgba(210,176,255,.34)",
-    smoke: { n: 2, sMin: .85, sMax: 1.1, pk: .40, dur: [1.9, 2.9] },
-    mote:  { n: 8, pk: .48, dur: [1.2, 1.9] },
-    streak:{ n: 2, pk: .46, dur: [.9, 1.4] },
-    star:  { n: 2, pk: .62, dur: [.45, .8] },
+  /* 结丹: 金芒丹火, 光流渐盛 */
+  { t: [250, 202, 110], s: [255, 242, 196],
+    smoke: { n: 3, pk: .32, dur: [2.1, 3.1] },
+    mote:  { n: 14, pk: .46, dur: [1.3, 2.0] },
+    streak:{ n: 3, pk: .44, dur: [1.0, 1.5] },
+    star:  { n: 2, pk: .58, dur: [.45, .8] },
+    core: .22, haze: .17, beam: .30, ray: 0, rayA: 0 },
+  /* 元婴: 紫金, 婴灵星光 */
+  { t: [206, 168, 255], s: [255, 226, 158],
+    smoke: { n: 3, pk: .38, dur: [2.0, 3.0] },
+    mote:  { n: 17, pk: .52, dur: [1.2, 1.9] },
+    streak:{ n: 4, pk: .50, dur: [1.0, 1.5] },
+    star:  { n: 3, pk: .64, dur: [.45, .8] },
     core: .26, haze: .20, beam: .36, ray: 3, rayA: .05 },
-  { t: [120, 216, 255], s: [255, 226, 148], a: "rgba(120,216,255,.40)",
-    smoke: { n: 3, sMin: .85, sMax: 1.15, pk: .46, dur: [1.8, 2.8] },
-    mote:  { n: 9, pk: .54, dur: [1.1, 1.8] },
-    streak:{ n: 3, pk: .52, dur: [.85, 1.4] },
-    star:  { n: 3, pk: .68, dur: [.4, .75] },
+  /* 化神: 青金, 万灵归身 */
+  { t: [118, 214, 255], s: [255, 228, 150],
+    smoke: { n: 4, pk: .44, dur: [1.9, 2.9] },
+    mote:  { n: 20, pk: .60, dur: [1.1, 1.8] },
+    streak:{ n: 5, pk: .56, dur: [.95, 1.45] },
+    star:  { n: 4, pk: .70, dur: [.4, .75] },
     core: .30, haze: .24, beam: .42, ray: 5, rayA: .07 },
 ];
 const BIG_NAMES = ["凡人", "炼气", "筑基", "结丹", "元婴", "化神"];
@@ -96,13 +107,18 @@ function tinted(keyTex, color) {
 function prof(x) {
   if (x <= 0 || x >= 1) return 0;
   if (x < 0.3) { const u = x / 0.3; return u * u * (3 - 2 * u); }
-  if (x < 0.75) { const u = (x - 0.3) / 0.45; return 1 - 0.35 * u; }
-  const u = (x - 0.75) / 0.25;
+  if (x < 0.78) { const u = (x - 0.3) / 0.48; return 1 - 0.42 * u; }
+  const u = (x - 0.78) / 0.22;
   return (1 - u) * (1 - u);
 }
-const rnd = (a, b) => a + Math.random() * (b - a);
-/* 缓动: 位置用 easeInOut 让粒子缓慢起止, 不冲 */
-const easeIO = u => u * u * (3 - 2 * u);
+
+/* 色彩分层: 主色t / 亮色s / 白珠光 按 hash 决定 (60/28/12) */
+function pickCol(seed, t, s) {
+  const r = (seed * 2654435761 % 100 + 100) % 100;
+  if (r < 60) return t;
+  if (r < 88) return s;
+  return WHITE;
+}
 
 /* ============================================================
  * 引擎
@@ -133,42 +149,46 @@ function initFx(canvas) {
     return i >= 0 ? i : 0;
   };
 
-  /* 上飘型粒子: 出生带在躯干下部(相对角色中心 cy≈0.52H), 只在体内上浮 */
-  function mkRise(cfgV, withTilt) {
+  /* 生成上浮粒子: 仅定义自身特性; y 由 cy 邻域决定 */
+  function mkP(type, cfgV) {
+    const p = {
+      type, dur: rnd(cfgV.dur[0], cfgV.dur[1]), born: 0,
+      seed: Math.floor(rnd(0, 1e6)),
+      y0: rnd(-0.02, 0.12),        // cy + y0H  起点(腰下至臀侧, 屏内)
+      rise: rnd(0.16, 0.30),       // 上升高度
+      x0: rnd(-0.17, 0.17),
+      ph: rnd(0, 6.28), ph2: rnd(0, 6.28),
+      f: rnd(0.9, 1.9), f2: rnd(2.1, 3.3),
+      amp: rnd(0.008, 0.02),
+      s0: rnd(0.8, 1.1),
+      tilt: rnd(-0.05, 0.05),
+      trace: [],
+    };
+    return p;
+  }
+  function mkStar(cfgV) {
     return {
-      dur: rnd(cfgV.dur[0], cfgV.dur[1]),
-      born: 0,
-      y0: rnd(0.02, 0.11),          // 起点: cy + y0*H (腰/腿侧, 屏内)
-      rise: rnd(0.17, 0.30),        // 上浮: 终点 cy+(y0-rise)H → 胸/颈, 全程屏内
-      x0: rnd(-0.16, 0.16),         // 角色身体宽内
-      amp: rnd(0.008, 0.022),       // sin 摆动幅度(小, 只是摇曳不飞)
-      ph: rnd(0, 6.28),
-      f: rnd(0.8, 1.7),
-      s0: rnd(0.8, 1.05),
-      tilt: withTilt ? rnd(-0.06, 0.06) : 0,
-      seed: Math.floor(rnd(0, 10)),
+      type: "star", dur: rnd(cfgV.dur[0], cfgV.dur[1]), born: 0,
+      seed: Math.floor(rnd(0, 1e6)),
+      x0: rnd(-0.20, 0.20), y0: rnd(-0.08, 0.14),
+      s: rnd(0.5, 0.95), ang: rnd(0, 3.14), rot: rnd(-0.4, 0.4), pk: rnd(0.8, 1.1),
     };
   }
-  function mkStar() {
-    return {
-      dur: rnd(0.45, 0.8), born: 0,
-      x0: rnd(-0.20, 0.20), y0: rnd(-0.06, 0.16),
-      s: rnd(0.05, 0.10), ang: rnd(0, 3.14), rot: rnd(-0.5, 0.5), pk: rnd(0.8, 1.1),
-    };
-  }
-  function respawn(p, cfgV, t0) {
-    p.born = -rnd(0.5, 1.8);
-    p.y0 = rnd(0.02, 0.11); p.rise = rnd(0.17, 0.30);
-    p.x0 = rnd(-0.16, 0.16); p.ph = rnd(0, 6.28);
-    p.f = rnd(0.8, 1.7); p.dur = rnd(cfgV.dur[0], cfgV.dur[1]);
-    p.amp = rnd(0.008, 0.022); p.s0 = rnd(0.8, 1.05);
-    p.seed = Math.floor(rnd(0, 10));
+  function respawn(p, cfgV, t) {
+    p.born = -rnd(0.6, 1.8);
+    p.dur = rnd(cfgV.dur[0], cfgV.dur[1]);
+    p.seed = Math.floor(rnd(0, 1e6));
+    p.y0 = rnd(-0.02, 0.12); p.rise = rnd(0.16, 0.30);
+    p.x0 = rnd(-0.17, 0.17); p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
+    p.f = rnd(0.9, 1.9); p.f2 = rnd(2.1, 3.3);
+    p.amp = rnd(0.008, 0.02); p.s0 = rnd(0.8, 1.1);
+    p.tilt = rnd(-0.05, 0.05); p.trace = [];
   }
   function prepare(cfgV) {
-    while (smokes.length < cfgV.smoke.n) smokes.push(mkRise(cfgV.smoke, true));
-    while (motes.length < cfgV.mote.n) motes.push(mkRise(cfgV.mote, false));
-    while (streaks.length < cfgV.streak.n) streaks.push(mkRise(cfgV.streak, true));
-    while (stars.length < cfgV.star.n) stars.push(mkStar());
+    while (smokes.length < cfgV.smoke.n) smokes.push(mkP("smoke", cfgV.smoke));
+    while (motes.length < cfgV.mote.n) motes.push(mkP("mote", cfgV.mote));
+    while (streaks.length < cfgV.streak.n) streaks.push(mkP("streak", cfgV.streak));
+    while (stars.length < cfgV.star.n) stars.push(mkStar(cfgV.star));
     smokes.length = cfgV.smoke.n; motes.length = cfgV.mote.n;
     streaks.length = cfgV.streak.n; stars.length = cfgV.star.n;
   }
@@ -179,126 +199,136 @@ function initFx(canvas) {
     const cfgV = REALM_VIS[idx()];
     try { ctx.clearRect(0, 0, W, H); } catch (e) { return; }
     ctx.globalCompositeOperation = "lighter";
-    const cx = W / 2, cy = H * 0.50;        // 角色胸腔基准
+    const cx = W / 2, cy = H * 0.50;
     const breathe = 0.5 + 0.5 * Math.sin(t * 1.1);
+    const tCol = cfgV.t, sCol = cfgV.s;
 
-    /* 0) 背后柔光晕(静态呼吸, 不乱动) */
-    const hazeCv = tinted("haze", cfgV.t);
+    /* ---- 0) 背后柔光(静态呼吸) ---- */
+    const hazeCv = tinted("haze", tCol);
     if (hazeCv && cfgV.haze > 0.01) {
-      const sz = W * (0.60 + 0.06 * breathe);
+      const sz = W * (0.62 + 0.05 * breathe);
       ctx.globalAlpha = safe(cfgV.haze * (0.7 + 0.3 * breathe), 0);
       ctx.drawImage(hazeCv, cx - sz / 2, cy - sz / 2, sz, sz);
     }
-    const coreCv = tinted("core", cfgV.s);
+    const coreCv = tinted("core", sCol);
     if (coreCv && cfgV.core > 0.01) {
-      const sz = W * (0.30 + 0.05 * breathe);
+      const sz = W * (0.30 + 0.04 * breathe);
       ctx.globalAlpha = safe(cfgV.core * (0.65 + 0.35 * breathe), 0);
       ctx.drawImage(coreCv, cx - sz / 2, cy - sz / 2, sz, sz);
     }
-
-    /* 0.5) 弱光柱(结丹+)：从腰部向上短柱, 弱而静 */
     if (cfgV.beam > 0.01) {
-      const bCv = tinted("beam", cfgV.s);
+      const bCv = tinted("beam", sCol);
       if (bCv) {
-        const bw = W * 0.030 * (1 + 0.2 * breathe);
-        const bh = H * 0.36 * (1 + 0.06 * breathe);
+        const bw = W * 0.026 * (1 + 0.2 * breathe);
+        const bh = H * 0.34 * (1 + 0.05 * breathe);
         ctx.globalAlpha = safe(cfgV.beam * (0.5 + 0.5 * breathe), 0);
-        ctx.drawImage(bCv, cx - bw / 2, cy - bh * 0.45, bw, bh);
+        ctx.drawImage(bCv, cx - bw / 2, cy - bh * 0.5, bw, bh);
       }
     }
-
-    /* 0.7) 放射光(元婴+)：角色头顶一小圈弱芒, 慢摆低透明度 */
     if (cfgV.ray > 0 && imgs.ray) {
-      const rCv = tinted("ray", cfgV.t);
+      const rCv = tinted("ray", sCol);
       if (rCv) {
         for (let i = 0; i < cfgV.ray; i++) {
-          const ang = (i / Math.max(1, cfgV.ray - 1) - 0.5) * 1.6 + Math.sin(t * 0.25 + i) * 0.04;
-          const len = W * 0.30;
+          const ang = (i / Math.max(1, cfgV.ray - 1) - 0.5) * 1.5 + Math.sin(t * 0.25 + i) * 0.05;
+          const len = W * 0.26;
           ctx.save();
-          ctx.translate(cx, cy - H * 0.10);
+          ctx.translate(cx, cy - H * 0.12);
           ctx.rotate(ang);
-          ctx.globalAlpha = safe(cfgV.rayA * (0.6 + 0.4 * Math.sin(t * 0.4 + i * 1.7)), 0);
-          ctx.drawImage(rCv, -len * 0.25, -len * 0.5, len * 0.5, len);
+          ctx.globalAlpha = safe(cfgV.rayA * (0.55 + 0.45 * Math.sin(t * 0.4 + i * 1.7)), 0);
+          ctx.drawImage(rCv, -len * 0.2, -len * 0.5, len * 0.4, len);
           ctx.restore();
         }
       }
     }
 
-    /* ① 烟缕: 贴身上飘, 慢, 拉丝散开 */
+    /* ---- ① 流光 streak: 细丝, 绕体螺旋上升(有弯曲的流线轨迹) ---- */
+    for (const p of streaks) {
+      p.born += dt;
+      if (p.born < 0) { p.trace = []; continue; }
+      if (p.born > p.dur) { respawn(p, cfgV.streak, t); continue; }
+      const u = p.born / p.dur, mv = easeIO(u);
+      /* 螺旋相位随上升推进 → 轨迹是绕身螺旋, 非直射 */
+      const spin = u * 3.4 + p.ph;
+      const rr = W * 0.15 * (0.3 + 0.7 * Math.sin(Math.min(1, mv) * Math.PI)) * (0.6 + 0.4 * p.s0);
+      const px = cx + Math.cos(spin) * rr + p.x0 * W * 0.25;
+      const py = cy + (p.y0 - p.rise * mv) * H;
+      /* 头端 */
+      const al = safe(prof(u) * cfgV.streak.pk, 0);
+      const col = pickCol(p.seed, tCol, sCol);
+      ctx.globalAlpha = al;
+      const dot = tinted("mote", col);
+      const headS = H * 0.012 * p.s0;
+      if (dot) ctx.drawImage(dot, px - headS / 2, py - headS / 2, headS, headS);
+      /* 尾迹: 记录轨迹 → 细丝连线(弯曲流线) */
+      p.trace.unshift({ x: px, y: py });
+      if (p.trace.length > 10) p.trace.length = 10;
+      ctx.lineCap = "round";
+      for (let i = 1; i < p.trace.length; i++) {
+        const a0 = p.trace[i - 1], a1 = p.trace[i];
+        const seg = 1 - i / p.trace.length;
+        ctx.strokeStyle = "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + safe(al * seg * 0.8, 0) + ")";
+        ctx.lineWidth = Math.max(0.6, H * 0.0016);
+        ctx.beginPath(); ctx.moveTo(a0.x, a0.y); ctx.lineTo(a1.x, a1.y); ctx.stroke();
+      }
+    }
+
+    /* ---- ② 烟缕 smoke: 低频大摆幅袅袅上飘(烟感曲线) ---- */
     for (const p of smokes) {
       p.born += dt;
       if (p.born < 0) continue;
       if (p.born > p.dur) { respawn(p, cfgV.smoke, t); continue; }
       const u = p.born / p.dur, mv = easeIO(u);
-      const x = cx + (p.x0 + Math.sin(t * p.f + p.ph) * p.amp) * W;
+      /* 摆幅随上升张开 → 袅袅散开的烟 */
+      const swayAmp = p.amp * (0.4 + 2.2 * mv);
+      const x = cx + (p.x0 + Math.sin(t * 0.9 + p.ph) * swayAmp) * W;
       const y = cy + (p.y0 - p.rise * mv) * H;
-      const bh0 = H * 0.055 * p.s0;
-      const bw0 = bh0 * (0.38 + 0.34 * mv);
+      const bh0 = H * 0.045 * p.s0 * (1 + 0.25 * mv);
+      const bw0 = bh0 * (0.4 + 0.55 * mv);
+      const col = pickCol(p.seed, tCol, sCol);
       const al = safe(prof(u) * cfgV.smoke.pk, 0);
       ctx.globalAlpha = al;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(p.tilt * (1 - mv * 0.5));
-      const c1 = p.col || cfgV.t, c2 = cfgV.s;
-      const ic = tinted("smoke", (p.seed % 5 === 0) ? c2 : c1);
-      if (ic) ctx.drawImage(ic, -bw0 / 2, -bh0 / 2, bw0, bh0);
-      ctx.restore();
+      const ic = tinted("smoke", col);
+      if (ic) ctx.drawImage(ic, x - bw0 / 2, y - bh0 / 2, bw0, bh0);
     }
 
-    /* ② 流光: 细条, 贴体快穿(上升快, 只留短光轨) */
-    for (const p of streaks) {
-      p.born += dt;
-      if (p.born < 0) continue;
-      if (p.born > p.dur) { respawn(p, cfgV.streak, t); continue; }
-      const u = p.born / p.dur, mv = easeIO(u);
-      const x = cx + (p.x0 + Math.sin(t * p.f + p.ph) * p.amp * 0.6) * W;
-      const y = cy + (p.y0 - p.rise * mv) * H;
-      const len = H * 0.075 * (1 + 0.4 * u) * p.s0;
-      const wid = len * 0.22;
-      const al = safe(prof(u) * cfgV.streak.pk, 0);
-      ctx.globalAlpha = al;
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(p.tilt);
-      const ic = tinted("streak", (p.seed % 4 === 0) ? cfgV.s : cfgV.t);
-      if (ic) ctx.drawImage(ic, -wid / 2, -len / 2, wid, len);
-      ctx.restore();
-    }
-
-    /* ③ 金尘: 小点, 贴体乱舞上浮(幅度小) */
+    /* ---- ③ 金尘 mote: 小点, 飘浮式微动(双频布朗感, 缓慢上浮) ---- */
     for (const p of motes) {
       p.born += dt;
       if (p.born < 0) continue;
       if (p.born > p.dur) { respawn(p, cfgV.mote, t); continue; }
       const u = p.born / p.dur, mv = easeIO(u);
-      const sway = Math.sin(t * p.f * 2.1 + p.ph) * p.amp * (0.5 + mv);
-      const x = cx + (p.x0 + sway) * W;
-      const y = cy + (p.y0 - p.rise * 0.8 * mv) * H;
-      const sz = H * 0.030 * p.s0 * (1 - 0.4 * u);
+      /* 双频叠加 = 尘埃随气流乱而缓慢地飘 */
+      const drift = Math.sin(t * p.f + p.ph) * p.amp + Math.sin(t * p.f2 + p.ph2) * p.amp * 0.55;
+      const x = cx + (p.x0 + drift * (1 + mv * 0.5)) * W;
+      const y = cy + (p.y0 - p.rise * 0.55 * mv) * H + Math.sin(t * 1.4 + p.ph2) * H * 0.006;
+      const sz = H * 0.014 * p.s0 * (1 - 0.35 * u);
+      const col = pickCol(p.seed, tCol, sCol);
       const al = safe(prof(u) * cfgV.mote.pk, 0);
       ctx.globalAlpha = al;
-      const ic = tinted("mote", (p.seed % 5 === 0) ? cfgV.s : cfgV.t);
+      const ic = tinted("mote", col);
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
     }
 
-    /* ④ 星闪: 原地小闪, 不放飞 */
+    /* ---- ④ 星闪 star: 原地脉动 ---- */
     for (const p of stars) {
       p.born += dt;
       if (p.born < 0) continue;
       if (p.born > p.dur) {
-        p.born = -rnd(1.2, 2.6);
-        p.x0 = rnd(-0.18, 0.18); p.y0 = rnd(-0.10, 0.14); p.s = rnd(0.05, 0.10);
+        p.born = -rnd(1.4, 2.8);
+        p.x0 = rnd(-0.20, 0.20); p.y0 = rnd(-0.10, 0.13); p.s = rnd(0.5, 0.95);
+        p.seed = Math.floor(rnd(0, 1e6));
         continue;
       }
       const u = p.born / p.dur;
       const x = cx + p.x0 * W, y = cy + p.y0 * H;
-      const sz = H * 0.10 * p.s * (1 + 0.35 * u);
+      const sz = H * 0.055 * p.s * (1 + 0.4 * u);
+      const col = pickCol(p.seed, tCol, sCol);
       const al = safe(prof(u) * cfgV.star.pk * p.pk, 0);
       ctx.globalAlpha = al;
       ctx.save();
       ctx.translate(x, y);
       ctx.rotate(p.ang + p.rot * u);
-      const ic = tinted("star", cfgV.s);
+      const ic = tinted("star", col);
       if (ic) ctx.drawImage(ic, -sz / 2, -sz / 2, sz, sz);
       ctx.restore();
     }
