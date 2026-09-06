@@ -539,9 +539,10 @@ function pushMsg(side, html) {
   el.className = "fmsg";
   el.innerHTML = html;
   box.insertBefore(el, box.firstChild); // column-reverse 下: 新消息出现在视觉底部
-  while (box.children.length > 6) box.removeChild(box.lastChild);
-  const life = (side === "main") ? 9200 : 6200;
-  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, life + 250);
+  const cap = (side === "main") ? 7 : 6;
+  while (box.children.length > cap) box.removeChild(box.lastChild);
+  const life = (side === "main") ? 22500 : 6500;
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, life + 300);
 }
 
 /* ============ 修行录: 主角亲身剧情(凡人→化神 六卷, 未历不显·不剧透) ============
@@ -1591,6 +1592,24 @@ function applyOffline() {
 function closeOffline() { $("offlineModal").classList.remove("show"); }
 
 /* ============ three.js 背景 ============ */
+/* 玩家身上的粒子流(aura_fx.js) */
+function initPlayerFx() {
+  try {
+    const cult = document.getElementById("cult");
+    if (!cult) return;
+    let cv = document.getElementById("cultFx");
+    if (!cv) {
+      cv = document.createElement("canvas");
+      cv.id = "cultFx";
+      cv.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:1";
+      const aura = cult.querySelector(".aura");
+      cult.insertBefore(cv, aura ? aura.nextSibling : cult.firstChild);
+    }
+    import("./aura_fx.js").then(m => { window.__auraFx = m.initAuraFx(cv); })
+      .catch(e => console.warn("粒子引擎不可用", e));
+  } catch (e) { console.warn("粒子引擎初始化失败", e); }
+}
+
 async function initBg() {
   try { await initBg3D(); }
   catch (e) { console.warn("WebGL 不可用，降级星空", e); document.body.classList.add("no-webgl"); }
@@ -1647,6 +1666,7 @@ realmPlot(); // 启动即按当前境界推进已及剧情
 setInterval(save, 8000);
 addEventListener("pagehide", save);
 initBg();
+initPlayerFx();
 let lastLoop = performance.now();
 (function main() {
   const now = performance.now();
