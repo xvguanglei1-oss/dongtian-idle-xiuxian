@@ -1601,11 +1601,10 @@ function initPlayerFx() {
     if (!cv) {
       cv = document.createElement("canvas");
       cv.id = "cultFx";
-      cv.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:1";
-      const aura = cult.querySelector(".aura");
-      cult.insertBefore(cv, aura ? aura.nextSibling : cult.firstChild);
+      cv.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:3";
+      cult.appendChild(cv);
     }
-    import("./aura_fx.js").then(m => { window.__auraFx = m.initAuraFx(cv); })
+    import("./fx3d.js").then(m => { window.__auraFx = m.initFx3d(cv); })
       .catch(e => console.warn("粒子引擎不可用", e));
   } catch (e) { console.warn("粒子引擎初始化失败", e); }
 }
