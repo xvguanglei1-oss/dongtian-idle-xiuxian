@@ -147,6 +147,18 @@ function initFx(canvas) {
     while (motes.length < cfgV.mote.n) motes.push(mkMote(cfgV.mote));
     motes.length = cfgV.mote.n;
   }
+  function respawnP(p, cfgV) {
+    p.born = -rnd(0.8, 2.4);
+    p.dur = rnd(cfgV.dur[0], cfgV.dur[1]);
+    p.seed = Math.floor(rnd(0, 1e6));
+  }
+  function respawnMote(p, cfgV) {
+    respawnP(p, cfgV);
+    p.y0 = rnd(-0.04, 0.13); p.rise = rnd(0.10, 0.20);
+    p.x0 = rnd(-0.22, 0.22); p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
+    p.f = rnd(0.55, 1.0); p.f2 = rnd(1.1, 1.8);
+    p.amp = rnd(0.010, 0.024); p.s0 = rnd(0.8, 1.3);
+  }
 
   function draw(t, dt) {
     if (!ready || !imgs.haze) return;
