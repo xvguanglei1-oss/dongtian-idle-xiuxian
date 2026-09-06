@@ -459,6 +459,7 @@ function updateRealmUI() {
     `radial-gradient(circle,rgba(${r.c},.34),rgba(${r.c},.08) 42%,transparent 68%)`;
   const cult = document.getElementById("cult");
   if (cult) cult.dataset.big = r.big;   // 光环特效切换
+  setCultGlow(r);
 }
 function updateHUD() {
   const r = realm();
@@ -1365,6 +1366,15 @@ function buildAuraTest() {
     row.appendChild(c);
   });
 }
+/* 轮廓光随境界 */
+function setCultGlow(biOrBig) {
+  const cult0 = document.getElementById("cult");
+  if (!cult0) return;
+  const g0 = Math.min(biOrBig.bigIdx ?? 0, 5);
+  const cc = biOrBig.c || [120, 170, 255];
+  cult0.style.setProperty("--glowC", `rgba(${cc},${(0.14 + g0 * 0.06).toFixed(2)})`);
+  cult0.style.setProperty("--glowW", (20 + g0 * 5) + "px");
+}
 function previewRealmVisual(bi) {
   const cult = document.getElementById("cult");
   const aura = document.querySelector(".aura");
@@ -1372,6 +1382,7 @@ function previewRealmVisual(bi) {
   if (cult) cult.dataset.big = big.n;
   if (aura) aura.style.background =
     `radial-gradient(circle,rgba(${big.c},.34),rgba(${big.c},.08) 42%,transparent 68%)`;
+  setCultGlow(big);
 }
 function resetAuraPreview() {
   const cult = document.getElementById("cult");
@@ -1380,6 +1391,7 @@ function resetAuraPreview() {
   if (cult) cult.dataset.big = r.big;
   if (aura) aura.style.background =
     `radial-gradient(circle,rgba(${r.c},.34),rgba(${r.c},.08) 42%,transparent 68%)`;
+  setCultGlow(r);
   const row = $("auraTestChips");
   if (row) row.querySelectorAll(".aura-chip").forEach(x => x.classList.toggle("on", x.textContent === r.big));
 }
