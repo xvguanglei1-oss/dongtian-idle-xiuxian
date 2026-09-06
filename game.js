@@ -16,26 +16,49 @@ const BIGS = [
 ];
 const TOTAL_SEGS = BIGS.reduce((s, b) => s + b.segs, 0);   // 30 段
 
-// 段 → 元数据
+/* ---- 成长曲线(目标 ≈3个月到化神, 前快后稳; 全部可调) ----
+ * REALM_DAYS: 各境目标天数(合计90天)
+ * SEG_SCALE : 修为需求系数锚点(0聚灵阵玩家偏慢、正常升阵约90天上下; 上线后按真实数据微调)
+ * arrMult   : 聚灵阵收益 前10级+35%/11~20级+18%/21~30级+8%, 30级封顶, 防止后期产出失控
+ * SPIRIT_RATE/ARRAY_COST: 灵石秒产与阵升级花费, 约束阵等级节奏
+ */
+const REALM_DAYS = [0.5, 22, 20, 18, 16, 13.5];
+const SEG_SCALE = 10;
+const arrMult = lv => {
+  let m = 1;
+  for (let k = 2; k <= lv; k++) m += k <= 11 ? 0.35 : (k <= 21 ? 0.18 : (k <= 31 ? 0.08 : 0));
+  return m;
+};
+const SPIRIT_RATE = lv => 0.5 + 0.34 * lv;
+const ARRAY_COST = lv => 900 * Math.pow(lv + 1, 2.55);
+
+// 段 → 元数据(need 按“本境目标天数 × 段权重”反推, 段内前快后慢)
 const SEG_META = [];
 (function buildSegs() {
   let cum = 0;
   for (let bi = 0; bi < BIGS.length; bi++) {
     const big = BIGS[bi];
-    for (let s = 0; s < big.segs; s++, cum++) {
+    const s = big.segs;
+    const dsecTotal = REALM_DAYS[bi] * 86400;
+    const ws = [];
+    for (let j = 0; j < s; j++) ws.push(s <= 1 ? 1 : 0.25 + Math.pow(j / (s - 1), 1.35));
+    const sw = ws.reduce((a, b) => a + b, 0);
+    for (let q = 0; q < s; q++, cum++) {
       let label, isBigEnd = false;
       if (big.n === "凡人") {
         label = "凡人";
       } else if (big.n === "炼气") {
-        label = `${big.n}·${cnNum(s + 1)}层`;
-        isBigEnd = (s === big.segs - 1);
+        label = `${big.n}·${cnNum(q + 1)}层`;
+        isBigEnd = (q === s - 1);
       } else {
-        label = `${big.n}·${SEG4[s]}`;
-        isBigEnd = (s === big.segs - 1);
+        label = `${big.n}·${SEG4[q]}`;
+        isBigEnd = (q === s - 1);
       }
-      const need = Math.round(1000 * Math.pow(2.72, cum * 0.55) / 100) * 100;
+      // 凡人: 新手入门, 几分钟即可渡入炼气; 其余按目标时长 × 大境强度
+      const need = big.n === "凡人" ? 2500
+        : Math.max(120, Math.round(SEG_SCALE * Math.pow(bi + 1, 2.05) * dsecTotal * ws[q] / sw));
       SEG_META.push({ bigIdx: bi, big: big.n, label, need, isBigEnd,
-        color: big.color, c: big.c, segNo: s + 1,
+        color: big.color, c: big.c, segNo: q + 1,
         sub: bigSub(bi) });
     }
   }
@@ -285,7 +308,8 @@ const MAIN_STORY = [
 ];
 
 /* ============ 存档 ============ */
-let state = { realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], journal: [], lastTs: Date.now() };
+let state = { realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], journal: [],
+  milestones: {}, peakSpirit: 0, bestArtQ: -1, lastTs: Date.now() };
 let breaking = false;
 let lastReadyHint = false;
 const SAVE_KEY = "dongtian_xiuxian_v2";
@@ -309,6 +333,9 @@ function load() {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
     if (s && Array.isArray(s.arts)) {
       if (!Array.isArray(s.journal)) s.journal = [];
+      if (!s.milestones || typeof s.milestones !== "object") s.milestones = {};
+      if (typeof s.peakSpirit !== "number") s.peakSpirit = 0;
+      if (typeof s.bestArtQ !== "number") s.bestArtQ = -1;
       state = s;
     }
   } catch (e) {}
@@ -317,8 +344,8 @@ function load() {
 /* ============ 数值 ============ */
 function realmMult() { return Math.pow(bigIdx() + 1, 2.05); } // 大境界指数
 function artMult() { return state.arts.reduce((m, a) => m * a.mult, 1); }
-function rateNow() { return 4 * realmMult() * artMult() * (1 + (state.arrayLv - 1) * 0.35); }
-function spiritRate() { return 0.15 + state.arrayLv * 0.06; }
+function rateNow() { return 4 * realmMult() * artMult() * arrMult(state.arrayLv); }
+function spiritRate() { return SPIRIT_RATE(state.arrayLv); }
 
 /* 品质与境界挂钩: 凡人只能粗制, 炼气→法器, 筑基→灵器, 结丹→古宝, 元婴→灵宝, 化神→玄天
  * 杜绝“炼气期用筑基期法宝”的越境体验 */
@@ -417,13 +444,14 @@ function doBreak() {
 function manualBreak() { doBreak(); }
 
 /* 聚灵阵 */
+function arrayCostNow() { return ARRAY_COST(state.arrayLv); }
 function tapArray() {
-  const cost = 60 * Math.pow(state.arrayLv, 1.8);
+  const cost = arrayCostNow();
   if (state.spirit >= cost) {
     state.spirit -= cost; state.arrayLv++; save(); updateHUD();
-    pushMsg("main", `聚灵阵升至 <span class="g">Lv.${state.arrayLv}</span>，灵脉奔涌！`);
+    pushMsg("main", `聚灵阵升至 <span class="g">Lv.${state.arrayLv}</span>（下一级需灵石 ${fmt(arrayCostNow())}）`);
   } else {
-    pushMsg("main", `灵石不足(需 ${fmt(cost)})，分身正在四处寻矿…`);
+    pushMsg("main", `灵石不足(升至 Lv.${state.arrayLv + 1} 需 ${fmt(cost)})，分身正在四处寻矿…`);
   }
 }
 
@@ -1196,6 +1224,49 @@ function realmPlot() {
   void last;
 }
 
+/* ---- 纪事里程碑: 灵石/聚灵阵/法宝的玩法节点 → 一次性叙事(不占境界剧情位) ---- */
+const MS_SPIRIT = [
+  [500, "灵石初丰", "你攒下第一笔像样的灵石——修行问道，总算不必为几枚碎灵石头疼。"],
+  [2000, "小有身家", "灵石渐丰，你在坊市说话都硬气了几分。"],
+  [10000, "万灵石", "万灵石入袋，你已称得上「有身家」的修士。"],
+  [50000, "灵脉傍身", "五万灵石——当年在山村，这是你想都不敢想的数目。"],
+  [200000, "视灵石如无物", "灵石渐成数字，你修的是长生，不是阿堵物。"],
+];
+const MS_ARRAY = [
+  [3, "聚灵初成", "聚灵阵三转，灵气吞吐已胜过常人苦修。"],
+  [6, "阵基叠塔", "六层阵基如叠塔，洞府灵气凝出肉眼可见的薄雾。"],
+  [10, "小周天成", "阵成小周天，夜深时阵中灵光自鸣，如钟磬相和。"],
+  [15, "自成洞天", "大阵自成一方小洞天，你端坐其中，修为如水入海。"],
+  [20, "地脉来朝", "阵道登堂入室，方圆十里灵脉都隐隐向你汇聚。"],
+  [25, "地肺吐纳", "此阵已可自行吐纳地肺之火，灵气取之不竭。"],
+  [30, "阵道圆满", "阵成圆满，灵光冲霄——这已是聚灵阵道的极限。"],
+];
+const MS_ART = [
+  ["法器之始", "你得了第一件趁手法器，神识附着其上，如臂使指。"],
+  ["灵器入手", "灵器入体，宝光隐现——往后斗法，总算有了依仗。"],
+  ["古宝临身", "古宝到手，道纹流转，你隐约摸到一丝岁月的痕迹。"],
+  ["灵宝认主", "灵宝认主，灵性自鸣，连洞府外的灵兽都朝此低伏。"],
+  ["玄天之宝", "玄天之宝现世，真元都为之战栗——此物一出，足以动一方风云。"],
+];
+function fireMilestone(flagKey, title, text) {
+  const M = state.milestones || (state.milestones = {});
+  if (M[flagKey]) return false;
+  M[flagKey] = 1;
+  addJournal({ key: "ms-" + flagKey, big: realm().big, kind: "纪事", title, text });
+  pushMsg("main", `<span class="b">纪事</span>·${title}｜${text}`);
+  return true;
+}
+function checkMilestones() {
+  if (state.spirit > state.peakSpirit) state.peakSpirit = state.spirit;
+  const q = state.arts.reduce((m, a) => Math.max(m, a.q), -1);
+  if (q > state.bestArtQ) state.bestArtQ = q;
+  let fired = false;
+  for (const [th, t, x] of MS_SPIRIT) if (state.peakSpirit >= th && fireMilestone("s" + th, t, x)) fired = true;
+  for (const [L, t, x] of MS_ARRAY) if (state.arrayLv >= L && fireMilestone("r" + L, t, x)) fired = true;
+  for (let g = 1; g <= 5; g++) { const [t, x] = MS_ART[g - 1]; if (state.bestArtQ >= g && fireMilestone("a" + g, t, x)) fired = true; }
+  if (fired) save();
+}
+
 function openStory() {
   const m = $("storyModal");
   if (!m) return;
@@ -1480,6 +1551,7 @@ function loop(dt) {
     realmPlot(); // 到新小层即推进当前卷剧情(跨大境须手动渡劫 → 剧情也绝不越卷)
   }
   updateHUD();
+  checkMilestones();
   if (Math.random() < dt * 0.35) adventure();
   if (Math.random() < dt * 0.05) mainMoment();
   tickBurst(dt);
