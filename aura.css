@@ -1,0 +1,226 @@
+/* ============================================================
+ * 洞天·挂机修仙 —— 六境界"境界光环" aura.css
+ * ------------------------------------------------------------
+ * 设计理念：光环 = 修行气韵的外显。不用新 DOM、不加 JS 帧循环：
+ * 光环全部由 .aura(底色)+.cult::before(身后光层)+.cult::after(身前粒光)
+ * 三处合成层叠加；用 dataset(data-big) 驱动整组切换，动画只用
+ * transform/opacity/mask，GPU 合成、无 layout 抖动，移动端流畅。
+ *
+ * 想调参改哪里？
+ *  ① 每境界底色：各 .cult[data-big="xx"] .aura 里的 background(RGB 见注释)
+ *  ② 光环半径   ：改各层 .cult::before/.after 的 width 与 margin 数值
+ *  ③ 节奏速度   ：改各层 animation 时长；旋转方向可用 reverse
+ *  ④ 加法阵/星尘等纹理：改对应伪元素的 repeating-conic / radial 背景点
+ * ============================================================ */
+
+/* —— 光环层地基：默认隐形、居中圆形，只透光、不挡点击，不扰动立绘 —— */
+.cult::before,
+.cult::after{
+  content:""; position:absolute; left:50%; top:50%; border-radius:50%;
+  pointer-events:none; opacity:0; transform-origin:50% 50%;
+  mix-blend-mode:screen; transition:opacity .9s ease;
+  will-change:transform,opacity;
+}
+/* 宽 S% 的伪元素居中：margin = -S/2%；圆环内半径换算见每段注释 */
+/* 关键帧总表在文件末尾，各境界按需引用 */
+
+/* ============ 凡人 · 灵根初启 ============
+ * 主色 RGB(198,176,124) 暖尘色(JS r.c 现为冷蓝, 如要同步请改 BIGS[0])
+ * 几乎无光：只留极淡暖尘在人物四周缓缓浮游，像灵根初燃的余烬。 */
+.cult[data-big="凡人"] .aura{
+  background:radial-gradient(circle,
+    rgba(198,176,124,.12),rgba(198,176,124,.05) 44%,transparent 70%) !important;
+}
+.cult[data-big="凡人"]::after{
+  width:150%; margin-left:-75%; margin-top:-75%; opacity:1;
+  background-image:
+    radial-gradient(circle 1.5px at 34% 74%, rgba(236,214,158,.85), rgba(236,214,158,0) 100%),
+    radial-gradient(circle 1px  at 61% 58%, rgba(224,198,148,.55), rgba(224,198,148,0) 100%),
+    radial-gradient(circle 1.2px at 72% 76%, rgba(214,186,130,.45), rgba(214,186,130,0) 100%),
+    radial-gradient(circle 1px  at 46% 84%, rgba(232,206,152,.6),  rgba(232,206,152,0) 100%),
+    radial-gradient(circle 1.1px at 56% 64%, rgba(226,200,146,.5),  rgba(226,200,146,0) 100%);
+  animation:gzDust 9s ease-in-out infinite;
+}
+
+/* ============ 炼气 · 引气入体 ============
+ * 主色 RGB(127,224,255) 淡青(与 JS c 一致)
+ * 一圈淡青气流(倾斜星环, 气旋绕身) + 稀疏灵气颗粒缓缓上浮。 */
+.cult[data-big="炼气"] .aura{
+  background:radial-gradient(circle,
+    rgba(127,224,255,.30),rgba(127,224,255,.07) 45%,transparent 70%) !important;
+}
+.cult[data-big="炼气"]::before{
+  width:98%; margin-left:-49%; margin-top:-49%; opacity:1;
+  background:repeating-conic-gradient(from 0deg,
+    rgba(150,230,255,.75) 0deg 16deg, transparent 16deg 72deg);
+  -webkit-mask-image:radial-gradient(circle 50% at 50% 50%,
+    transparent 0 72%, #000 73.5% 79%, transparent 80.5%);
+          mask-image:radial-gradient(circle 50% at 50% 50%,
+    transparent 0 72%, #000 73.5% 79%, transparent 80.5%);
+  animation:gzOrbitQ 26s linear infinite;          /* 倾斜旋转的气流环 */
+}
+.cult[data-big="炼气"]::after{
+  width:130%; margin-left:-65%; margin-top:-65%; opacity:1;
+  background-image:
+    radial-gradient(circle 1.6px at 42% 74%, rgba(190,240,255,.95), rgba(190,240,255,0) 100%),
+    radial-gradient(circle 1px  at 63% 84%, rgba(150,228,255,.7),  rgba(150,228,255,0) 100%),
+    radial-gradient(circle 1.3px at 52% 64%, rgba(170,236,255,.8),  rgba(170,236,255,0) 100%),
+    radial-gradient(circle 1px  at 70% 70%, rgba(150,228,255,.6),  rgba(150,228,255,0) 100%),
+    radial-gradient(circle 1.2px at 33% 88%, rgba(200,244,255,.9), rgba(200,244,255,0) 100%);
+  animation:gzRise 11s ease-in-out infinite;
+}
+
+/* ============ 筑基 · 真元化液 ============
+ * 主色 RGB(97,208,196) 青绿(JS c 现为 127,224,195, 接近, 可同步微调)
+ * 双环法阵底盘(身后) + 符纹圆环缓慢旋转(身前, 符文为放射刻痕)。 */
+.cult[data-big="筑基"] .aura{
+  background:radial-gradient(circle,
+    rgba(97,208,196,.38),rgba(97,208,196,.10) 46%,transparent 70%) !important;
+}
+.cult[data-big="筑基"]::before{
+  width:96%; margin-left:-48%; margin-top:-48%; opacity:1;
+  background:radial-gradient(circle 50% at 50% 50%,
+    transparent 0 69%, rgba(97,208,196,.08) 69.5% 71%, transparent 71.5%,
+    rgba(127,224,195,.5) 72% 73%, transparent 73.8%,
+    transparent 74% 82.5%, rgba(127,224,195,.6) 83.2% 84%, transparent 85%);
+}
+.cult[data-big="筑基"]::after{
+  width:96%; margin-left:-48%; margin-top:-48%; opacity:1;
+  background:repeating-conic-gradient(from 12deg,
+    rgba(150,244,220,.9) 0deg 5deg, transparent 5deg 45deg);
+  -webkit-mask-image:radial-gradient(circle 50% at 50% 50%,
+    transparent 0 74.5%, #000 76% 81.5%, transparent 83%);
+          mask-image:radial-gradient(circle 50% at 50% 50%,
+    transparent 0 74.5%, #000 76% 81.5%, transparent 83%);
+  animation:gzSpinRev 60s linear infinite;          /* 法阵符纹缓旋 */
+}
+
+/* ============ 结丹 · 凝液化固 ============
+ * 主色 RGB(244,196,105) 金丹金(与 JS c 232,197,107 接近)
+ * 金芒球心(由 .aura 核心光担当) + 倾斜环绕的金砂圈 + 丹火粒子一闪一闪。 */
+.cult[data-big="结丹"] .aura{
+  background:radial-gradient(circle,
+    rgba(255,226,150,.5),rgba(244,196,105,.16) 42%,transparent 72%) !important;
+}
+.cult[data-big="结丹"]::before{
+  width:104%; margin-left:-52%; margin-top:-52%; opacity:1;
+  background:repeating-conic-gradient(from 0deg,
+    rgba(255,214,140,.8) 0deg 1.2deg, rgba(255,190,110,.18) 1.2deg 2.4deg,
+    transparent 2.4deg 11deg);                     /* 细密金砂纹理 */
+  -webkit-mask-image:radial-gradient(circle 50% at 50% 50%,
+    transparent 0 62%, #000 64% 76%, transparent 78%);
+          mask-image:radial-gradient(circle 50% at 50% 50%,
+    transparent 0 62%, #000 64% 76%, transparent 78%);
+  animation:gzOrbitJ 34s linear infinite;           /* 倾斜金砂环旋转 */
+}
+.cult[data-big="结丹"]::after{
+  width:140%; margin-left:-70%; margin-top:-70%; opacity:1;
+  background-image:
+    radial-gradient(circle 1.6px at 38% 66%, rgba(255,236,170,.95), rgba(255,236,170,0) 100%),
+    radial-gradient(circle 1.1px at 58% 80%, rgba(255,214,140,.8),  rgba(255,214,140,0) 100%),
+    radial-gradient(circle 1.2px at 66% 62%, rgba(255,200,120,.7),  rgba(255,200,120,0) 100%),
+    radial-gradient(circle 1px  at 47% 72%, rgba(255,244,200,.9),   rgba(255,244,200,0) 100%);
+  animation:gzEmber 3.4s ease-in-out infinite;      /* 丹火粒子明灭 */
+}
+
+/* ============ 元婴 · 丹破婴生 ============
+ * 主色 RGB(189,149,255) 紫 + 金线 RGB(241,205,150)(JS 主紫相近)
+ * 紫金多层光环(身后三层呼吸) + 婴灵柔和闪烁 + 细碎星光环游。 */
+.cult[data-big="元婴"] .aura{
+  width:235%;
+  background:radial-gradient(circle,
+    rgba(206,172,255,.42),rgba(150,110,235,.12) 46%,transparent 72%) !important;
+}
+.cult[data-big="元婴"]::before{
+  width:104%; margin-left:-52%; margin-top:-52%; opacity:1;
+  background:radial-gradient(circle 50% at 50% 50%,
+    transparent 0 59%, rgba(210,170,255,.5) 60% 60.8%, transparent 61.6%,
+    transparent 61.6% 70%, rgba(241,205,150,.42) 71% 71.8%, transparent 72.6%,
+    transparent 72.6% 81%, rgba(170,130,255,.55) 82% 82.8%, transparent 83.6%);
+  animation:gzSoftBreathe 7s ease-in-out infinite;
+}
+.cult[data-big="元婴"]::after{
+  width:150%; margin-left:-75%; margin-top:-75%; opacity:1;
+  background-image:
+    radial-gradient(circle 1.4px at 30% 58%, rgba(255,250,235,.95), rgba(255,250,235,0) 100%),
+    radial-gradient(circle 1px  at 46% 38%, rgba(220,190,255,.75), rgba(220,190,255,0) 100%),
+    radial-gradient(circle 1.2px at 63% 52%, rgba(255,240,210,.85), rgba(255,240,210,0) 100%),
+    radial-gradient(circle 1px  at 72% 70%, rgba(190,160,255,.65), rgba(190,160,255,0) 100%),
+    radial-gradient(circle 1.3px at 42% 74%, rgba(255,250,240,.8),  rgba(255,250,240,0) 100%),
+    radial-gradient(circle 1px  at 56% 86%, rgba(210,180,255,.6),  rgba(210,180,255,0) 100%);
+  animation:gzTwinkle 4.6s ease-in-out infinite, gzSpinRev 120s linear infinite;
+}
+
+/* ============ 化神 · 元婴化神 ============
+ * 主色 RGB(88,204,255) 青 + 金线 RGB(255,200,120)(JS 现为橙金, 建议同步成青金)
+ * 天地共鸣：大范围青金极光脉动铺开 + 气场边缘隐现雷丝放电。 */
+.cult[data-big="化神"] .aura{
+  width:255%;
+  background:radial-gradient(circle,
+    rgba(150,235,255,.5),rgba(88,204,255,.16) 44%,rgba(255,200,120,.06) 62%,transparent 76%) !important;
+}
+.cult[data-big="化神"]::before{
+  width:150%; margin-left:-75%; margin-top:-75%; opacity:1;
+  background:
+    radial-gradient(circle 50% at 50% 50%,
+      transparent 0 46%, rgba(88,204,255,.14) 49% 60%, transparent 64%,
+      rgba(255,200,120,.1) 88% 97%, transparent 100%),
+    radial-gradient(circle 50% at 50% 50%, rgba(120,220,255,.05) 0 38%, transparent 46%);
+  animation:gzAurora 6.5s ease-in-out infinite;     /* 极光脉动 */
+}
+.cult[data-big="化神"]::after{
+  width:168%; margin-left:-84%; margin-top:-84%; opacity:1;
+  background:repeating-conic-gradient(from 6deg,
+    rgba(190,250,255,.95) 0deg 2deg, transparent 2deg 26deg);
+  -webkit-mask-image:radial-gradient(circle 50% at 50% 50%,
+    transparent 0 56.5%, #000 58.5% 63.5%, transparent 65.5%);
+          mask-image:radial-gradient(circle 50% at 50% 50%,
+    transparent 0 56.5%, #000 58.5% 63.5%, transparent 65.5%);
+  animation:gzSpin 42s linear infinite, gzFlick 2.6s linear infinite; /* 隐现雷丝 */
+}
+
+/* ================= 关键帧总表 ================= */
+@keyframes gzDust{           /* 凡人: 暖尘浮游 */
+  0%,100%{opacity:0;transform:translateX(0) translateY(0)}
+  30%{opacity:.5;transform:translateX(-1.6%) translateY(-.8%)}
+  70%{opacity:.3;transform:translateX(1.4%) translateY(1%)}
+}
+@keyframes gzRise{           /* 炼气: 灵气颗粒上浮(起点隐形, 无跳变) */
+  0%{opacity:0;transform:translateY(26%) scale(.92)}
+  22%{opacity:.85}
+  62%{opacity:.5;transform:translateY(-4%) scale(1)}
+  100%{opacity:0;transform:translateY(-20%)}
+}
+@keyframes gzOrbitQ{         /* 炼气: 倾斜气流环 */
+  from{transform:rotateX(68deg) rotate(0deg)}
+  to  {transform:rotateX(68deg) rotate(360deg)}
+}
+@keyframes gzSpinRev{to{transform:rotate(-360deg)}}
+@keyframes gzOrbitJ{         /* 结丹: 倾斜金砂环 */
+  from{transform:rotateX(64deg) rotate(0deg)}
+  to  {transform:rotateX(64deg) rotate(360deg)}
+}
+@keyframes gzEmber{          /* 结丹: 丹火粒子明灭 */
+  0%,100%{opacity:.15;transform:scale(.96)}
+  45%{opacity:.9;transform:scale(1.04)}
+}
+@keyframes gzSoftBreathe{    /* 元婴: 紫金多层光环柔和呼吸 */
+  0%,100%{opacity:.55;transform:scale(.985)}
+  50%{opacity:1;transform:scale(1.015)}
+}
+@keyframes gzTwinkle{        /* 元婴: 婴灵般柔闪 */
+  0%,100%{opacity:.25}
+  50%{opacity:.95}
+}
+@keyframes gzAurora{         /* 化神: 大范围极光脉动 */
+  0%,100%{opacity:.55;transform:scale(.98)}
+  50%{opacity:1;transform:scale(1.035)}
+}
+@keyframes gzFlick{          /* 化神: 雷丝隐现(不规则放电) */
+  0%,6%{opacity:.05} 10%{opacity:.7} 13%{opacity:.1}
+  17%{opacity:.85} 22%{opacity:.15} 36%{opacity:.6}
+  39%{opacity:.08} 43%{opacity:.75} 50%{opacity:.12}
+  72%{opacity:.5} 75%{opacity:.1} 80%{opacity:.9}
+  86%{opacity:.2} 92%,100%{opacity:.06}
+}
+@keyframes gzSpin{to{transform:rotate(360deg)}}

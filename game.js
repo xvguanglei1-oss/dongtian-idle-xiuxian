@@ -7,12 +7,12 @@
  */
 const SEG4 = ["前期", "中期", "后期", "圆满"];
 const BIGS = [
-  { n: "凡人", segs: 1, color: "#9fc3ff", c: [159,195,255] },
+  { n: "凡人", segs: 1, color: "#c6b07c", c: [198,176,124] },
   { n: "炼气", segs: 13, color: "#7fe0ff", c: [127,224,255] },
-  { n: "筑基", segs: 4, color: "#7fe0c3", c: [127,224,195] },
+  { n: "筑基", segs: 4, color: "#61d0c4", c: [97,208,196] },
   { n: "结丹", segs: 4, color: "#e8c56b", c: [232,197,107] },
   { n: "元婴", segs: 4, color: "#c59bff", c: [197,155,255] },
-  { n: "化神", segs: 4, color: "#ffab6b", c: [255,171,107] },
+  { n: "化神", segs: 4, color: "#58ccff", c: [88,204,255] },
 ];
 const TOTAL_SEGS = BIGS.reduce((s, b) => s + b.segs, 0);   // 30 段
 
@@ -457,6 +457,8 @@ function updateRealmUI() {
   const aura = document.querySelector(".aura");
   if (aura) aura.style.background =
     `radial-gradient(circle,rgba(${r.c},.34),rgba(${r.c},.08) 42%,transparent 68%)`;
+  const cult = document.getElementById("cult");
+  if (cult) cult.dataset.big = r.big;   // 光环特效切换
 }
 function updateHUD() {
   const r = realm();
@@ -1551,51 +1553,9 @@ async function initBg() {
   catch (e) { console.warn("WebGL 不可用，降级星空", e); document.body.classList.add("no-webgl"); }
 }
 async function initBg3D() {
-  const THREE = await import("three");
   const canvas = $("bg");
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setSize(innerWidth, innerHeight);
-  renderer.setClearColor(0x070b16);
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x070b16, 0.02);
-  const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 300);
-  camera.position.set(0, 0.4, 11);
-  const starGeo = new THREE.BufferGeometry();
-  const sn = 650, sp = [];
-  for (let i = 0; i < sn; i++) {
-    const r = 24 + Math.random() * 50, t = Math.random() * Math.PI * 2;
-    sp.push(Math.cos(t) * r, Math.random() * 26 - 2, Math.sin(t) * r);
-  }
-  starGeo.setAttribute("position", new THREE.Float32BufferAttribute(sp, 3));
-  const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x9db6ff, size: 0.22, transparent: true, opacity: .85, sizeAttenuation: true }));
-  scene.add(stars);
-  const mountMat = new THREE.MeshBasicMaterial({ color: 0x0e1830 });
-  for (const [x, y, z] of [[-9,1.4,-20],[-4.5,2.6,-22],[0.5,1.2,-24],[5.5,3.0,-21],[10,1.6,-19],[-13,.9,-16],[13.5,1.1,-17]]) {
-    const m = new THREE.Mesh(new THREE.ConeGeometry(2.6 + Math.random() * 1.6, 4 + Math.random() * 3, 5), mountMat);
-    m.position.set(x, y - 2, z); m.scale.set(1, 1.6, 0.5); scene.add(m);
-  }
-  const dustGeo = new THREE.BufferGeometry();
-  const dn = 90, dp = [];
-  for (let i = 0; i < dn; i++) dp.push((Math.random() - .5) * 24, (Math.random() - .2) * 16, -3 + Math.random() * 7);
-  dustGeo.setAttribute("position", new THREE.Float32BufferAttribute(dp, 3));
-  const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xe8c56b, size: .05, transparent: true, opacity: .7, sizeAttenuation: true, blending: THREE.AdditiveBlending }));
-  scene.add(dust);
-  let last = performance.now(), px = 0, py = 0, tpx = 0, tpy = 0;
-  addEventListener("pointermove", e => { tpx = e.clientX / innerWidth - .5; tpy = e.clientY / innerHeight - .5; });
-  addEventListener("touchmove", e => { tpx = e.touches[0].clientX / innerWidth - .5; tpy = e.touches[0].clientY / innerHeight - .5; }, { passive: true });
-  (function loop(now) {
-    const dt = Math.min(.05, (now - last) / 1000); last = now;
-    stars.rotation.y += dt * .008; dust.rotation.y += dt * .012;
-    const pos = dustGeo.attributes.position;
-    for (let i = 1; i < pos.count; i += 3) { pos.array[i] += dt * .08; if (pos.array[i] > 8) pos.array[i] = -8; }
-    pos.needsUpdate = true;
-    px += (tpx - px) * .03; py += (tpy - py) * .03;
-    camera.position.x = px * 1.4; camera.position.y = .4 + py * .9;
-    camera.lookAt(0, .4, 0);
-    renderer.render(scene, camera);
-    requestAnimationFrame(loop);
-  })(performance.now());
+  const mod = await import("./bg.js");
+  window.__bgCtrl = await mod.initDeepSpace(canvas);
 }
 
 function mainMoment() {
