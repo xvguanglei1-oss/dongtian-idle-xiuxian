@@ -1340,6 +1340,49 @@ function checkMilestones() {
   if (fired) save();
 }
 
+/* 光环测试: 仅预览各境界光环视觉, 不改变真实修为进度 */
+function toggleAuraTest() {
+  const box = $("auraTest");
+  if (!box) return;
+  if (box.style.display !== "none") { box.style.display = "none"; return; }
+  buildAuraTest();
+  box.style.display = "flex";
+}
+function buildAuraTest() {
+  const row = $("auraTestChips");
+  if (!row || row.dataset.built) return;
+  row.dataset.built = "1";
+  BIGS.forEach((big, bi) => {
+    const c = document.createElement("div");
+    c.className = "aura-chip";
+    c.textContent = big.n;
+    c.onclick = () => {
+      row.querySelectorAll(".aura-chip").forEach(x => x.classList.remove("on"));
+      c.classList.add("on");
+      previewRealmVisual(bi);
+    };
+    row.appendChild(c);
+  });
+}
+function previewRealmVisual(bi) {
+  const cult = document.getElementById("cult");
+  const aura = document.querySelector(".aura");
+  const big = BIGS[bi];
+  if (cult) cult.dataset.big = big.n;
+  if (aura) aura.style.background =
+    `radial-gradient(circle,rgba(${big.c},.34),rgba(${big.c},.08) 42%,transparent 68%)`;
+}
+function resetAuraPreview() {
+  const cult = document.getElementById("cult");
+  const aura = document.querySelector(".aura");
+  const r = realm();
+  if (cult) cult.dataset.big = r.big;
+  if (aura) aura.style.background =
+    `radial-gradient(circle,rgba(${r.c},.34),rgba(${r.c},.08) 42%,transparent 68%)`;
+  const row = $("auraTestChips");
+  if (row) row.querySelectorAll(".aura-chip").forEach(x => x.classList.toggle("on", x.textContent === r.big));
+}
+
 function openStory() {
   const m = $("storyModal");
   if (!m) return;

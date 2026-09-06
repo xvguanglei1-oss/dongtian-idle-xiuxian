@@ -179,6 +179,17 @@
       radial-gradient(1px 1px at 55% 90%, rgba(255,255,255,.5), transparent),
       radial-gradient(ellipse 90% 70% at 50% 0%, #0d1830 0%, transparent 60%);
   }
+
+  .aura-tooltip{position:fixed;top:86px;right:12px;z-index:22;width:min(248px,78vw);
+    background:rgba(10,15,28,.9);border:1px solid rgba(232,197,107,.28);border-radius:14px;
+    padding:10px 12px;display:flex;flex-direction:column;gap:8px;backdrop-filter:blur(8px);
+    box-shadow:0 12px 34px rgba(0,0,0,.45)}
+  .aura-tooltip .row{display:flex;flex-wrap:wrap;gap:6px}
+  .aura-chip{flex:none;font-size:11px;padding:5px 11px;border-radius:999px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#dfe5f2;
+    transition:transform .12s}
+  .aura-chip:active{transform:scale(.92)}
+  .aura-chip.on{border-color:#e8c56b;color:#ffe9a8;background:rgba(232,197,107,.18)}
 </style>
 <link rel="stylesheet" href="aura.css">
 <script type="importmap">
@@ -195,6 +206,7 @@
   <div class="hud-right">
     <div class="spirit">🪙 <span id="spirit">0</span></div>
     <div class="rate">修为 <b id="rateText">0</b>/秒</div>
+    <button class="story-btn" style="align-self:flex-end" onclick="toggleAuraTest()">◈ 试光环</button>
   </div>
 </div>
 
@@ -244,6 +256,12 @@
     </div>
     <button class="btn primary story-close" onclick="closeStory()">合上修行录</button>
   </div>
+</div>
+
+<div class="aura-tooltip" id="auraTest" style="display:none">
+  <div style="font-size:10.5px;color:#93a0b8">光环预览 · 不影响修为进度</div>
+  <div class="row" id="auraTestChips"></div>
+  <button class="btn" style="padding:6px 10px;font-size:11px" onclick="resetAuraPreview()">复原为当前境界</button>
 </div>
 
 <script src="game.js"></script>
