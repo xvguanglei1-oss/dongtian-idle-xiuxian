@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>洞天 · 挂机修仙</title>
+<meta name="description" content="洞天挂机修仙：分身自动历险、自动寻宝穿装，离线亦在成长。">
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --gold:#e8c56b; --gold-dim:#b8953f; --ink:#0b1020; --text:#e8ecf6; --dim:#93a0b8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden}
+  body{
+    background:#070b16;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+    user-select:none;-webkit-user-select:none;
+  }
+  #bg{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+  .bg-img{position:fixed;inset:0;background:center/cover no-repeat url(assets/main-bg.jpg);opacity:.14;z-index:1;filter:saturate(1.1)}
+  .vignette{position:fixed;inset:0;z-index:2;pointer-events:none;
+    background:
+      radial-gradient(120% 90% at 50% 8%, transparent 40%, rgba(4,8,18,.55) 100%),
+      linear-gradient(180deg, rgba(5,8,18,.35), transparent 30%, transparent 70%, rgba(4,6,14,.72))}
+
+  /* ---- HUD ---- */
+  .hud{position:fixed;left:0;right:0;top:0;z-index:10;padding:14px 16px 8px;
+    display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .realm-badge{background:rgba(12,18,34,.72);border:1px solid rgba(232,197,107,.35);backdrop-filter:blur(8px);
+    padding:7px 13px;border-radius:999px;display:flex;flex-direction:column;gap:1px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+  .realm-badge .big{font-size:15px;font-weight:800;letter-spacing:.12em;color:var(--gold);line-height:1.2;text-shadow:0 0 12px rgba(232,197,107,.45)}
+  .realm-badge .sub{font-size:10px;color:var(--dim);letter-spacing:.04em}
+  .hud-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+  .spirit{background:rgba(12,18,34,.72);border:1px solid rgba(232,197,107,.3);border-radius:999px;padding:6px 12px;
+    font-size:13px;font-weight:700;color:#7fe0c3;display:flex;gap:5px;align-items:center}
+  .rate{font-size:11px;color:var(--dim);background:rgba(12,18,34,.6);padding:5px 10px;border-radius:999px}
+  .rate b{color:#8fb6ff}
+
+  /* 修为进度 */
+  .exp-wrap{position:fixed;left:0;right:0;bottom:0;z-index:10;padding:0 14px 12px;display:flex;flex-direction:column;gap:6px}
+  .exp-track{position:relative;height:13px;border-radius:999px;background:rgba(10,16,32,.75);border:1px solid rgba(255,255,255,.08);overflow:hidden;backdrop-filter:blur(6px)}
+  .exp-fill{position:absolute;inset:0 auto 0 0;width:0%;border-radius:999px;
+    background:linear-gradient(90deg,#1f3a6e,#3f6bb5 55%,#7fb3ff);box-shadow:0 0 14px rgba(120,180,255,.7)}
+  .exp-labels{display:flex;justify-content:space-between;font-size:10.5px;color:var(--dim)}
+  .exp-labels b{color:#9fc3ff;font-weight:700}
+
+  /* 主角 */
+  .stage{position:fixed;inset:0;z-index:5;display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
+  .cult{position:relative;height:min(54vh,430px);aspect-ratio:825/835;filter:drop-shadow(0 0 30px rgba(120,170,255,.22))}
+  .cult img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;transform-origin:50% 88%}
+  .cult .hair{animation:breath 4.6s ease-in-out infinite}
+  .cult .bodyL{animation:breath 4.6s ease-in-out infinite}
+  .cult .robe{animation:breath 4.6s ease-in-out infinite}
+  .aura{position:absolute;left:50%;top:50%;width:210%;aspect-ratio:1;transform:translate(-50%,-50%);
+    border-radius:50%;pointer-events:none;mix-blend-mode:screen;opacity:.5;
+    background:radial-gradient(circle,rgba(120,170,255,.30),rgba(120,170,255,.06) 42%,transparent 68%);
+    animation:auraPulse 3.8s ease-in-out infinite}
+  .orbit{position:absolute;left:50%;top:46%;width:150%;aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none}
+  .glow-dot{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--gold);
+    box-shadow:0 0 10px 2px rgba(232,197,107,.75);animation:orbitDot 7s linear infinite}
+  @keyframes breath{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-1.6%) scaleY(1.006)}}
+  @keyframes auraPulse{0%,100%{opacity:.38;transform:translate(-50%,-50%) scale(.96)}50%{opacity:.7;transform:translate(-50%,-50%) scale(1.06)}}
+  @keyframes orbitDot{from{transform:rotate(0deg) translateX(46%) rotate(0)}to{transform:rotate(360deg) translateX(46%) rotate(-360deg)}}
+
+  /* 中央按钮 */
+  .actions{position:fixed;left:0;right:0;bottom:58px;z-index:10;display:flex;justify-content:center;gap:10px;padding:0 14px}
+  .btn{pointer-events:auto;border:1px solid rgba(232,197,107,.42);background:linear-gradient(180deg,rgba(232,197,107,.16),rgba(120,90,20,.12));
+    color:var(--gold);border-radius:14px;padding:11px 18px;font-size:14px;font-weight:800;letter-spacing:.06em;
+    backdrop-filter:blur(6px);cursor:pointer;transition:transform .12s;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+  .btn:active{transform:scale(.94)}
+  .btn.primary{background:linear-gradient(180deg,#f0cf7c,#b8943a);color:#241a02;border-color:rgba(255,220,140,.7);
+    box-shadow:0 0 22px rgba(240,200,110,.5)}
+  .btn:disabled{opacity:.4}
+  .btn.ready{animation:btnPulse 1.7s ease-in-out infinite;border-color:rgba(255,228,160,.95);box-shadow:0 0 18px rgba(240,205,120,.35)}
+  @keyframes btnPulse{0%,100%{box-shadow:0 0 12px rgba(240,205,120,.35)}50%{box-shadow:0 0 28px rgba(240,205,120,.95)}}
+
+  /* 日志 */
+  .log{position:fixed;left:0;right:0;bottom:112px;z-index:9;display:flex;justify-content:center;padding:0 14px;pointer-events:none}
+  .log-line{max-width:520px;background:rgba(8,13,26,.68);border:1px solid rgba(255,255,255,.06);border-radius:10px;
+    padding:7px 12px;font-size:12px;color:#c6cfe2;line-height:1.5;backdrop-filter:blur(6px);opacity:0;transform:translateY(6px);
+    transition:opacity .5s,transform .5s}
+  .log-line.show{opacity:1;transform:translateY(0)}
+  .log-line .r{color:var(--gold);font-weight:700}
+  .log-line .g{color:#7fe0c3;font-weight:700}
+
+  /* 突破特效 */
+  #burst{position:fixed;inset:0;z-index:30;pointer-events:none}
+  .flash{position:fixed;inset:0;z-index:31;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 55%,#fff8e0,rgba(255,230,150,.25) 45%,transparent 75%)}
+  .realm-up{position:fixed;left:0;right:0;top:34%;z-index:32;text-align:center;pointer-events:none;opacity:0}
+  .realm-up .t{font-size:40px;font-weight:900;letter-spacing:.3em;color:#ffe9a8;text-shadow:0 0 30px rgba(255,220,130,.9);padding-left:.3em}
+  .realm-up .s{font-size:13px;color:#9fc3ff;margin-top:6px;letter-spacing:.2em}
+  .realm-up.show{animation:realmUp 2.6s ease-out forwards}
+  @keyframes realmUp{0%{opacity:0;transform:scale(.6)}14%{opacity:1;transform:scale(1.08)}22%{transform:scale(1)}78%{opacity:1}100%{opacity:0;transform:scale(1.06)}}
+
+  /* 离线弹窗 */
+  .modal{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(4,7,15,.66);backdrop-filter:blur(4px)}
+  .modal.show{display:flex}
+  .card{background:linear-gradient(180deg,#101a30,#0a1122);border:1px solid rgba(232,197,107,.35);border-radius:18px;
+    padding:24px 22px;max-width:300px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  .card h3{color:var(--gold);font-size:18px;letter-spacing:.14em;margin-bottom:12px}
+  .card p{font-size:13px;color:var(--dim);line-height:1.8}
+  .card .num{color:#7fe0c3;font-weight:800;font-size:17px}
+  .card .btn{margin-top:16px;width:100%}
+
+  .artifacts{position:fixed;left:0;right:0;top:96px;z-index:9;display:flex;justify-content:center;padding:0 10px}
+  .art-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:520px}
+  .art{font-size:10.5px;padding:4px 9px;border-radius:8px;background:rgba(10,16,30,.72);border:1px solid rgba(255,255,255,.09);
+    color:#d8dff0;backdrop-filter:blur(5px);display:flex;gap:4px;align-items:center}
+  .art .q{font-weight:800}
+  .q1{color:#b9c2d4}.q2{color:#5d9e5f}.q3{color:#5f8fe6}.q4{color:#b06ce0}.q5{color:#e8a13c}.q6{color:#ff5c5c}
+
+  /* WebGL 降级: 纯 CSS 星空 */
+  body.no-webgl::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,.7), transparent),
+      radial-gradient(1px 1px at 70% 20%, rgba(255,255,255,.5), transparent),
+      radial-gradient(1.5px 1.5px at 40% 70%, rgba(232,197,107,.8), transparent),
+      radial-gradient(1px 1px at 85% 55%, rgba(255,255,255,.6), transparent),
+      radial-gradient(1.5px 1.5px at 10% 80%, rgba(159,195,255,.8), transparent),
+      radial-gradient(1px 1px at 55% 90%, rgba(255,255,255,.5), transparent),
+      radial-gradient(ellipse 90% 70% at 50% 0%, #0d1830 0%, transparent 60%);
+  }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="bg-img"></div>
+<div class="vignette"></div>
+
+<div class="hud">
+  <div class="realm-badge"><span class="big" id="realmName">凡人</span><span class="sub" id="realmSub">练气初期 · 洞天福地</span></div>
+  <div class="hud-right">
+    <div class="spirit">🪙 <span id="spirit">0</span></div>
+    <div class="rate">修为 <b id="rateText">0</b>/秒</div>
+  </div>
+</div>
+
+<div class="artifacts"><div class="art-row" id="artRow"></div></div>
+
+<div class="stage">
+  <div class="cult" id="cult">
+    <div class="aura"></div>
+    <img class="bodyL" src="assets/cultivator_body.png" alt="">
+    <img class="robe" src="assets/cultivator_robe.png" alt="">
+    <img class="hair" src="assets/cultivator_hair.png" alt="">
+  </div>
+</div>
+
+<div class="log"><div class="log-line" id="logLine"></div></div>
+<div class="actions">
+  <button class="btn" id="btnArray" onclick="tapArray()">聚灵阵 Lv.<span id="arrayLv">1</span></button>
+  <button class="btn primary" id="btnBreak" onclick="manualBreak()">☯ 立即突破</button>
+</div>
+
+<div class="exp-wrap">
+  <div class="exp-labels"><span>境界进度</span><span><b id="expText">0</b> / <b id="expNeed">1000</b></span></div>
+  <div class="exp-track"><div class="exp-fill" id="expFill"></div></div>
+</div>
+
+<canvas id="burst"></canvas>
+<div class="flash" id="flash"></div>
+<div class="realm-up" id="realmUp"><div class="t" id="realmUpT">筑基</div><div class="s">天人感应 · 修为暴涨</div></div>
+
+<div class="modal" id="offlineModal">
+  <div class="card">
+    <h3>游历归来</h3>
+    <p id="offlineText">离线…</p>
+    <button class="btn primary" onclick="closeOffline()">收下机缘</button>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
