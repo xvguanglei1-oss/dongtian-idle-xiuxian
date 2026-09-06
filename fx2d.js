@@ -161,22 +161,18 @@ function initFx(canvas) {
     p.amp = rnd(0.010, 0.024); p.s0 = rnd(0.8, 1.3);
   }
 
-  /* 流光(2D点阵丝带): 软光点沿弯曲曲线密集排布→连续绸带感 */
+  /* 流光: 竖直车道式持续上飘(朝一个方向流动, 不横摆) */
   function mkStreak(cfgV) {
-    const p = { dur: rnd(cfgV.dur[0], cfgV.dur[1]), born: 0, seed: Math.floor(rnd(0, 1e6)),
-      x0: rnd(-0.22, 0.22), y0: rnd(0.14, 0.26), rise: rnd(0.32, 0.42),
-      ph: rnd(0, 6.28), ph2: rnd(0, 6.28),
-      f: rnd(0.5, 0.9), f2: rnd(1.2, 1.8),
-      amp: rnd(0.024, 0.05), s0: rnd(0.9, 1.2), ln: rnd(0.95, 1.15),
-    };
+    const lane = streaks.length;
+    const p = { lane, dur: rnd(3.6, 5.4), born: -rnd(0, 1.8), seed: Math.floor(rnd(0, 1e6)),
+      len: rnd(0.9, 1.15), s0: rnd(0.9, 1.15), seed2: Math.floor(rnd(0, 6.28)) };
     return p;
   }
-  function respawnStreak(p, cfgV) {
-    respawnP(p, cfgV);
-    p.x0 = rnd(-0.22, 0.22); p.y0 = rnd(0.14, 0.26);
-    p.rise = rnd(0.32, 0.42); p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
-    p.f = rnd(0.5, 0.9); p.f2 = rnd(1.2, 1.8);
-    p.amp = rnd(0.024, 0.05); p.s0 = rnd(0.9, 1.2); p.ln = rnd(0.95, 1.15);
+  function respawnStreak(p) {
+    p.born = -rnd(1.2, 3.2);
+    p.dur = rnd(3.6, 5.4);
+    p.len = rnd(0.9, 1.15); p.s0 = rnd(0.9, 1.15);
+    p.seed = Math.floor(rnd(0, 1e6));
   }
 
   function draw(t, dt) {
@@ -245,47 +241,39 @@ function initFx(canvas) {
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
     }
 
-    /* ---- ② 流光: 整张 fx_gold_streak PNG 绕支点旋转扫动 ----
-       贴图本体是一条带锥形拖尾的柔光带。不改其内部像素:
-       让它绕角色腰侧支点做缓慢大幅扇扫(摇头摆尾) →
-       头尾在空间划出弧线, 产生"光带在周身飞舞"的动感。
-       锥尖(亮段)朝外, 尾端收在腰侧。 */
-    for (const p of streaks) {
-      p.born += dt;
-      if (p.born < 0) continue;
-      if (p.born > p.dur) { respawnStreak(p, cfgV.streak); continue; }
-      const u = p.born / p.dur, mv = easeIO(u);
-      const col = pickStreak(p.seed, tCol, sCol);
-      const ic = tinted("streak", col);
-      if (!ic) continue;
-      const al = safe(prof(u) * cfgV.streak.pk * breathe2, 0);
-      if (al <= 0.01) continue;
-
-      const lenTotal = H * (0.20 + 0.06 * mv) * p.ln;   // 光带长
-      const wid = lenTotal * 0.11;
-      /* 支点: 角色腰侧(左或右), 随生命略上浮 */
-      const px = cx + p.x0 * W;
-      const py = H * (0.58 - 0.16 * mv);
-      /* 大幅缓慢摆扫: 相对竖直 ±(0.5~0.75 rad) */
-      const swing = Math.sin(t * (0.32 + p.f * 0.25) + p.ph) * (0.55 + p.f2 * 0.12);
-      const ang = safe(swing, 0);
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.rotate(ang);
-      ctx.globalAlpha = al;
-      /* 光带从支点上方伸出: 头(亮段v0.3)在远端, 尾(透明)在支点 */
-      const sy = ic.height * 0.30;
-      const sh = ic.height * 0.66;
-      ctx.drawImage(ic, 0, sy, ic.width, sh, -wid / 2, -lenTotal, wid, lenTotal);
-      ctx.restore();
-      /* 远端小亮点 */
-      const hx = px + Math.sin(ang) * lenTotal;
-      const hy = py - Math.cos(ang) * lenTotal;
-      const hs = H * 0.017 * p.s0;
-      const hc = tinted("mote", col);
-      if (hc) {
-        ctx.globalAlpha = al * 0.95;
-        ctx.drawImage(hc, hx - hs / 2, hy - hs / 2, hs, hs);
+    /* ---- ② 流光: 整张 fx_gold_streak PNG 竖直车道持续上飘 ----
+       流光只朝一个方向: 每道光带锁定一条竖直车道, 自下而上
+       匀速升腾(头亮端朝上领飞, 尾端拖在下方渐隐), 出顶后
+       延迟重生, 多根错峰 → 一股持续的升腾灵气流。 */
+    if (cfgV.streak.n) {
+      const lanes = cfgV.streak.n;
+      for (const p of streaks) {
+        p.born += dt;
+        if (p.born < 0) continue;
+        if (p.born > p.dur) { respawnStreak(p); continue; }
+        const u = p.born / p.dur;
+        const col = pickStreak(p.seed, tCol, sCol);
+        const ic = tinted("streak", col);
+        if (!ic) continue;
+        const al = safe(prof(u) * cfgV.streak.pk * breathe2, 0);
+        if (al <= 0.01) continue;
+        /* 车道: 均匀分布在身体宽度内(±0.16W), 永不横摆 */
+        const off = lanes > 1 ? (p.lane / (lanes - 1)) * 2 - 1 : 0;
+        const x = cx + off * W * 0.16;
+        const lenTotal = H * (0.18 + 0.05 * (1 - u)) * p.len;
+        const wid = lenTotal * 0.11;
+        /* 上飘: 从腿侧(0.92H)升到头顶之外(-0.18H), 头部在上 */
+        const headY = H * (0.92 - 1.10 * u);
+        ctx.globalAlpha = al;
+        ctx.drawImage(ic, 0, ic.height * 0.30, ic.width, ic.height * 0.62,
+                      x - wid / 2, headY, wid, lenTotal);
+        /* 头部领光点 */
+        const hs = H * 0.016 * p.s0;
+        const hc = tinted("mote", col);
+        if (hc) {
+          ctx.globalAlpha = al * 0.95;
+          ctx.drawImage(hc, x - hs / 2, headY - hs / 2, hs, hs);
+        }
       }
     }
 
