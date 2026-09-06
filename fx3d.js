@@ -275,8 +275,8 @@ export async function initFx3d(canvas) {
   renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
   renderer.setClearColor(0x000000, 0);
   scene = new THREE.Scene();
-  cam = new THREE.OrthographicCamera(-1, 1, 1, -1, -20, 60);
-  cam.position.set(0, 0, 20);
+  cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.5, 80); // near>0, 避免粒子贴在近平面上被裁剪
+  cam.position.set(0, 0, 40);
   group = new THREE.Group();
   scene.add(group);
   texDot = makeDotTexture();
