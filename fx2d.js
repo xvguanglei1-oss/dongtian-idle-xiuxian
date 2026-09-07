@@ -161,21 +161,26 @@ function initFx(canvas) {
     p.amp = rnd(0.010, 0.024); p.s0 = rnd(0.8, 1.3);
   }
 
-  /* 流光: 竖直车道式持续上飘(朝一个方向流动, 不横摆, 不到顶)
-     两形态: narrow=窄锥细缕(streak) / wide=宽柔光束(beam) */
-  function mkStreak(cfgV) {
+  /* 流光: 蜿蜒上飘。三形态用尽仓库三张竖长柔光素材:
+     type0 = fx_gold_streak     窄锥细缕(主力)
+     type1 = fx_bloom_ray_soft  中宽放射柔光
+     type2 = fx_gold_beam_soft  宽柔光束(已收窄)
+     共同: 竖直车道为主, 叠加低频小幅度S形蜿蜒(方向仍朝上)。 */
+  function mkStreak() {
     const lane = streaks.length;
-    const wide = Math.random() < 0.4;
-    const p = { lane, wide, dur: rnd(wide ? 5.0 : 3.8, wide ? 7.0 : 5.4),
-      born: -rnd(0, 1.8), seed: Math.floor(rnd(0, 1e6)),
-      len: rnd(0.9, 1.15), s0: rnd(0.9, 1.15) };
+    const r = Math.random(), type = r < 0.4 ? 0 : (r < 0.7 ? 1 : 2);
+    const dur0 = [3.6, 4.4, 5.0][type], dur1 = [5.0, 6.2, 7.2][type];
+    const p = { lane, type, dur: rnd(dur0, dur1), born: -rnd(0, 1.8),
+      seed: Math.floor(rnd(0, 1e6)), ph: rnd(0, 6.28),
+      amp: rnd(0.016, 0.03), len: rnd(0.9, 1.15) };
     return p;
   }
   function respawnStreak(p) {
-    p.born = -rnd(1.2, 3.2);
-    p.dur = rnd(p.wide ? 5.0 : 3.8, p.wide ? 7.0 : 5.4);
-    p.len = rnd(0.9, 1.15); p.s0 = rnd(0.9, 1.15);
-    p.seed = Math.floor(rnd(0, 1e6));
+    const dur0 = [3.6, 4.4, 5.0][p.type], dur1 = [5.0, 6.2, 7.2][p.type];
+    p.born = -rnd(1.2, 3.4);
+    p.dur = rnd(dur0, dur1);
+    p.seed = Math.floor(rnd(0, 1e6)); p.ph = rnd(0, 6.28);
+    p.amp = rnd(0.016, 0.03); p.len = rnd(0.9, 1.15);
   }
 
   function draw(t, dt) {
@@ -244,47 +249,48 @@ function initFx(canvas) {
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
     }
 
-    /* ---- ② 流光: 窄锥+宽柔混合, 竖直车道持续上飘 ----
-       形态A narrow = fx_gold_streak 细缕
-       形态B wide   = fx_gold_beam_soft 宽柔光束(宽版, 不旋转)
-       均锁定竖直车道朝上流动; 在接近头顶(0.3H)处开始渐隐,
-       0.1H 前完全消失 —— 灵气升腾, 不飘过头顶。 */
+    /* ---- ② 流光: 三形态素材蜿蜒上飘 (无圆头, 贴图本尊原样) ----
+       type0 fx_gold_streak 窄锥 · type1 fx_bloom_ray_soft 中宽
+       type2 fx_gold_beam_soft 宽柔(收窄)
+       竖直车道为主, 叠加低频小幅度蜿蜒; 升到头顶前渐隐散逸。 */
     if (cfgV.streak.n) {
       const lanes = cfgV.streak.n;
+      const TEXK = ["streak", "ray", "beam"];
+      const LENS = [0.18, 0.20, 0.21];
+      const WIDS = [0.11, 0.13, 0.15];
       for (const p of streaks) {
         p.born += dt;
         if (p.born < 0) continue;
         if (p.born > p.dur) { respawnStreak(p); continue; }
         const u = p.born / p.dur;
         const col = pickStreak(p.seed, tCol, sCol);
-        const texKey = p.wide ? "beam" : "streak";
-        const ic = tinted(texKey, col);
+        const ic = tinted(TEXK[p.type], col);
         if (!ic) continue;
-        /* 头顶渐隐: headY 0.34H 开始淡出, 0.12H 处为0 */
-        const headY = H * (0.74 - 0.62 * u);          // 胸侧→头顶前, 全程屏内
+        /* 升腾轨迹: 胸侧→头顶前 */
+        const headY = H * (0.74 - 0.60 * u);
         const fadeTop = Math.max(0, Math.min(1, (headY - H * 0.12) / (H * 0.22)));
-        const al = safe(prof(u) * cfgV.streak.pk * breathe2 * fadeTop, 0);
-        if (al <= 0.01) continue;
-        /* 车道: 均匀分布身体宽度 ±0.16W, 永不横摆 */
+        /* 透明度调高 (×1.25) */
+        const al = Math.min(1, safe(prof(u) * cfgV.streak.pk * breathe2 * fadeTop * 1.25, 0));
+        if (al <= 0.015) continue;
         const off = lanes > 1 ? (p.lane / (lanes - 1)) * 2 - 1 : 0;
-        const x = cx + off * W * 0.16;
-        const lenTotal = H * (p.wide ? 0.22 : 0.18) * p.len;   // 尾端不越屏
-        const wid = lenTotal * (p.wide ? 0.20 : 0.11);
+        const xLane = cx + off * W * 0.15;
+        /* 蜿蜒: 随上升加一个半波长的低幅S, 方向总体朝上 */
+        const sway = Math.sin(u * Math.PI * 1.0 + t * 0.7 + p.ph) * p.amp * W * (0.4 + u);
+        const x = xLane + sway;
+        const lenTotal = H * LENS[p.type] * p.len;
+        const wid = lenTotal * WIDS[p.type];
+        const midY = headY + lenTotal * 0.5;
+        /* 倾角随蜿蜒切线微转(小) */
+        const slope = Math.cos(u * Math.PI * 1.0 + t * 0.7 + p.ph) * p.amp * 2.2 * (0.4 + u);
+        const ang = Math.atan(safe(slope, 0)) * 0.55;
+        ctx.save();
+        ctx.translate(x, midY);
+        ctx.rotate(safe(ang, 0));
         ctx.globalAlpha = al;
-        if (p.wide) {
-          ctx.drawImage(ic, 0, ic.height * 0.24, ic.width, ic.height * 0.62,
-                        x - wid / 2, headY, wid, lenTotal);
-        } else {
-          ctx.drawImage(ic, 0, ic.height * 0.30, ic.width, ic.height * 0.62,
-                        x - wid / 2, headY, wid, lenTotal);
-        }
-        /* 头部领光点 */
-        const hs = H * (p.wide ? 0.024 : 0.016) * p.s0;
-        const hc = tinted("mote", col);
-        if (hc) {
-          ctx.globalAlpha = al * 0.95;
-          ctx.drawImage(hc, x - hs / 2, headY - hs / 2, hs, hs);
-        }
+        /* 头部用贴图较亮段(sy≈0.35), 尾拖到透明 — 贴图自身形状 */
+        ctx.drawImage(ic, 0, ic.height * 0.35, ic.width, ic.height * 0.55,
+                      -wid / 2, -lenTotal * 0.5, wid, lenTotal);
+        ctx.restore();
       }
     }
 
