@@ -161,26 +161,26 @@ function initFx(canvas) {
     p.amp = rnd(0.010, 0.024); p.s0 = rnd(0.8, 1.3);
   }
 
-  /* 流光: 蜿蜒上飘。三形态用尽仓库三张竖长柔光素材:
-     type0 = fx_gold_streak     窄锥细缕(主力)
-     type1 = fx_bloom_ray_soft  中宽放射柔光
-     type2 = fx_gold_beam_soft  宽柔光束(已收窄)
-     共同: 竖直车道为主, 叠加低频小幅度S形蜿蜒(方向仍朝上)。 */
+  /* 流光: 流线尾迹(教程经典做法·丝滑) — 每道是一颗移动的
+     光点沿蜿蜒路径上浮, 逐帧记录路径(trace), 画成:
+     尾→头 线性渐变的柔光细线(外层halo+内层亮芯+圆帽),
+     方向恒朝上但轨迹带低频曲率, 丝滑无接缝。 */
   function mkStreak() {
     const lane = streaks.length;
-    const r = Math.random(), type = r < 0.4 ? 0 : (r < 0.7 ? 1 : 2);
-    const dur0 = [3.6, 4.4, 5.0][type], dur1 = [5.0, 6.2, 7.2][type];
-    const p = { lane, type, dur: rnd(dur0, dur1), born: -rnd(0, 1.8),
-      seed: Math.floor(rnd(0, 1e6)), ph: rnd(0, 6.28),
-      amp: rnd(0.016, 0.03), len: rnd(0.9, 1.15) };
+    const p = { lane, dur: rnd(2.6, 3.6), born: -rnd(0, 2.0),
+      seed: Math.floor(rnd(0, 1e6)), ph: rnd(0, 6.28), ph2: rnd(0, 6.28),
+      f1: rnd(0.7, 1.3), f2: rnd(1.8, 2.8),
+      amp: rnd(0.012, 0.026), trace: [] };
     return p;
   }
   function respawnStreak(p) {
-    const dur0 = [3.6, 4.4, 5.0][p.type], dur1 = [5.0, 6.2, 7.2][p.type];
-    p.born = -rnd(1.2, 3.4);
-    p.dur = rnd(dur0, dur1);
-    p.seed = Math.floor(rnd(0, 1e6)); p.ph = rnd(0, 6.28);
-    p.amp = rnd(0.016, 0.03); p.len = rnd(0.9, 1.15);
+    p.born = -rnd(1.0, 2.6);
+    p.dur = rnd(2.6, 3.6);
+    p.seed = Math.floor(rnd(0, 1e6));
+    p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
+    p.f1 = rnd(0.7, 1.3); p.f2 = rnd(1.8, 2.8);
+    p.amp = rnd(0.012, 0.026);
+    p.trace = [];
   }
 
   function draw(t, dt) {
@@ -249,48 +249,61 @@ function initFx(canvas) {
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
     }
 
-    /* ---- ② 流光: 三形态素材蜿蜒上飘 (无圆头, 贴图本尊原样) ----
-       type0 fx_gold_streak 窄锥 · type1 fx_bloom_ray_soft 中宽
-       type2 fx_gold_beam_soft 宽柔(收窄)
-       竖直车道为主, 叠加低频小幅度蜿蜒; 升到头顶前渐隐散逸。 */
+    /* ---- ② 流光: 丝滑流线尾迹 ----
+       每道光 = 头部光点沿蜿蜒路径上浮, trace记录轨迹;
+       用 尾→头 线性渐变细线渲染(外晕+亮芯), round帽,
+       lighter叠加 → 柔和连续的流动光线, 方向恒朝上。 */
     if (cfgV.streak.n) {
       const lanes = cfgV.streak.n;
-      const TEXK = ["streak", "ray", "beam"];
-      const LENS = [0.18, 0.20, 0.21];
-      const WIDS = [0.11, 0.13, 0.15];
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
       for (const p of streaks) {
         p.born += dt;
         if (p.born < 0) continue;
         if (p.born > p.dur) { respawnStreak(p); continue; }
         const u = p.born / p.dur;
+        const tNow = t * 1.0;
         const col = pickStreak(p.seed, tCol, sCol);
-        const ic = tinted(TEXK[p.type], col);
-        if (!ic) continue;
-        /* 升腾轨迹: 胸侧→头顶前 */
-        const headY = H * (0.74 - 0.60 * u);
-        const fadeTop = Math.max(0, Math.min(1, (headY - H * 0.12) / (H * 0.22)));
-        /* 透明度调高 (×1.25) */
-        const al = Math.min(1, safe(prof(u) * cfgV.streak.pk * breathe2 * fadeTop * 1.25, 0));
-        if (al <= 0.015) continue;
+        /* 头顶消散 */
+        const headY = H * (0.82 - 0.60 * u);
+        const fadeTop = Math.max(0, Math.min(1, (headY - H * 0.10) / (H * 0.20)));
+        const al = safe(prof(u) * cfgV.streak.pk * breathe2 * fadeTop, 0);
+        if (al <= 0.01) continue;
         const off = lanes > 1 ? (p.lane / (lanes - 1)) * 2 - 1 : 0;
         const xLane = cx + off * W * 0.15;
-        /* 蜿蜒: 随上升加一个半波长的低幅S, 方向总体朝上 */
-        const sway = Math.sin(u * Math.PI * 1.0 + t * 0.7 + p.ph) * p.amp * W * (0.4 + u);
-        const x = xLane + sway;
-        const lenTotal = H * LENS[p.type] * p.len;
-        const wid = lenTotal * WIDS[p.type];
-        const midY = headY + lenTotal * 0.5;
-        /* 倾角随蜿蜒切线微转(小) */
-        const slope = Math.cos(u * Math.PI * 1.0 + t * 0.7 + p.ph) * p.amp * 2.2 * (0.4 + u);
-        const ang = Math.atan(safe(slope, 0)) * 0.55;
-        ctx.save();
-        ctx.translate(x, midY);
-        ctx.rotate(safe(ang, 0));
-        ctx.globalAlpha = al;
-        /* 头部用贴图较亮段(sy≈0.35), 尾拖到透明 — 贴图自身形状 */
-        ctx.drawImage(ic, 0, ic.height * 0.35, ic.width, ic.height * 0.55,
-                      -wid / 2, -lenTotal * 0.5, wid, lenTotal);
-        ctx.restore();
+        /* 蜿蜒轨迹(两频正弦, 频率低, 幅度小) */
+        const sway = Math.sin(tNow * p.f1 + p.ph) * p.amp
+                   + Math.sin(tNow * p.f2 + p.ph2) * p.amp * 0.5;
+        const x = xLane + sway * W * (0.4 + u * 0.6);
+        /* 记录轨迹(采样到顶部后轨迹自然缩短) */
+        p.trace.unshift({ x, y: headY });
+        if (p.trace.length > 30) p.trace.length = 30;
+        if (p.trace.length < 2) continue;
+        /* 渐隐旧尾: 出生后一段时间轨迹点数达上限, 尾部按时间淡去 */
+        const n = p.trace.length;
+        const head = p.trace[0], tail = p.trace[n - 1];
+        /* 外晕 */
+        let g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+        g.addColorStop(0, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",0)");
+        g.addColorStop(0.7, "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + (0.16 * al) + ")");
+        g.addColorStop(1, "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + (0.30 * al) + ")");
+        ctx.strokeStyle = g;
+        ctx.lineWidth = H * 0.011;
+        ctx.beginPath();
+        ctx.moveTo(tail.x, tail.y);
+        for (let i = n - 2; i >= 0; i--) ctx.lineTo(p.trace[i].x, p.trace[i].y);
+        ctx.stroke();
+        /* 亮芯(更亮更细) */
+        g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+        g.addColorStop(0, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",0)");
+        g.addColorStop(0.75, "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + (0.5 * al) + ")");
+        g.addColorStop(1, "rgba(255,255,255," + (0.85 * al) + ")");
+        ctx.strokeStyle = g;
+        ctx.lineWidth = H * 0.0036;
+        ctx.beginPath();
+        ctx.moveTo(tail.x, tail.y);
+        for (let i = n - 2; i >= 0; i--) ctx.lineTo(p.trace[i].x, p.trace[i].y);
+        ctx.stroke();
       }
     }
 
