@@ -110,8 +110,7 @@ function initFx(canvas) {
   const ctx = canvas.getContext("2d");
   const host = canvas.parentElement;
   let W = 0, H = 0, dpr = 1, raf = 0, last = 0, ready = false;
-  let motes = [], streaks = [];
-  let streakDrawn = 0, streakDiagSent = false, streakFrames = 0;
+  let motes = [], lights = [], emitters = [];
 
   const fit = () => {
     try {
@@ -147,8 +146,8 @@ function initFx(canvas) {
   }
   function prepare(cfgV) {
     while (motes.length < cfgV.mote.n) motes.push(mkMote(cfgV.mote));
-    while (streaks.length < cfgV.streak.n) streaks.push(mkStreak(cfgV.streak));
-    motes.length = cfgV.mote.n; streaks.length = cfgV.streak.n;
+    motes.length = cfgV.mote.n;
+    syncEmitters(cfgV);
   }
   function respawnP(p, cfgV) {
     p.born = -rnd(0.8, 2.4);
@@ -163,26 +162,26 @@ function initFx(canvas) {
     p.amp = rnd(0.010, 0.024); p.s0 = rnd(0.8, 1.3);
   }
 
-  /* 流光: 流线尾迹(教程经典做法·丝滑) — 每道是一颗移动的
-     光点沿蜿蜒路径上浮, 逐帧记录路径(trace), 画成:
-     尾→头 线性渐变的柔光细线(外层halo+内层亮芯+圆帽),
-     方向恒朝上但轨迹带低频曲率, 丝滑无接缝。 */
-  function mkStreak() {
-    const lane = streaks.length;
-    const p = { lane, dur: rnd(2.6, 3.6), born: -rnd(0, 2.0),
-      seed: Math.floor(rnd(0, 1e6)), ph: rnd(0, 6.28), ph2: rnd(0, 6.28),
-      f1: rnd(0.7, 1.3), f2: rnd(1.8, 2.8),
-      amp: rnd(0.012, 0.026), trace: [], len: rnd(0.95, 1.15) };
-    return p;
+  /* ===== 流光: 发射器粒子流(干净写法) =====
+     每条"光流"= 车道上一个发射器, 按速率持续喷发光粒;
+     光粒沿竖直上浮(微减速)+低幅摆动, 寿命内 alpha 平滑衰减,
+     升到头顶区域前自然淡没 —— 光就是粒子自己, 无轨迹无描边。 */
+  function syncEmitters(cfgV) {
+    const want = cfgV.streak ? cfgV.streak.n : 0;
+    while (emitters.length < want) {
+      emitters.push({ lane: emitters.length, t: rnd(0, 1), ph: rnd(0, 6.28) });
+    }
+    if (emitters.length > want) emitters.length = want;
   }
-  function respawnStreak(p) {
-    p.born = -rnd(0.2, 1.0);
-    p.dur = rnd(2.6, 3.6);
-    p.seed = Math.floor(rnd(0, 1e6));
-    p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
-    p.f1 = rnd(0.7, 1.3); p.f2 = rnd(1.8, 2.8);
-    p.amp = rnd(0.012, 0.026);
-    p.trace = []; p.len = rnd(0.95, 1.15);
+  function spawnLight(em, cfgV, off, laneN) {
+    const col = pickStreak(Math.floor(rnd(0, 1e6)), cfgV.t, cfgV.s);
+    const bx = (W / 2) + off * W * 0.17;
+    return { bx, x: bx, y: H * (0.84 + rnd(-0.02, 0.02)),
+      vy: H * rnd(0.26, 0.36),
+      age: 0, dur: rnd(1.5, 2.3),
+      ph: rnd(0, 6.28), f: rnd(0.8, 1.6),
+      amp: rnd(0.004, 0.012),
+      s0: rnd(0.8, 1.25), col };
   }
 
   function draw(t, dt) {
@@ -251,84 +250,40 @@ function initFx(canvas) {
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
     }
 
-    /* ---- ② 流光(精修·自然流线): 数道灵气沿"外→中"微微汇聚的
-       斜流车道, 自腰侧向百会升腾。每道=运动光点+逐帧轨迹,
-       渲染: 尾→头 smoothstep 渐变 + 柔光外晕/中亮层/头部白芯
-       + 柔光圆头 + 沿线细尘点缀 → 绵长丝滑又细腻。 */
-    if (cfgV.streak.n) {
-      const lanes = cfgV.streak.n;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      const sweep = 0.24;                 // 车道从身侧向内收束的比例
-      for (const p of streaks) {
-        p.born += dt;
-        if (p.born < 0) continue;
-        if (p.born > p.dur) { respawnStreak(p); continue; }
-        const u = p.born / p.dur;
-        const col = pickStreak(p.seed, tCol, sCol);
-        /* 升腾: 腰侧→头顶前 */
-        const headY = H * (0.82 - 0.56 * u);
-        /* 头顶 fade(只在最末段u>=0.86部分衰减, 之前全程都画) */
-        const tailFade = ss(0.86, 1.0, u);
-        const base = prof(u) * cfgV.streak.pk * breathe2 * tailFade * 1.35;
-        const al = Math.min(1, safe(base, 0));
-        if (al <= 0.008) continue;
-        /* 车道: 起点均匀分布身侧, 高度越高越向内收(百会汇聚) */
-        const off = lanes > 1 ? (p.lane / (lanes - 1)) * 2 - 1 : 0;
-        const laneBase = cx + off * W * 0.17;
-        const tHi = (0.82 - (headY / H)) / 0.56;     // 0底..1顶
-        const xNow = laneBase - off * W * sweep * tHi;
-        /* 低幅蜿蜒(自然, 不明显摆动) */
-        const sway = (Math.sin(t * p.f1 + p.ph) + 0.5 * Math.sin(t * p.f2 + p.ph2))
-                     * p.amp * W * 0.6;
-        const x = xNow + sway;
-        /* 轨迹 */
-        p.trace.unshift({ x, y: headY });
-        if (p.trace.length > 42) p.trace.length = 42;
-        if (p.trace.length < 2) continue;
-        const n = p.trace.length;
-        streakDrawn += 1;
-        const cut = Math.max(2, Math.min(n - 1, Math.floor(n * 0.55)));   // 头段
-        const cutW = Math.max(1, Math.min(n - 1, Math.floor(n * 0.25)));  // 白芯
-        /* 0) 构建轨迹路径(复用, 长度不足自动跳过) */
-        const tracePath = (i0, i1) => {
-          if (i1 - i0 < 2) return;
-          ctx.beginPath();
-          ctx.moveTo(p.trace[i0].x, p.trace[i0].y);
-          for (let i = i0 + 1; i < i1; i++) ctx.lineTo(p.trace[i].x, p.trace[i].y);
-        };
-        const c0 = col[0] + "," + col[1] + "," + col[2];
-        /* 1) 柔光外晕(整条淡) */
-        ctx.strokeStyle = "rgba(" + c0 + "," + (0.16 * al) + ")";
-        ctx.lineWidth = H * 0.012;
-        tracePath(0, n); ctx.stroke();
-        /* 2) 尾段(旧55%, 细而淡) */
-        ctx.strokeStyle = "rgba(" + c0 + "," + (0.30 * al) + ")";
-        ctx.lineWidth = H * 0.0038;
-        if (cut < n - 1) { tracePath(cut, n); ctx.stroke(); }
-        /* 3) 头段(近头55%, 粗而亮) */
-        ctx.strokeStyle = "rgba(" + c0 + "," + (0.85 * al) + ")";
-        ctx.lineWidth = H * 0.0052;
-        tracePath(0, cut); ctx.stroke();
-        /* 4) 头部前25% 白亮高光 */
-        ctx.strokeStyle = "rgba(255,255,255," + (0.85 * al) + ")";
-        ctx.lineWidth = H * 0.0026;
-        tracePath(0, cutW); ctx.stroke();
-        /* 5) 沿线细尘点缀(每5点一颗) */
-        for (let i = 0; i < n; i += 5) {
-          const qp = p.trace[i];
-          const fade = 1 - i / n;
-          const sz = H * 0.010 * fade;
-          ctx.globalAlpha = al * (0.4 + 0.6 * fade) * 0.6;
-          const ic2 = tinted("mote", col);
-          if (ic2) ctx.drawImage(ic2, qp.x - sz / 2, qp.y - sz / 2, sz, sz);
+    /* ---- ② 流光: 发射器粒子流(光粒上浮) ----
+       各车道发射器按频率喷发光粒; 光粒竖直上浮+低幅摆动,
+       寿命内 alpha=(1-u)^2 平滑衰减, 升过头顶前自然淡没。 */
+    if (emitters.length) {
+      const laneN = emitters.length;
+      const eRate = 15;                     // 每秒每车道粒子数
+      for (const em of emitters) {
+        em.t += dt * eRate;
+        while (em.t >= 1) {
+          em.t -= 1;
+          const off = laneN > 1 ? (em.lane / (laneN - 1)) * 2 - 1 : 0;
+          const q = spawnLight(em, cfgV, off, laneN);
+          lights.push(q);
         }
-        /* 6) 柔光头部(白光点) */
-        ctx.globalAlpha = al * 0.9;
-        const hs = H * 0.020;
-        const hc = tinted("mote", [255, 255, 255]);
-        if (hc) ctx.drawImage(hc, p.trace[0].x - hs / 2, p.trace[0].y - hs / 2, hs, hs);
-        ctx.globalAlpha = 1;
+      }
+      if (lights.length > 160) lights.splice(0, lights.length - 160);
+      for (let i = lights.length - 1; i >= 0; i--) {
+        const q = lights[i];
+        q.age += dt;
+        if (q.age >= q.dur) { lights.splice(i, 1); continue; }
+        const u = q.age / q.dur;
+        /* 上浮(微减速) + 低幅摆动 */
+        q.y -= q.vy * dt * (1 - 0.45 * u);
+        q.x = q.bx + Math.sin(q.age * q.f + q.ph) * q.amp * W;
+        /* 头顶淡出(到 0.12H 全隐) */
+        const topF = Math.max(0, Math.min(1, (q.y / H - 0.10) / 0.18));
+        const al = Math.pow(1 - u, 1.6) * cfgV.streak.pk * breathe2 * topF * 1.1;
+        if (al <= 0.01) continue;
+        const sz = H * 0.020 * q.s0 * (1 - 0.35 * u);
+        const ic = tinted("mote", q.col);
+        if (ic) {
+          ctx.globalAlpha = Math.min(1, al);
+          ctx.drawImage(ic, q.x - sz / 2, q.y - sz / 2, sz, sz);
+        }
       }
     }
 
@@ -344,28 +299,10 @@ function initFx(canvas) {
       const cfgV = REALM_VIS[idx()];
       prepare(cfgV);
       draw(now / 1000, dt);
-      // 流光自检: 每~1.5s 报告每条流光状态
-      if ((performance.now() - 3000) > 0) {
-        streakFrames = (streakFrames || 0) + 1;
-        if (streakFrames % 90 === 0) {
-          const cv0 = REALM_VIS[idx()];
-          const live = streaks.filter(p => p.born >= 0 && p.born <= p.dur).length;
-          const info = "n=" + (cv0 && cv0.streak ? cv0.streak.n : 0)
-            + " 活=" + live + " 池=" + streaks.length
-            + " drw=" + streakDrawn + (streakDiagSent ? "" : "[off]");
-          if (streakDrawn === 0 && !streakDiagSent && cv0 && cv0.streak && cv0.streak.n > 0) {
-            streakDiagSent = true;
-            window.__fxErr = "流光未绘制 " + info;
-          } else if (streakDiagSent && live > 0) {
-            window.__fxErr = "流光正常 " + info;
-            streakDiagSent = false;
-          }
-          streakDrawn = 0;
-        }
-      }
     } catch (e) {
       if (!window.__fxErr) window.__fxErr = "fx2d: " + (e && e.message || e);
     }
+
   }
 
   loadAll().then(() => { ready = true; });
