@@ -15,15 +15,16 @@ const BIGS = [
   { n: "化神", segs: 4, color: "#58ccff", c: [88,204,255] },
 ];
 const TOTAL_SEGS = BIGS.reduce((s, b) => s + b.segs, 0);   // 30 段
+let __auraBig = null;   // 光环预览中的大境界(为 null=跟随真实修为)
 
-/* ---- 成长曲线(目标 ≈3个月到化神, 前快后稳; 全部可调) ----
- * REALM_DAYS: 各境目标天数(合计90天)
- * SEG_SCALE : 修为需求系数锚点(0聚灵阵玩家偏慢、正常升阵约90天上下; 上线后按真实数据微调)
+/* ---- 成长曲线(目标 ≈1个月到化神, 前期快、后期稳; 全部可调) ----
+ * REALM_DAYS: 各境目标天数(合计30天; 炼气/筑基压短 → 前期一天能冲好几层)
+ * SEG_SCALE : 修为需求系数锚点(=4 → 不开聚灵阵纯挂机也≈设计天数; 升阵会更快)
  * arrMult   : 聚灵阵收益 前10级+35%/11~20级+18%/21~30级+8%, 30级封顶, 防止后期产出失控
  * SPIRIT_RATE/ARRAY_COST: 灵石秒产与阵升级花费, 约束阵等级节奏
  */
-const REALM_DAYS = [0.5, 22, 20, 18, 16, 13.5];
-const SEG_SCALE = 10;
+const REALM_DAYS = [0.15, 5, 4.8, 6, 6.8, 7.25];
+const SEG_SCALE = 4;
 const arrMult = lv => {
   let m = 1;
   for (let k = 2; k <= lv; k++) m += k <= 11 ? 0.35 : (k <= 21 ? 0.18 : (k <= 31 ? 0.08 : 0));
@@ -384,7 +385,7 @@ let state = { realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], journal: [],
 let breaking = false;
 let lastReadyHint = false;
 const SAVE_KEY = "dongtian_xiuxian_v2";
-const OFFLINE_CAP = 6 * 3600;
+const OFFLINE_CAP = 48 * 3600;   // 离线收益结算上限: 最多补 48 小时
 
 const $ = id => document.getElementById(id);
 const fmt = n => n >= 1e8 ? (n / 1e8).toFixed(2).replace(/\.?0+$/, "") + "亿"
@@ -395,6 +396,20 @@ function seg(i) { return SEG_META[Math.min(i, TOTAL_SEGS - 1)]; }
 function realm() { return seg(state.realmIdx); }
 function bigIdx() { return realm().bigIdx; }
 
+/* 存档对象清洗(本地/云端共用): 合法则返回清洗后的对象, 否则返回 null */
+function adopt(s) {
+  if (!s || !Array.isArray(s.arts)) return null;
+  if (!Array.isArray(s.journal)) s.journal = [];
+  if (!s.milestones || typeof s.milestones !== "object") s.milestones = {};
+  if (typeof s.peakSpirit !== "number") s.peakSpirit = 0;
+  if (typeof s.bestArtQ !== "number") s.bestArtQ = -1;
+  if (typeof s.realmIdx !== "number" || s.realmIdx < 0) s.realmIdx = 0;
+  if (typeof s.exp !== "number") s.exp = 0;
+  if (typeof s.spirit !== "number") s.spirit = 0;
+  if (typeof s.arrayLv !== "number" || s.arrayLv < 1) s.arrayLv = 1;
+  if (typeof s.lastTs !== "number") s.lastTs = Date.now();
+  return s;
+}
 function save() {
   state.lastTs = Date.now();
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
@@ -402,14 +417,193 @@ function save() {
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
-    if (s && Array.isArray(s.arts)) {
-      if (!Array.isArray(s.journal)) s.journal = [];
-      if (!s.milestones || typeof s.milestones !== "object") s.milestones = {};
-      if (typeof s.peakSpirit !== "number") s.peakSpirit = 0;
-      if (typeof s.bestArtQ !== "number") s.bestArtQ = -1;
-      state = s;
-    }
+    const c = adopt(s);
+    if (c) state = c;
   } catch (e) {}
+}
+
+/* ============ 云存档 (save.devgo.cn, ECS 隧道) ============
+ * 玩家码即钥匙: 换设备时在新设备输入同一玩家码即继承存档。
+ * 本地永远可玩: 云不可用时静默降级为 localStorage。 */
+const CLD_API = "https://save.devgo.cn/api/save";
+const CLD_KEY = "dongtian_cloud_id";
+const CLD_ALPH = "abcdefghjkmnpqrstuvwxyz23456789";
+const cld = { id: "", ready: false, dirty: false, lastOkTs: 0, lastOkLocal: 0, lastPushTs: 0 };
+
+function cldId() {
+  if (cld.id) return cld.id;
+  try { cld.id = localStorage.getItem(CLD_KEY) || ""; } catch (e) {}
+  if (!cld.id) {
+    let s = "";
+    for (let i = 0; i < 12; i++) s += CLD_ALPH[Math.floor(Math.random() * CLD_ALPH.length)];
+    cld.id = "dt-" + s;
+    try { localStorage.setItem(CLD_KEY, cld.id); } catch (e) {}
+  }
+  return cld.id;
+}
+function cldApi(method, body) {
+  const ctl = new AbortController();
+  const tm = setTimeout(() => ctl.abort(), 6000);   // 6s 超时, 弱网不阻塞启动/离线结算
+  return fetch(CLD_API + "?id=" + encodeURIComponent(cldId()), {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+    signal: ctl.signal,
+  }).then(r => { clearTimeout(tm); if (!r.ok) throw new Error("http" + r.status); return r.json(); })
+    .catch(e => { clearTimeout(tm); throw e; });
+}
+function cldChip() {
+  const el = $("cloudTxt");
+  if (!el) return null;
+  return el;
+}
+function cldUI(mode) {
+  const chip = $("cloudChip");
+  if (!chip) return;
+  chip.classList.remove("on", "off", "sync");
+  chip.classList.add(mode);
+  const el = cldChip();
+  if (!el) return;
+  if (mode === "sync") el.textContent = "云存·同步中";
+  else if (mode === "off") el.textContent = "云存·未连接";
+  else {
+    const d = Date.now() - cld.lastOkTs;
+    el.textContent = "云存·✓ " + (d < 60000 ? "刚才" : Math.floor(d / 60000) + "分前");
+  }
+  const idEl = $("cloudId");
+  if (idEl) idEl.textContent = cldId();
+}
+function cldFlash(txt) {
+  const el = cldChip();
+  if (!el) return;
+  const old = el.textContent;
+  el.textContent = txt;
+  setTimeout(() => { el.textContent = old; }, 1600);
+}
+function cldAdoptCloud(s) {
+  const c = adopt(s);
+  if (!c) return false;
+  state = c;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+  updateRealmUI(); updateHUD(); updateArts(); realmPlot();
+  return true;
+}
+async function cldPush() {
+  state.lastTs = Date.now();
+  try {
+    const r = await cldApi("PUT", state);
+    state._cloudTs = r.ts || Date.now();
+    save();
+    cld.ready = true; cld.lastOkTs = Date.now(); cld.lastOkLocal = state.lastTs;
+    cld.lastPushTs = Date.now();
+    cldUI("on");
+    return true;
+  } catch (e) { cldUI("off"); return false; }
+}
+async function cldPull() {
+  if (!window.fetch) { cldUI("off"); return; }
+  cldUI("sync");
+  try {
+    const r = await cldApi("GET");
+    if (r.found && r.data) {
+      const cs = (r.ts || 0);               // 服务端存档时间(权威)
+      const ls = (state._cloudTs || 0);
+      if (cs > ls) {
+        /* 云端比本地同步点新 → 采用云端档(冲突安全方向: 云新优先, 防旧档覆盖新云)。
+         * 不在此立刻推送/调 save() —— 它们会把 lastTs 刷成"现在", 吞掉随后的离线结算;
+         * 改为直写本地保留云端 lastTs, 离线收益由启动的 applyOffline 统一结算后再回写 */
+        let hadLocal = false;
+        try { hadLocal = !!localStorage.getItem(SAVE_KEY); } catch (e) {}
+        const adopted = cldAdoptCloud(r.data);
+        state._cloudTs = cs;
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+        cld.ready = true; cld.lastOkTs = Date.now();
+        if (adopted && hadLocal) {
+          pushMsg("main", `<span class="b">云存</span>检测到云端进度更新，已采用云端存档（请勿同一玩家码多设备同时游玩）。`);
+        }
+        cldUI("on");
+        return;
+      }
+      if (cs < ls || cld.dirty) {       // 本地有未上传进度 → 上传
+        await cldPush();
+        cld.dirty = false;
+        return;
+      }
+      // 已同步一致
+      cld.ready = true; cld.lastOkTs = Date.now(); cld.lastOkLocal = state.lastTs;
+      cldUI("on");
+      return;
+    }
+    // 云端还没有此玩家码 → 建档上传
+    await cldPush();
+    cld.dirty = false;
+  } catch (e) { cldUI("off"); }
+}
+function cloudPushNow() {
+  if (!window.fetch) return;
+  if (!cld.ready) { cld.dirty = true; return; }   // 尚未完成首次同步, 先标记等 pull 后再传
+  cldUI("sync");
+  cldPush().then(ok => { if (ok) cldUI("on"); });
+}
+function cloudPullNow() { cldPull(); }
+function cloudSoon() { if (!cld.ready) cld.dirty = true; else cloudPushNow(); }
+function cloudTogglePanel(ev) {
+  ev = ev || window.event;
+  if (ev) ev.stopPropagation();
+  const p = $("cloudPanel");
+  if (!p) return;
+  const show = p.classList.toggle("show");
+  if (show) { const inp = $("cloudInput"); if (inp) inp.value = ""; }
+}
+function cloudCopyId() {
+  const id = cldId();
+  const done = () => cldFlash("玩家码已复制");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(id).then(done).catch(() => fallbackCopy(id, done));
+  } else fallbackCopy(id, done);
+}
+function fallbackCopy(text, done) {
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand("copy"); done(); } catch (e) { cldFlash("复制失败, 请手动记下"); }
+  document.body.removeChild(ta);
+}
+function cloudBind() {
+  const v = (($("cloudInput") || {}).value || "").trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9_-]{3,23}$/.test(v)) { cldFlash("玩家码格式不对"); return; }
+  try { localStorage.setItem(CLD_KEY, v); } catch (e) {}
+  cld.id = v; cld.ready = false; cld.dirty = false;
+  const idEl = $("cloudId"); if (idEl) idEl.textContent = v;
+  cldPull();
+}
+function cloudInit() {
+  cldId();
+  const chip = $("cloudChip");
+  document.addEventListener("click", e => {
+    const p = $("cloudPanel");
+    if (p && p.classList.contains("show") && chip &&
+        !e.target.closest("#cloudPanel") && !e.target.closest("#cloudChip")) p.classList.remove("show");
+  });
+  cldUI("sync");
+  addEventListener("online", () => { if (!cld.ready) cldPull(); });   // 断网恢复后自动补同步
+  bootCloud();           // 首次: 先同步云端, 再统一结算一次离线收益
+  /* 低频兜底上传: 每 60s 检查一次, 仅在"有未同步进度"且"距上次成功上传 ≥5 分钟"时才传,
+   * 避免高频轮询; 关键节点(突破/升阵/离线结算/切后台)另行即时上传 */
+  setInterval(() => {
+    if (!cld.ready) return;
+    if (state.lastTs > cld.lastOkLocal && Date.now() - cld.lastPushTs > 300000) cloudPushNow();
+  }, 60000);
+}
+
+/* 启动流程: 先尝试拉云端(网络失败静默, 本地照常可玩),
+ * 再以"最终采用的存档"的基准(lastTs/_settledTs 取大)结算一次离线收益,
+ * 保证换设备/清缓存也不会漏发或重发。 */
+async function bootCloud() {
+  await cldPull();
+  applyOffline();
+  cloudSoon();
+  updateRealmUI(); updateHUD(); updateArts(); realmPlot();
 }
 
 /* ============ 数值 ============ */
@@ -454,12 +648,9 @@ function updateRealmUI() {
     $("realmName").textContent = r.big;
     $("realmSub").textContent = `${r.label.split("·")[1]} · ${r.sub}`;
   }
-  const aura = document.querySelector(".aura");
-  if (aura) aura.style.background =
-    `radial-gradient(circle,rgba(${r.c},.34),rgba(${r.c},.08) 42%,transparent 68%)`;
-  const cult = document.getElementById("cult");
-  if (cult) cult.dataset.big = r.big;   // 光环特效切换
-  setCultGlow(r);
+  /* 灵力辉光按大境界切换(读 #cult data-big); 试光环预览期间保持所选境界 */
+  const cult0 = document.getElementById("cult");
+  if (cult0 && !__auraBig) cult0.setAttribute("data-big", r.big);
 }
 function updateHUD() {
   const r = realm();
@@ -509,6 +700,7 @@ function doBreak() {
     state.exp = 0;
     breaking = false;
     updateRealmUI(); updateHUD(); save();
+    cloudSoon();   // 渡劫成功 → 立即同步云端
     const nr = realm();
     const greet = ["金丹凝形！", "元婴出窍！", "化神之姿！", "踏入筑基！"][nr.bigIdx - 2] || "";
     pushMsg("main", `<span class="g">${nr.big}</span>！${greet || "修行又进一步"}`);
@@ -522,7 +714,7 @@ function arrayCostNow() { return ARRAY_COST(state.arrayLv); }
 function tapArray() {
   const cost = arrayCostNow();
   if (state.spirit >= cost) {
-    state.spirit -= cost; state.arrayLv++; save(); updateHUD();
+    state.spirit -= cost; state.arrayLv++; save(); updateHUD(); cloudSoon();  // 关键节点 → 即时上传
     pushMsg("main", `聚灵阵升至 <span class="g">Lv.${state.arrayLv}</span>（下一级需灵石 ${fmt(arrayCostNow())}）`);
   } else {
     pushMsg("main", `灵石不足(升至 Lv.${state.arrayLv + 1} 需 ${fmt(cost)})，分身正在四处寻矿…`);
@@ -1267,9 +1459,33 @@ const PLOT = [
  ]
 ];
 
+/* 叙事索引: 每条卷剧情分得全局数字编号 sid(按代码顺序稳定)。
+ * 修行录存档只存 sid 数字引用(瘦存档), 渲染/回看时从静态表还原剧情 */
+const STORY_BY_SID = {};
+const STORY_BY_KEY = {};
+(function () {
+  let sid = 0;
+  for (const vol of PLOT) for (const b of vol) {
+    b.sid = ++sid;
+    STORY_BY_SID[sid] = b;
+    STORY_BY_KEY[b.key] = b;
+  }
+})();
+function storyResolve(j) {          // journal 条目 → 剧情内容(数字引用还原 / 旧档直读)
+  if (j && j.sid && STORY_BY_SID[j.sid]) return STORY_BY_SID[j.sid];
+  return j;
+}
+function journalHasKey(b) {         // 兼容新旧两种记录格式
+  return state.journal.some(j => (j.sid && j.sid === b.sid) || (j.key && j.key === b.key));
+}
 function addJournal(entry) {
-  entry.ts = Date.now();
-  state.journal.push(entry);
+  const b = entry.key && STORY_BY_KEY[entry.key];
+  if (b) {                          // 预置剧情: 只存数字引用, 不存文本
+    state.journal.push({ sid: b.sid, big: b.big || entry.big, kind: b.kind || entry.kind, ts: Date.now() });
+  } else {                          // 动态事件(离线游历/纪事等): 仍存文本
+    entry.ts = Date.now();
+    state.journal.push(entry);
+  }
   if (state.journal.length > 80) state.journal.shift();
   save();
 }
@@ -1285,7 +1501,7 @@ function realmPlot() {
   let fired = 0, last = null;
   for (let i = 0; i < vol.length; i++) {
     const b = vol[i];
-    if (state.journal.some(j => j.key === b.key)) continue;
+    if (journalHasKey(b)) continue;
     if (pos >= segCount * i / vol.length) {
       addJournal({ key: b.key, big: b.big || realm().big, kind: b.kind || "际遇", title: b.title, text: b.text });
       fired++;
@@ -1296,6 +1512,7 @@ function realmPlot() {
     }
   }
   if (fired > 1) pushMsg("main", `<span class="b">仙途拾遗</span>｜修行之间你又经历了 ${fired} 段际遇，均已记入修行录。`);
+  if (fired > 0) cloudSoon();   // 主线新剧情入修行录 → 视为关键时刻, 即时同步云端
   void last;
 }
 
@@ -1342,60 +1559,6 @@ function checkMilestones() {
   if (fired) save();
 }
 
-/* 光环测试: 仅预览各境界光环视觉, 不改变真实修为进度 */
-function toggleAuraTest() {
-  const box = $("auraTest");
-  if (!box) return;
-  if (box.style.display !== "none") { box.style.display = "none"; return; }
-  buildAuraTest();
-  box.style.display = "flex";
-}
-function buildAuraTest() {
-  const row = $("auraTestChips");
-  if (!row || row.dataset.built) return;
-  row.dataset.built = "1";
-  BIGS.forEach((big, bi) => {
-    const c = document.createElement("div");
-    c.className = "aura-chip";
-    c.textContent = big.n;
-    c.onclick = () => {
-      row.querySelectorAll(".aura-chip").forEach(x => x.classList.remove("on"));
-      c.classList.add("on");
-      previewRealmVisual(bi);
-    };
-    row.appendChild(c);
-  });
-}
-/* 轮廓光随境界 */
-function setCultGlow(biOrBig) {
-  const cult0 = document.getElementById("cult");
-  if (!cult0) return;
-  const g0 = Math.min(biOrBig.bigIdx ?? 0, 5);
-  const cc = biOrBig.c || [120, 170, 255];
-  cult0.style.setProperty("--glowC", `rgba(${cc},${(0.14 + g0 * 0.06).toFixed(2)})`);
-  cult0.style.setProperty("--glowW", (20 + g0 * 5) + "px");
-}
-function previewRealmVisual(bi) {
-  const cult = document.getElementById("cult");
-  const aura = document.querySelector(".aura");
-  const big = BIGS[bi];
-  if (cult) cult.dataset.big = big.n;
-  if (aura) aura.style.background =
-    `radial-gradient(circle,rgba(${big.c},.34),rgba(${big.c},.08) 42%,transparent 68%)`;
-  setCultGlow(big);
-}
-function resetAuraPreview() {
-  const cult = document.getElementById("cult");
-  const aura = document.querySelector(".aura");
-  const r = realm();
-  if (cult) cult.dataset.big = r.big;
-  if (aura) aura.style.background =
-    `radial-gradient(circle,rgba(${r.c},.34),rgba(${r.c},.08) 42%,transparent 68%)`;
-  setCultGlow(r);
-  const row = $("auraTestChips");
-  if (row) row.querySelectorAll(".aura-chip").forEach(x => x.classList.toggle("on", x.textContent === r.big));
-}
-
 function openStory() {
   const m = $("storyModal");
   if (!m) return;
@@ -1411,12 +1574,15 @@ const STORY_PAGE = 12;
 let _storyChap = "";
 function storyItemHtml(j) {
   const pad = n => String(n).padStart(2, "0");
+  const rec = storyResolve(j);                       // sid → 静态剧情; 老档/动态事件直接读自身
   const tm = new Date(j.ts);
-  return `<div class="j-card k-${j.kind || "际遇"}">` +
-    `<div class="j-head"><span class="j-big">${j.big || ""}</span>` +
-    `<span class="j-kind k-${j.kind || "际遇"}">${j.kind || "际遇"}</span>` +
+  const big = j.big || rec.big || "";
+  const kind = j.kind || rec.kind || "际遇";
+  return `<div class="j-card k-${kind}">` +
+    `<div class="j-head"><span class="j-big">${big}</span>` +
+    `<span class="j-kind k-${kind}">${kind}</span>` +
     `<span class="j-time">${pad(tm.getMonth() + 1)}-${pad(tm.getDate())} ${pad(tm.getHours())}:${pad(tm.getMinutes())}</span></div>` +
-    `<h5>${j.title || "仙途拾遗"}</h5><p>${j.text || ""}</p></div>`;
+    `<h5>${rec.title || j.title || "仙途拾遗"}</h5><p>${rec.text || j.text || ""}</p></div>`;
 }
 function storyLoadMore(reset) {
   const body = $("storyBody");
@@ -1500,7 +1666,7 @@ function adventure() {
     state.arts.push(a);
     const r = QUALITY[a.q];
     pushMsg("avatar", `${pickNoRepeat(ART_HINTS, "art")}，得<span class="r">${a.name}</span>(<span class="${r.cls}">${r.name}</span>)已自动换上`);
-    updateArts(true); save();
+    updateArts(true); save(); cloudSoon();   // 关键节点 → 即时上传
   } else if (roll < 0.30) {
     const g = Math.round(8 + Math.random() * 30 + bigIdx() * 10);
     state.spirit += g;
@@ -1563,7 +1729,9 @@ function tickBurst(dt) {
 /* ============ 离线收益 ============ */
 function applyOffline() {
   const now = Date.now();
-  let dt = (now - state.lastTs) / 1000;
+  /* 结算基准 = 上次活跃与上次结算推进点取大 → 多设备/换档不重不漏 */
+  const base = Math.max(state.lastTs || 0, state._settledTs || 0);
+  let dt = (now - base) / 1000;
   if (dt < 30) return;
   dt = Math.min(dt, OFFLINE_CAP);
   const gainExp = rateNow() * dt * 0.6;
@@ -1577,12 +1745,13 @@ function applyOffline() {
     } else break;
   }
   state.exp += gainExp; state.spirit += gainSpirit;
+  state._settledTs = now;   // 本次结算推进点(防跨会话重复领取)
   realmPlot(); // 离线推进后, 触发当前大境卷内所有"已到小层"的剧情节点(绝不越卷)
   save();
   const h = Math.floor(dt / 3600), m = Math.floor(dt % 3600 / 60);
   $("offlineText").innerHTML =
-    `你离开了 <b>${h ? h + " 小时 " : ""}${m ? m + " 分钟" : "片刻"}</b>。<br>` +
-    `分身闭关，修为 +<span class="num"> ${fmt(gainExp)}</span><br>灵石 +<span class="num"> ${fmt(gainSpirit)}</span>`;
+    `你闭关了 <b>${h ? h + " 小时 " : ""}${m ? m + " 分钟" : "片刻"}</b>。<br>` +
+    `分身运转周天，修为 +<span class="num"> ${fmt(gainExp)}</span><br>灵石 +<span class="num"> ${fmt(gainSpirit)}</span>`;
   // 离线际遇: 与在线同样的叙事池, 随离线时长缓慢累积(每满一小时左右一段, 至多3段)
   const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
   const bigName = realm().big;
@@ -1604,24 +1773,59 @@ function applyOffline() {
 function closeOffline() { $("offlineModal").classList.remove("show"); }
 
 /* ============ three.js 背景 ============ */
-/* 玩家身上的粒子流(aura_fx.js) */
-function initPlayerFx() {
-  try {
-    const cult = document.getElementById("cult");
-    if (!cult) return;
-    /* 2D 层: 光晕/金尘 */
-    let cv = document.getElementById("cultFx");
-    if (!cv) {
-      cv = document.createElement("canvas");
-      cv.id = "cultFx";
-      cv.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:3";
-      cult.appendChild(cv);
-    }
-    import("./fx2d.js?v=926b5d17").then(m => { window.__auraFx = m.initFx(cv); })
-      .catch(e => console.warn("粒子引擎不可用", e));
-  } catch (e) { console.warn("粒子引擎初始化失败", e); }
+/* ===== 光环预览(调试工具): 只改 #cult data-big 让 fx2d 换境界, 不动修为 ===== */
+function toggleAuraTest() {
+  const box = document.getElementById("auraTest");
+  if (!box) return;
+  const show = !box.style.display || box.style.display === "none";
+  box.style.display = show ? "flex" : "none";
+  if (show) buildAuraChips();
+}
+function buildAuraChips() {
+  const row = document.getElementById("auraTestChips");
+  if (!row || row.children.length) return;
+  BIGS.forEach(big => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "aura-chip";
+    chip.textContent = big.n;
+    chip.onclick = () => previewRealmVisual(big.n);
+    row.appendChild(chip);
+  });
+  syncAuraChips();
+}
+function previewRealmVisual(big) {
+  const cult = document.getElementById("cult");
+  if (cult) cult.setAttribute("data-big", big);
+  __auraBig = big;
+  syncAuraChips();
+}
+function resetAuraPreview() {
+  __auraBig = null;
+  const cult = document.getElementById("cult");
+  if (cult) cult.setAttribute("data-big", realm().big);
+  syncAuraChips();
+}
+function syncAuraChips() {
+  const row = document.getElementById("auraTestChips");
+  if (!row) return;
+  const cur = __auraBig || realm().big;
+  [...row.querySelectorAll(".aura-chip")].forEach(c => c.classList.toggle("on", c.textContent === cur));
 }
 
+/* 灵力辉光层: 动态载入 fx2d.js, 挂一层 canvas 到角色容器(与立绘同频呼吸) */
+function initFxLayer() {
+  const cult = document.getElementById("cult");
+  if (!cult || document.getElementById("cultFx")) return;
+  const cv = document.createElement("canvas");
+  cv.id = "cultFx";
+  cv.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;"
+    + "pointer-events:none;z-index:3;animation:breath 4.6s ease-in-out infinite";
+  cult.appendChild(cv);
+  import("./fx2d.js?v=50539d63")
+    .then(m => { try { m.initFx(cv); } catch (e) { console.error("[fx2d] init:", e); } })
+    .catch(e => console.error("[fx2d] load:", e));
+}
 /* 特效诊断浮层: 引擎错误/降级模式直接显示, 便于排查 */
 function initFxDiag() {
   try {
@@ -1687,23 +1891,26 @@ function loop(dt) {
 }
 
 /* ============ 启动 ============ */
-load();
-applyOffline();
+load();                       // 先本地存档
 updateRealmUI();
 updateHUD();
 updateArts();
 realmPlot(); // 启动即按当前境界推进已及剧情
 {
   const o0 = PLOT[0] && PLOT[0][0];
-  if (o0 && state.journal.length && !state.journal.some(j => j.key === o0.key) && bigIdx() > 0) {
+  if (o0 && state.journal.length && !journalHasKey(o0) && bigIdx() > 0) {
     addJournal({ key: o0.key, big: o0.big, kind: o0.kind, title: o0.title, text: o0.text }); // 老档补记起点
   }
 }
 setInterval(save, 8000);
-addEventListener("pagehide", save);
+addEventListener("pagehide", () => { save(); cloudSoon(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") { save(); cloudSoon(); }  // 切后台/关页即同步"最后活跃"
+});
+cloudInit();       // 云存档: 先拉云端 → 统一结算离线收益 → 回写(本地永远可玩, 云失败静默)
 initBg();
-initPlayerFx();
 initFxDiag();
+initFxLayer();
 let lastLoop = performance.now();
 (function main() {
   const now = performance.now();

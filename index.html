@@ -34,6 +34,18 @@
     border:1px solid rgba(232,197,107,.32);background:rgba(232,197,107,.12);color:var(--gold);letter-spacing:.08em;
     cursor:pointer;backdrop-filter:blur(4px);transition:transform .12s}
   .story-btn:active{transform:scale(.92)}
+
+  .aura-tooltip{position:fixed;top:96px;right:14px;z-index:21;width:min(250px,82vw);
+    background:rgba(10,15,28,.93);border:1px solid rgba(232,197,107,.32);border-radius:14px;
+    padding:11px 13px;display:none;flex-direction:column;gap:9px;backdrop-filter:blur(8px);
+    box-shadow:0 12px 34px rgba(0,0,0,.5);pointer-events:auto}
+  .aura-tooltip .t{font-size:10.5px;color:#93a0b8;letter-spacing:.05em}
+  .aura-chip{flex:none;font-size:12px;padding:5px 12px;border-radius:999px;cursor:pointer;
+    border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#dfe5f2;
+    transition:transform .12s,background .15s}
+  .aura-chip:active{transform:scale(.92)}
+  .aura-chip.on{border-color:#e8c56b;color:#ffe9a8;background:rgba(232,197,107,.22)}
+
   .hud-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
   .spirit{background:rgba(12,18,34,.72);border:1px solid rgba(232,197,107,.3);border-radius:999px;padding:6px 12px;
     font-size:13px;font-weight:700;color:#7fe0c3;display:flex;gap:5px;align-items:center}
@@ -50,21 +62,12 @@
 
   /* 主角 */
   .stage{position:fixed;inset:0;z-index:5;display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
-  .cult{position:relative;height:min(54vh,430px);aspect-ratio:825/835;filter:drop-shadow(0 0 var(--glowW,26px) var(--glowC,rgba(120,170,255,.25)))}
+  .cult{position:relative;height:min(54vh,430px);aspect-ratio:825/835}
   .cult img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;transform-origin:50% 88%}
   .cult .hair{animation:breath 4.6s ease-in-out infinite}
   .cult .bodyL{animation:breath 4.6s ease-in-out infinite}
   .cult .robe{animation:breath 4.6s ease-in-out infinite}
-  .aura{position:absolute;left:50%;top:50%;width:210%;aspect-ratio:1;transform:translate(-50%,-50%);
-    border-radius:50%;pointer-events:none;mix-blend-mode:screen;opacity:.5;
-    background:radial-gradient(circle,rgba(120,170,255,.30),rgba(120,170,255,.06) 42%,transparent 68%);
-    animation:auraPulse 3.8s ease-in-out infinite}
-  .orbit{position:absolute;left:50%;top:46%;width:150%;aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none}
-  .glow-dot{position:absolute;width:5px;height:5px;border-radius:50%;background:var(--gold);
-    box-shadow:0 0 10px 2px rgba(232,197,107,.75);animation:orbitDot 7s linear infinite}
   @keyframes breath{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(-1.6%) scaleY(1.006)}}
-  @keyframes auraPulse{0%,100%{opacity:.38;transform:translate(-50%,-50%) scale(.96)}50%{opacity:.7;transform:translate(-50%,-50%) scale(1.06)}}
-  @keyframes orbitDot{from{transform:rotate(0deg) translateX(46%) rotate(0)}to{transform:rotate(360deg) translateX(46%) rotate(-360deg)}}
 
   /* 中央按钮 */
   .actions{position:fixed;left:0;right:0;bottom:58px;z-index:10;display:flex;justify-content:center;gap:10px;padding:0 14px}
@@ -179,17 +182,29 @@
       radial-gradient(1px 1px at 55% 90%, rgba(255,255,255,.5), transparent),
       radial-gradient(ellipse 90% 70% at 50% 0%, #0d1830 0%, transparent 60%);
   }
-
-  .aura-tooltip{position:fixed;top:86px;right:12px;z-index:22;width:min(248px,78vw);
-    background:rgba(10,15,28,.9);border:1px solid rgba(232,197,107,.28);border-radius:14px;
-    padding:10px 12px;display:flex;flex-direction:column;gap:8px;backdrop-filter:blur(8px);
-    box-shadow:0 12px 34px rgba(0,0,0,.45)}
-  .aura-tooltip .row{display:flex;flex-wrap:wrap;gap:6px}
-  .aura-chip{flex:none;font-size:11px;padding:5px 11px;border-radius:999px;cursor:pointer;
-    border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:#dfe5f2;
-    transition:transform .12s}
-  .aura-chip:active{transform:scale(.92)}
-  .aura-chip.on{border-color:#e8c56b;color:#ffe9a8;background:rgba(232,197,107,.18)}
+  /* ---- 云存档(顶部 hud 内小胶囊, 不遮挡经验条) ---- */
+  #cloudChip{display:flex;align-items:center;gap:5px;max-width:168px;white-space:nowrap;overflow:hidden;
+    background:rgba(10,14,18,.72);border:1px solid rgba(140,180,255,.25);border-radius:999px;
+    padding:3px 9px;font-size:11px;color:#9fc2e8;cursor:pointer;user-select:none;line-height:1.2}
+  #cloudChip .dot{width:7px;height:7px;border-radius:50%;background:#7a8694;flex:none}
+  #cloudChip.on .dot{background:#3ddc84;box-shadow:0 0 6px #3ddc84}
+  #cloudChip.off .dot{background:#ff6b6b}
+  #cloudChip.sync .dot{background:#ffd166;animation:cp 1s infinite}
+  @keyframes cp{50%{opacity:.3}}
+  #cloudPanel{position:fixed;right:12px;top:118px;z-index:61;width:min(264px,86vw);
+    background:rgba(12,16,22,.94);border:1px solid rgba(140,180,255,.3);border-radius:12px;
+    padding:10px 12px;font-size:12px;color:#cfe3fb;display:none;backdrop-filter:blur(6px);
+    box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  #cloudPanel.show{display:block}
+  #cloudPanel .cp-title{font-size:12px;font-weight:700;margin-bottom:8px;color:#fff}
+  #cloudPanel .cp-row{display:flex;align-items:center;gap:6px;margin:6px 0;flex-wrap:wrap}
+  #cloudPanel b{color:#ffd166;word-break:break-all;font-size:11px}
+  #cloudPanel input{flex:1;min-width:110px;background:#0a0f15;border:1px solid #2a3a52;color:#cfe3fb;
+    border-radius:6px;padding:4px 6px;font-size:11px;outline:none}
+  #cloudPanel .cp-btn{border:1px solid #2f4a6e;background:#15202e;color:#cfe3fb;border-radius:6px;
+    padding:4px 8px;font-size:11px;cursor:pointer}
+  #cloudPanel .cp-btn:hover{background:#1d2c40}
+  #cloudPanel .cp-hint{font-size:10px;color:#6f87a5;line-height:1.5;margin-top:6px}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js"}}
@@ -201,11 +216,11 @@
 <div class="vignette"></div>
 
 <div class="hud">
-  <div class="realm-badge"><span class="big" id="realmName">凡人</span><span class="sub" id="realmSub">练气初期 · 洞天福地</span><button class="story-btn" onclick="openStory()">📜 剧情纲目</button></div>
+  <div class="realm-badge"><span class="big" id="realmName">凡人</span><span class="sub" id="realmSub">练气初期 · 洞天福地</span><div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap"><button class="story-btn" onclick="openStory()">📜 剧情纲目</button></div></div>
   <div class="hud-right">
     <div class="spirit">🪙 <span id="spirit">0</span></div>
     <div class="rate">修为 <b id="rateText">0</b>/秒</div>
-    <button class="story-btn" style="align-self:flex-end;display:none" onclick="toggleAuraTest()">◈ 试光环</button>
+    <div id="cloudChip" onclick="cloudTogglePanel(event)" title="云存档"><span class="dot"></span><span id="cloudTxt">云存·同步中</span></div>
   </div>
 </div>
 
@@ -213,7 +228,6 @@
 
 <div class="stage">
   <div class="cult" id="cult">
-    <div class="aura"></div>
     <img class="bodyL" src="assets/cultivator_body.png" alt="">
     <img class="robe" src="assets/cultivator_robe.png" alt="">
     <img class="hair" src="assets/cultivator_hair.png" alt="">
@@ -235,6 +249,15 @@
 
 <canvas id="burst"></canvas>
 <div class="flash" id="flash"></div>
+
+<div id="cloudPanel">
+  <div class="cp-title">☁ 云存档</div>
+  <div class="cp-row">玩家码&nbsp;<b id="cloudId">-</b><button class="cp-btn" onclick="cloudCopyId()">复制</button></div>
+  <div class="cp-row">换存档&nbsp;<input id="cloudInput" placeholder="粘贴他人玩家码" maxlength="24"><button class="cp-btn" onclick="cloudBind()">绑定</button></div>
+  <div class="cp-row"><button class="cp-btn" onclick="cloudPushNow()">立即上传</button><button class="cp-btn" onclick="cloudPullNow()">拉取云端</button></div>
+  <div class="cp-hint">自动每 20 秒同步一次。换设备：复制本机玩家码 → 新设备点“绑定”粘贴 → 自动拉取。玩家码即钥匙，请勿外传。</div>
+</div>
+
 <div class="realm-up" id="realmUp"><div class="t" id="realmUpT">筑基</div><div class="s">天人感应 · 修为暴涨</div></div>
 
 <div class="modal" id="offlineModal">
@@ -257,12 +280,6 @@
   </div>
 </div>
 
-<div class="aura-tooltip" id="auraTest" style="display:none">
-  <div style="font-size:10.5px;color:#93a0b8">光环预览 · 不影响修为进度</div>
-  <div class="row" id="auraTestChips"></div>
-  <button class="btn" style="padding:6px 10px;font-size:11px" onclick="resetAuraPreview()">复原为当前境界</button>
-</div>
-
-<script src="game.js?v=926b5d17"></script>
+<script src="game.js?v=5ac73317"></script>
 </body>
 </html>
