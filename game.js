@@ -1,4 +1,4 @@
-/* 洞天 · 挂机修仙 —— game.js?v=bd1cd20b v3(双栏叙事) */
+/* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 
 /* ============ 境界体系(凡人修仙传风) ============
@@ -1617,7 +1617,7 @@ function initPlayerFx() {
       cv.style.cssText = "position:absolute;inset:0;pointer-events:none;z-index:3";
       cult.appendChild(cv);
     }
-    import("./fx2d.js?v=bd1cd20b").then(m => { window.__auraFx = m.initFx(cv); })
+    import("./fx2d.js?v=926b5d17").then(m => { window.__auraFx = m.initFx(cv); })
       .catch(e => console.warn("粒子引擎不可用", e));
   } catch (e) { console.warn("粒子引擎初始化失败", e); }
 }
@@ -1652,7 +1652,7 @@ async function initBg() {
 }
 async function initBg3D() {
   const canvas = $("bg");
-  const mod = await import("./bg.js?v=bd1cd20b");
+  const mod = await import("./bg.js?v=926b5d17");
   window.__bgCtrl = await mod.initDeepSpace(canvas);
 }
 
