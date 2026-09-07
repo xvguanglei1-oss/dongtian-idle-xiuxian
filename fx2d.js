@@ -161,16 +161,19 @@ function initFx(canvas) {
     p.amp = rnd(0.010, 0.024); p.s0 = rnd(0.8, 1.3);
   }
 
-  /* 流光: 竖直车道式持续上飘(朝一个方向流动, 不横摆) */
+  /* 流光: 竖直车道式持续上飘(朝一个方向流动, 不横摆, 不到顶)
+     两形态: narrow=窄锥细缕(streak) / wide=宽柔光束(beam) */
   function mkStreak(cfgV) {
     const lane = streaks.length;
-    const p = { lane, dur: rnd(3.6, 5.4), born: -rnd(0, 1.8), seed: Math.floor(rnd(0, 1e6)),
-      len: rnd(0.9, 1.15), s0: rnd(0.9, 1.15), seed2: Math.floor(rnd(0, 6.28)) };
+    const wide = Math.random() < 0.4;
+    const p = { lane, wide, dur: rnd(wide ? 5.0 : 3.8, wide ? 7.0 : 5.4),
+      born: -rnd(0, 1.8), seed: Math.floor(rnd(0, 1e6)),
+      len: rnd(0.9, 1.15), s0: rnd(0.9, 1.15) };
     return p;
   }
   function respawnStreak(p) {
     p.born = -rnd(1.2, 3.2);
-    p.dur = rnd(3.6, 5.4);
+    p.dur = rnd(p.wide ? 5.0 : 3.8, p.wide ? 7.0 : 5.4);
     p.len = rnd(0.9, 1.15); p.s0 = rnd(0.9, 1.15);
     p.seed = Math.floor(rnd(0, 1e6));
   }
@@ -241,10 +244,11 @@ function initFx(canvas) {
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
     }
 
-    /* ---- ② 流光: 整张 fx_gold_streak PNG 竖直车道持续上飘 ----
-       流光只朝一个方向: 每道光带锁定一条竖直车道, 自下而上
-       匀速升腾(头亮端朝上领飞, 尾端拖在下方渐隐), 出顶后
-       延迟重生, 多根错峰 → 一股持续的升腾灵气流。 */
+    /* ---- ② 流光: 窄锥+宽柔混合, 竖直车道持续上飘 ----
+       形态A narrow = fx_gold_streak 细缕
+       形态B wide   = fx_gold_beam_soft 宽柔光束(宽版, 不旋转)
+       均锁定竖直车道朝上流动; 在接近头顶(0.3H)处开始渐隐,
+       0.1H 前完全消失 —— 灵气升腾, 不飘过头顶。 */
     if (cfgV.streak.n) {
       const lanes = cfgV.streak.n;
       for (const p of streaks) {
@@ -253,22 +257,29 @@ function initFx(canvas) {
         if (p.born > p.dur) { respawnStreak(p); continue; }
         const u = p.born / p.dur;
         const col = pickStreak(p.seed, tCol, sCol);
-        const ic = tinted("streak", col);
+        const texKey = p.wide ? "beam" : "streak";
+        const ic = tinted(texKey, col);
         if (!ic) continue;
-        const al = safe(prof(u) * cfgV.streak.pk * breathe2, 0);
+        /* 头顶渐隐: headY 0.34H 开始淡出, 0.12H 处为0 */
+        const headY = H * (0.74 - 0.62 * u);          // 胸侧→头顶前, 全程屏内
+        const fadeTop = Math.max(0, Math.min(1, (headY - H * 0.12) / (H * 0.22)));
+        const al = safe(prof(u) * cfgV.streak.pk * breathe2 * fadeTop, 0);
         if (al <= 0.01) continue;
-        /* 车道: 均匀分布在身体宽度内(±0.16W), 永不横摆 */
+        /* 车道: 均匀分布身体宽度 ±0.16W, 永不横摆 */
         const off = lanes > 1 ? (p.lane / (lanes - 1)) * 2 - 1 : 0;
         const x = cx + off * W * 0.16;
-        const lenTotal = H * (0.18 + 0.05 * (1 - u)) * p.len;
-        const wid = lenTotal * 0.11;
-        /* 上飘: 从腿侧(0.92H)升到头顶之外(-0.18H), 头部在上 */
-        const headY = H * (0.92 - 1.10 * u);
+        const lenTotal = H * (p.wide ? 0.22 : 0.18) * p.len;   // 尾端不越屏
+        const wid = lenTotal * (p.wide ? 0.20 : 0.11);
         ctx.globalAlpha = al;
-        ctx.drawImage(ic, 0, ic.height * 0.30, ic.width, ic.height * 0.62,
-                      x - wid / 2, headY, wid, lenTotal);
+        if (p.wide) {
+          ctx.drawImage(ic, 0, ic.height * 0.24, ic.width, ic.height * 0.62,
+                        x - wid / 2, headY, wid, lenTotal);
+        } else {
+          ctx.drawImage(ic, 0, ic.height * 0.30, ic.width, ic.height * 0.62,
+                        x - wid / 2, headY, wid, lenTotal);
+        }
         /* 头部领光点 */
-        const hs = H * 0.016 * p.s0;
+        const hs = H * (p.wide ? 0.024 : 0.016) * p.s0;
         const hc = tinted("mote", col);
         if (hc) {
           ctx.globalAlpha = al * 0.95;
