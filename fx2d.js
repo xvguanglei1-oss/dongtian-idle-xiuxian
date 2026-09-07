@@ -13,6 +13,7 @@
 const safe = (v, fb = 0) => (Number.isFinite(v) ? v : fb);
 const rnd = (a, b) => a + Math.random() * (b - a);
 const easeIO = u => u * u * (3 - 2 * u);
+const ss = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const WHITE = [255, 255, 255];
 
 /* ---------- 境界视觉配置(数量大·动作慢·化神大胆) ---------- */
@@ -170,17 +171,17 @@ function initFx(canvas) {
     const p = { lane, dur: rnd(2.6, 3.6), born: -rnd(0, 2.0),
       seed: Math.floor(rnd(0, 1e6)), ph: rnd(0, 6.28), ph2: rnd(0, 6.28),
       f1: rnd(0.7, 1.3), f2: rnd(1.8, 2.8),
-      amp: rnd(0.012, 0.026), trace: [] };
+      amp: rnd(0.012, 0.026), trace: [], len: rnd(0.95, 1.15) };
     return p;
   }
   function respawnStreak(p) {
-    p.born = -rnd(1.0, 2.6);
+    p.born = -rnd(1.2, 2.8);
     p.dur = rnd(2.6, 3.6);
     p.seed = Math.floor(rnd(0, 1e6));
     p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
     p.f1 = rnd(0.7, 1.3); p.f2 = rnd(1.8, 2.8);
     p.amp = rnd(0.012, 0.026);
-    p.trace = [];
+    p.trace = []; p.len = rnd(0.95, 1.15);
   }
 
   function draw(t, dt) {
@@ -249,61 +250,87 @@ function initFx(canvas) {
       if (ic) ctx.drawImage(ic, x - sz / 2, y - sz / 2, sz, sz);
     }
 
-    /* ---- ② 流光: 丝滑流线尾迹 ----
-       每道光 = 头部光点沿蜿蜒路径上浮, trace记录轨迹;
-       用 尾→头 线性渐变细线渲染(外晕+亮芯), round帽,
-       lighter叠加 → 柔和连续的流动光线, 方向恒朝上。 */
+    /* ---- ② 流光(精修·自然流线): 数道灵气沿"外→中"微微汇聚的
+       斜流车道, 自腰侧向百会升腾。每道=运动光点+逐帧轨迹,
+       渲染: 尾→头 smoothstep 渐变 + 柔光外晕/中亮层/头部白芯
+       + 柔光圆头 + 沿线细尘点缀 → 绵长丝滑又细腻。 */
     if (cfgV.streak.n) {
       const lanes = cfgV.streak.n;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
+      const sweep = 0.24;                 // 车道从身侧向内收束的比例
       for (const p of streaks) {
         p.born += dt;
         if (p.born < 0) continue;
         if (p.born > p.dur) { respawnStreak(p); continue; }
         const u = p.born / p.dur;
-        const tNow = t * 1.0;
         const col = pickStreak(p.seed, tCol, sCol);
-        /* 头顶消散 */
-        const headY = H * (0.82 - 0.60 * u);
-        const fadeTop = Math.max(0, Math.min(1, (headY - H * 0.10) / (H * 0.20)));
-        const al = safe(prof(u) * cfgV.streak.pk * breathe2 * fadeTop, 0);
-        if (al <= 0.01) continue;
+        /* 升腾: 腰侧→头顶前 */
+        const headY = H * (0.82 - 0.56 * u);
+        const fadeTop = ss(0.80, 0.98, u);          // 尾部20%行程淡出
+        const base = prof(u) * cfgV.streak.pk * breathe2 * fadeTop * 1.35;
+        const al = Math.min(1, safe(base, 0));
+        if (al <= 0.012) continue;
+        /* 车道: 起点均匀分布身侧, 高度越高越向内收(百会汇聚) */
         const off = lanes > 1 ? (p.lane / (lanes - 1)) * 2 - 1 : 0;
-        const xLane = cx + off * W * 0.15;
-        /* 蜿蜒轨迹(两频正弦, 频率低, 幅度小) */
-        const sway = Math.sin(tNow * p.f1 + p.ph) * p.amp
-                   + Math.sin(tNow * p.f2 + p.ph2) * p.amp * 0.5;
-        const x = xLane + sway * W * (0.4 + u * 0.6);
-        /* 记录轨迹(采样到顶部后轨迹自然缩短) */
+        const laneBase = cx + off * W * 0.17;
+        const tHi = (0.82 - (headY / H)) / 0.56;     // 0底..1顶
+        const xNow = laneBase - off * W * sweep * tHi;
+        /* 低幅蜿蜒(自然, 不明显摆动) */
+        const sway = (Math.sin(t * p.f1 + p.ph) + 0.5 * Math.sin(t * p.f2 + p.ph2))
+                     * p.amp * W * 0.6;
+        const x = xNow + sway;
+        /* 轨迹 */
         p.trace.unshift({ x, y: headY });
-        if (p.trace.length > 30) p.trace.length = 30;
+        if (p.trace.length > 42) p.trace.length = 42;
         if (p.trace.length < 2) continue;
-        /* 渐隐旧尾: 出生后一段时间轨迹点数达上限, 尾部按时间淡去 */
         const n = p.trace.length;
-        const head = p.trace[0], tail = p.trace[n - 1];
-        /* 外晕 */
-        let g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
-        g.addColorStop(0, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",0)");
-        g.addColorStop(0.7, "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + (0.16 * al) + ")");
-        g.addColorStop(1, "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + (0.30 * al) + ")");
-        ctx.strokeStyle = g;
-        ctx.lineWidth = H * 0.011;
-        ctx.beginPath();
-        ctx.moveTo(tail.x, tail.y);
+        const Hp = p.trace[0], Tp = p.trace[n - 1];
+        const mkrgb = (a, b, o, rgb) => "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + "," + (a * o) + ")";
+        /* ---- 层1: 柔光外晕(整条, 尾淡头亮) */
+        let g = ctx.createLinearGradient(Tp.x, Tp.y, Hp.x, Hp.y);
+        g.addColorStop(0, mkrgb(0, 1, 1, col));
+        g.addColorStop(0.5, mkrgb(0.14 * al, 1, 1, col));
+        g.addColorStop(0.85, mkrgb(0.30 * al, 1, 1, col));
+        g.addColorStop(1, mkrgb(0.5 * al, 1, 1, col));
+        ctx.strokeStyle = g; ctx.lineWidth = H * 0.012;
+        ctx.beginPath(); ctx.moveTo(Tp.x, Tp.y);
         for (let i = n - 2; i >= 0; i--) ctx.lineTo(p.trace[i].x, p.trace[i].y);
         ctx.stroke();
-        /* 亮芯(更亮更细) */
-        g = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
-        g.addColorStop(0, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",0)");
-        g.addColorStop(0.75, "rgba(" + col[0] + "," + col[1] + "," + col[2] + "," + (0.5 * al) + ")");
-        g.addColorStop(1, "rgba(255,255,255," + (0.85 * al) + ")");
-        ctx.strokeStyle = g;
-        ctx.lineWidth = H * 0.0036;
-        ctx.beginPath();
-        ctx.moveTo(tail.x, tail.y);
+        /* ---- 层2: 中亮色芯 */
+        g = ctx.createLinearGradient(Tp.x, Tp.y, Hp.x, Hp.y);
+        g.addColorStop(0, mkrgb(0, 1, 1, col));
+        g.addColorStop(0.6, mkrgb(0.5 * al, 1, 1, col));
+        g.addColorStop(1, mkrgb(0.85 * al, 1, 1, col));
+        ctx.strokeStyle = g; ctx.lineWidth = H * 0.0044;
+        ctx.beginPath(); ctx.moveTo(Tp.x, Tp.y);
         for (let i = n - 2; i >= 0; i--) ctx.lineTo(p.trace[i].x, p.trace[i].y);
         ctx.stroke();
+        /* ---- 层3: 头部 ~1/3 段的白亮高光 */
+        const cut = Math.max(1, Math.floor(n * 0.32));
+        const hP = p.trace[0], cP = p.trace[cut - 1];
+        g = ctx.createLinearGradient(cP.x, cP.y, hP.x, hP.y);
+        g.addColorStop(0, "rgba(255,255,255,0)");
+        g.addColorStop(1, "rgba(255,255,255," + (0.7 * al) + ")");
+        ctx.strokeStyle = g; ctx.lineWidth = H * 0.0024;
+        ctx.beginPath();
+        for (let i = cut - 1; i >= 0; i--) i === cut - 1 ? ctx.moveTo(p.trace[i].x, p.trace[i].y) : ctx.lineTo(p.trace[i].x, p.trace[i].y);
+        ctx.stroke();
+        /* ---- 沿线细尘点缀(每4点一颗, 柔和粒子感) */
+        for (let i = 0; i < n; i += 4) {
+          const qp = p.trace[i];
+          const fade = 1 - i / n;
+          const sz = H * 0.009 * fade;
+          ctx.globalAlpha = al * (0.5 + 0.5 * fade) * 0.5;
+          const ic2 = tinted("mote", col);
+          if (ic2) ctx.drawImage(ic2, qp.x - sz / 2, qp.y - sz / 2, sz, sz);
+        }
+        /* ---- 柔光圆头(小, 柔和) */
+        ctx.globalAlpha = al * 0.85;
+        const hs = H * 0.022;
+        const hc = tinted("mote", [255, 255, 255]);
+        if (hc) ctx.drawImage(hc, Hp.x - hs / 2, Hp.y - hs / 2, hs, hs);
+        ctx.globalAlpha = 1;
       }
     }
 
