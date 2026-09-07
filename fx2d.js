@@ -111,7 +111,7 @@ function initFx(canvas) {
   const host = canvas.parentElement;
   let W = 0, H = 0, dpr = 1, raf = 0, last = 0, ready = false;
   let motes = [], streaks = [];
-  let streakDrawn = 0, streakDiagSent = false;
+  let streakDrawn = 0, streakDiagSent = false, streakFrames = 0;
 
   const fit = () => {
     try {
@@ -268,10 +268,11 @@ function initFx(canvas) {
         const col = pickStreak(p.seed, tCol, sCol);
         /* 升腾: 腰侧→头顶前 */
         const headY = H * (0.82 - 0.56 * u);
-        const fadeTop = ss(0.80, 0.98, u);          // 尾部20%行程淡出
-        const base = prof(u) * cfgV.streak.pk * breathe2 * fadeTop * 1.35;
+        /* 头顶 fade(只在最末段u>=0.86部分衰减, 之前全程都画) */
+        const tailFade = ss(0.86, 1.0, u);
+        const base = prof(u) * cfgV.streak.pk * breathe2 * tailFade * 1.35;
         const al = Math.min(1, safe(base, 0));
-        if (al <= 0.012) continue;
+        if (al <= 0.008) continue;
         /* 车道: 起点均匀分布身侧, 高度越高越向内收(百会汇聚) */
         const off = lanes > 1 ? (p.lane / (lanes - 1)) * 2 - 1 : 0;
         const laneBase = cx + off * W * 0.17;
@@ -343,17 +344,24 @@ function initFx(canvas) {
       const cfgV = REALM_VIS[idx()];
       prepare(cfgV);
       draw(now / 1000, dt);
-      // 流光自检: 每~1.5s, 若配置了流光却从没画出来 → 上报原因
-      if ((performance.now() - 3000) > 0 && !streakDiagSent) {
-        if (streakDrawn === 0) {
+      // 流光自检: 每~1.5s 报告每条流光状态
+      if ((performance.now() - 3000) > 0) {
+        streakFrames = (streakFrames || 0) + 1;
+        if (streakFrames % 90 === 0) {
           const cv0 = REALM_VIS[idx()];
-          if (cv0 && cv0.streak && cv0.streak.n > 0) {
+          const live = streaks.filter(p => p.born >= 0 && p.born <= p.dur).length;
+          const info = "n=" + (cv0 && cv0.streak ? cv0.streak.n : 0)
+            + " 活=" + live + " 池=" + streaks.length
+            + " drw=" + streakDrawn + (streakDiagSent ? "" : "[off]");
+          if (streakDrawn === 0 && !streakDiagSent && cv0 && cv0.streak && cv0.streak.n > 0) {
             streakDiagSent = true;
-            window.__fxErr = "流光未绘制:n=" + cv0.streak.n + " 池=" + streaks.length
-              + " tex=" + (imgs.streak ? "ok" : "null") + " ready=" + ready;
+            window.__fxErr = "流光未绘制 " + info;
+          } else if (streakDiagSent && live > 0) {
+            window.__fxErr = "流光正常 " + info;
+            streakDiagSent = false;
           }
+          streakDrawn = 0;
         }
-        streakDrawn = 0;
       }
     } catch (e) {
       if (!window.__fxErr) window.__fxErr = "fx2d: " + (e && e.message || e);
