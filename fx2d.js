@@ -111,6 +111,7 @@ function initFx(canvas) {
   const host = canvas.parentElement;
   let W = 0, H = 0, dpr = 1, raf = 0, last = 0, ready = false;
   let motes = [], streaks = [];
+  let streakDrawn = 0, streakDiagSent = false;
 
   const fit = () => {
     try {
@@ -175,7 +176,7 @@ function initFx(canvas) {
     return p;
   }
   function respawnStreak(p) {
-    p.born = -rnd(1.2, 2.8);
+    p.born = -rnd(0.2, 1.0);
     p.dur = rnd(2.6, 3.6);
     p.seed = Math.floor(rnd(0, 1e6));
     p.ph = rnd(0, 6.28); p.ph2 = rnd(0, 6.28);
@@ -285,51 +286,47 @@ function initFx(canvas) {
         if (p.trace.length > 42) p.trace.length = 42;
         if (p.trace.length < 2) continue;
         const n = p.trace.length;
-        const Hp = p.trace[0], Tp = p.trace[n - 1];
-        const mkrgb = (a, b, o, rgb) => "rgba(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + "," + (a * o) + ")";
-        /* ---- 层1: 柔光外晕(整条, 尾淡头亮) */
-        let g = ctx.createLinearGradient(Tp.x, Tp.y, Hp.x, Hp.y);
-        g.addColorStop(0, mkrgb(0, 1, 1, col));
-        g.addColorStop(0.5, mkrgb(0.14 * al, 1, 1, col));
-        g.addColorStop(0.85, mkrgb(0.30 * al, 1, 1, col));
-        g.addColorStop(1, mkrgb(0.5 * al, 1, 1, col));
-        ctx.strokeStyle = g; ctx.lineWidth = H * 0.012;
-        ctx.beginPath(); ctx.moveTo(Tp.x, Tp.y);
-        for (let i = n - 2; i >= 0; i--) ctx.lineTo(p.trace[i].x, p.trace[i].y);
-        ctx.stroke();
-        /* ---- 层2: 中亮色芯 */
-        g = ctx.createLinearGradient(Tp.x, Tp.y, Hp.x, Hp.y);
-        g.addColorStop(0, mkrgb(0, 1, 1, col));
-        g.addColorStop(0.6, mkrgb(0.5 * al, 1, 1, col));
-        g.addColorStop(1, mkrgb(0.85 * al, 1, 1, col));
-        ctx.strokeStyle = g; ctx.lineWidth = H * 0.0044;
-        ctx.beginPath(); ctx.moveTo(Tp.x, Tp.y);
-        for (let i = n - 2; i >= 0; i--) ctx.lineTo(p.trace[i].x, p.trace[i].y);
-        ctx.stroke();
-        /* ---- 层3: 头部 ~1/3 段的白亮高光 */
-        const cut = Math.max(1, Math.floor(n * 0.32));
-        const hP = p.trace[0], cP = p.trace[cut - 1];
-        g = ctx.createLinearGradient(cP.x, cP.y, hP.x, hP.y);
-        g.addColorStop(0, "rgba(255,255,255,0)");
-        g.addColorStop(1, "rgba(255,255,255," + (0.7 * al) + ")");
-        ctx.strokeStyle = g; ctx.lineWidth = H * 0.0024;
-        ctx.beginPath();
-        for (let i = cut - 1; i >= 0; i--) i === cut - 1 ? ctx.moveTo(p.trace[i].x, p.trace[i].y) : ctx.lineTo(p.trace[i].x, p.trace[i].y);
-        ctx.stroke();
-        /* ---- 沿线细尘点缀(每4点一颗, 柔和粒子感) */
-        for (let i = 0; i < n; i += 4) {
+        streakDrawn += 1;
+        const cut = Math.max(2, Math.min(n - 1, Math.floor(n * 0.55)));   // 头段
+        const cutW = Math.max(1, Math.min(n - 1, Math.floor(n * 0.25)));  // 白芯
+        /* 0) 构建轨迹路径(复用, 长度不足自动跳过) */
+        const tracePath = (i0, i1) => {
+          if (i1 - i0 < 2) return;
+          ctx.beginPath();
+          ctx.moveTo(p.trace[i0].x, p.trace[i0].y);
+          for (let i = i0 + 1; i < i1; i++) ctx.lineTo(p.trace[i].x, p.trace[i].y);
+        };
+        const c0 = col[0] + "," + col[1] + "," + col[2];
+        /* 1) 柔光外晕(整条淡) */
+        ctx.strokeStyle = "rgba(" + c0 + "," + (0.16 * al) + ")";
+        ctx.lineWidth = H * 0.012;
+        tracePath(0, n); ctx.stroke();
+        /* 2) 尾段(旧55%, 细而淡) */
+        ctx.strokeStyle = "rgba(" + c0 + "," + (0.30 * al) + ")";
+        ctx.lineWidth = H * 0.0038;
+        if (cut < n - 1) { tracePath(cut, n); ctx.stroke(); }
+        /* 3) 头段(近头55%, 粗而亮) */
+        ctx.strokeStyle = "rgba(" + c0 + "," + (0.85 * al) + ")";
+        ctx.lineWidth = H * 0.0052;
+        tracePath(0, cut); ctx.stroke();
+        /* 4) 头部前25% 白亮高光 */
+        ctx.strokeStyle = "rgba(255,255,255," + (0.85 * al) + ")";
+        ctx.lineWidth = H * 0.0026;
+        tracePath(0, cutW); ctx.stroke();
+        /* 5) 沿线细尘点缀(每5点一颗) */
+        for (let i = 0; i < n; i += 5) {
           const qp = p.trace[i];
           const fade = 1 - i / n;
-          const sz = H * 0.009 * fade;
-          ctx.globalAlpha = al * (0.5 + 0.5 * fade) * 0.5;
+          const sz = H * 0.010 * fade;
+          ctx.globalAlpha = al * (0.4 + 0.6 * fade) * 0.6;
           const ic2 = tinted("mote", col);
           if (ic2) ctx.drawImage(ic2, qp.x - sz / 2, qp.y - sz / 2, sz, sz);
         }
-        /* ---- 柔光圆头(小, 柔和) */
-        ctx.globalAlpha = al * 0.85;
-        const hs = H * 0.022;
+        /* 6) 柔光头部(白光点) */
+        ctx.globalAlpha = al * 0.9;
+        const hs = H * 0.020;
         const hc = tinted("mote", [255, 255, 255]);
-        if (hc) ctx.drawImage(hc, Hp.x - hs / 2, Hp.y - hs / 2, hs, hs);
+        if (hc) ctx.drawImage(hc, p.trace[0].x - hs / 2, p.trace[0].y - hs / 2, hs, hs);
         ctx.globalAlpha = 1;
       }
     }
@@ -346,6 +343,18 @@ function initFx(canvas) {
       const cfgV = REALM_VIS[idx()];
       prepare(cfgV);
       draw(now / 1000, dt);
+      // 流光自检: 每~1.5s, 若配置了流光却从没画出来 → 上报原因
+      if ((performance.now() - 3000) > 0 && !streakDiagSent) {
+        if (streakDrawn === 0) {
+          const cv0 = REALM_VIS[idx()];
+          if (cv0 && cv0.streak && cv0.streak.n > 0) {
+            streakDiagSent = true;
+            window.__fxErr = "流光未绘制:n=" + cv0.streak.n + " 池=" + streaks.length
+              + " tex=" + (imgs.streak ? "ok" : "null") + " ready=" + ready;
+          }
+        }
+        streakDrawn = 0;
+      }
     } catch (e) {
       if (!window.__fxErr) window.__fxErr = "fx2d: " + (e && e.message || e);
     }
