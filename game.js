@@ -655,7 +655,16 @@ function cldApiBase() {
 const CLD_API = cldApiBase();
 const CLD_KEY = "dongtian_cloud_id";
 const CLD_ALPH = "abcdefghjkmnpqrstuvwxyz23456789";
-const cld = { id: "", ready: false, dirty: false, lastOkTs: 0, lastOkLocal: 0, lastPushTs: 0 };
+const cld = { id: "", ready: false, dirty: false, lastOkTs: 0, lastOkLocal: 0, lastPushTs: 0, lastErr: "" };
+function cldFail(e) {
+  let msg = "";
+  if (!e) msg = "unknown";
+  else if (e && e.name === "AbortError") msg = "连接超时(网络慢?)";
+  else if (e && e.message) msg = String(e.message).slice(0, 80);
+  cld.lastErr = msg;
+  try { cldUI("off"); } catch (err) {}
+  const hint = $("cloudErr"); if (hint) hint.textContent = "最近错误: " + msg;
+}
 
 function cldId() {
   if (cld.id) return cld.id;
@@ -725,8 +734,10 @@ async function cldPush() {
     cld.ready = true; cld.lastOkTs = Date.now(); cld.lastOkLocal = state.lastTs;
     cld.lastPushTs = Date.now();
     cldUI("on");
+    cld.lastErr = "";
+    const hint = $("cloudErr"); if (hint) hint.textContent = "";
     return true;
-  } catch (e) { cldUI("off"); return false; }
+  } catch (e) { cldFail(e); return false; }
 }
 async function cldPull() {
   if (!window.fetch) { cldUI("off"); return; }
@@ -766,7 +777,7 @@ async function cldPull() {
     // 云端还没有此玩家码 → 建档上传
     await cldPush();
     cld.dirty = false;
-  } catch (e) { cldUI("off"); }
+  } catch (e) { cldFail(e); }
 }
 function cloudPushNow() {
   if (!window.fetch) return;
@@ -2392,7 +2403,7 @@ async function cloudSettle() {
   let snap = null;
   try { snap = JSON.parse(JSON.stringify(state)); } catch (e) { return null; }
   const ctl = new AbortController();
-  const tm = setTimeout(() => ctl.abort(), 5000);
+  const tm = setTimeout(() => ctl.abort(), 8000);
   try {
     const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&settle=1", {
       method: "PUT",
@@ -2417,7 +2428,7 @@ async function cloudSettle() {
     return null;
   } catch (e) {
     clearTimeout(tm);
-    cldUI("off");
+    cldFail(e);
     return null;
   }
 }

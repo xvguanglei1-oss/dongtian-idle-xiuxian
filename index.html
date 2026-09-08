@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>洞天 · 挂机修仙 · 墨线夜谈 v0.7.2</title>
+<title>洞天 · 挂机修仙 · 墨线夜谈 v0.7.3</title>
 <meta name="description" content="洞天挂机修仙：分身自动历险、自动寻宝穿装，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -206,9 +206,9 @@
   #cloudPanel .cp-hint{font-size:10px;color:#6f87a5;line-height:1.5;margin-top:6px}
   .ver-tag{align-self:center;font-size:8px;color:rgba(233,226,208,.26);letter-spacing:.06em;font-family:ui-monospace,monospace;pointer-events:none}
 </style>
-<link rel="stylesheet" href="dt-theme.css?v=0.7.2">
+<link rel="stylesheet" href="dt-theme.css?v=0.7.3">
 <script type="importmap">
-{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js"}}
+{"imports":{"three":"./assets/three.module.js"}}
 </script>
 </head>
 <body>
@@ -221,7 +221,7 @@
 <div class="vignette"></div>
 
 <div class="hud">
-  <div class="realm-badge"><span class="big" id="realmName">凡人</span><span class="sub" id="realmSub">练气初期 · 洞天福地</span><div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap"><button class="story-btn" onclick="openStory()">📜 剧情纲目</button><span class="ver-tag">v0.7.2</span></div></div>
+  <div class="realm-badge"><span class="big" id="realmName">凡人</span><span class="sub" id="realmSub">练气初期 · 洞天福地</span><div style="display:flex;gap:6px;margin-top:7px;flex-wrap:wrap"><button class="story-btn" onclick="openStory()">📜 剧情纲目</button><span class="ver-tag">v0.7.3</span></div></div>
   <div class="hud-right">
     <div class="spirit"><svg class="sico" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 L18.5 10 L10 18.5 L1.5 10 Z" fill="#67c9ab"/><path d="M10 1.5 L10 18.5 L18.5 10 Z" fill="#b7ecda"/><path d="M10 1.5 L1.5 10 L10 10 Z" fill="#9de0c9"/></svg><span id="spirit">0</span></div>
     <div class="rate">修为 <b id="rateText">0</b>/秒</div>
@@ -262,7 +262,8 @@
   <div class="cp-row">玩家码&nbsp;<b id="cloudId">-</b><button class="cp-btn" onclick="cloudCopyId()">复制</button></div>
   <div class="cp-row">换存档&nbsp;<input id="cloudInput" placeholder="粘贴他人玩家码" maxlength="24"><button class="cp-btn" onclick="cloudBind()">绑定</button></div>
   <div class="cp-row"><button class="cp-btn" onclick="cloudPushNow()">立即上传</button><button class="cp-btn" onclick="cloudPullNow()">拉取云端</button></div>
-  <div class="cp-hint">自动每 20 秒同步一次。换设备：复制本机玩家码 → 新设备点“绑定”粘贴 → 自动拉取。玩家码即钥匙，请勿外传。</div>
+  <div id="cloudErr" style="font-size:10px;color:#ff8a7a;line-height:1.5;margin-top:4px;word-break:break-all"></div>
+  <div class="cp-hint">自动同步。换设备：复制本机玩家码 → 新设备点“绑定”粘贴 → 自动拉取。玩家码即钥匙，请勿外传。</div>
 </div>
 
 <div class="realm-up" id="realmUp"><div class="t" id="realmUpT">筑基</div><div class="s">天人感应 · 修为暴涨</div></div>
