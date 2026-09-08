@@ -476,3 +476,26 @@
     text-shadow:0 0 8px rgba(255,90,60,.8);animation:dmgUp 1.05s ease forwards;pointer-events:none;white-space:nowrap}
   .tk-dmg.me{left:6px;right:auto;color:#ffe2a0;text-shadow:0 0 8px rgba(255,190,90,.8)}
   @keyframes dmgUp{0%{opacity:0;transform:translateY(4px) scale(.8)}18%{opacity:1;transform:translateY(-2px) scale(1.15)}100%{opacity:0;transform:translateY(-26px) scale(1)}}
+
+/* ============ v0.9.3 情境行迹 + 文字斗法横幅 ============ */
+  .trace.fight{background:linear-gradient(90deg,rgba(208,80,60,.0),rgba(74,16,8,.88) 16%,rgba(74,16,8,.88) 84%,rgba(208,80,60,.0));
+    border-top:1px solid rgba(255,140,110,.28);border-bottom:1px solid rgba(255,140,110,.28);
+    animation:encPulse 1.6s ease-in-out infinite;padding:8px 4px}
+  .trace.fight .t-txt{color:#ffe4d8;font-size:12.5px}
+  .trace.fight .t-txt b{color:#ffb199}
+  /* 文字斗法横幅: 行迹带正下方, 细墨纸横向条 */
+  .war-banner{position:fixed;left:0;right:0;top:212px;z-index:9;display:none;
+    pointer-events:none}
+  .war-banner::before{content:"";position:absolute;inset:0;
+    background:linear-gradient(90deg,rgba(10,14,24,.0),rgba(12,16,26,.96) 14%,rgba(12,16,26,.96) 86%,rgba(10,14,24,.0));
+    border-top:1px solid rgba(201,168,106,.16);border-bottom:1px solid rgba(201,168,106,.16)}
+  .war-banner{display:none;flex-direction:column}
+  .war-hd{display:flex;justify-content:space-between;align-items:baseline;
+    padding:7px 26px 3px;position:relative}
+  .war-t{font-family:var(--font-brush);font-size:12px;color:#e0b98a;letter-spacing:.22em}
+  .war-hp{font-size:10.5px;color:#9aa5ba;letter-spacing:.04em}
+  .war-hp i{font-style:normal;color:#f0c9a8}
+  .war-bd{padding:3px 26px 9px;position:relative}
+  .wl{font-size:12px;line-height:1.95;color:#d2daea;letter-spacing:.02em}
+  .wl .r{color:#ff8a70;font-weight:700}
+  .wl.win{color:#ffd9a0;font-weight:600;margin-top:2px}
