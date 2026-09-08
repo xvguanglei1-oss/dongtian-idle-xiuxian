@@ -2436,7 +2436,7 @@ function startTravel() {
   if (state.travel) { pushMsg("main", "化身尚在云游，归期未至"); closeTravel(); return; }
   const { l } = pickLoc();
   state.travel = { loc: l.id, since: Date.now() };
-  _encT = 0; _encNeed = 90 + Math.random() * 70;    // 新程起步: 重新计遇妖冷却
+  _encNext = Date.now() + ENC_PERIOD * 1000 * 0.5;   // 新程起步: 重置巡猎波次计时(半周期后首遇)
   pushMsg("main", `你为化身备好行囊。它往<span class="r">${l.n}</span>的方向去了，阿青蹲在门口目送，尾巴搭在你脚边。`);
   pushMsg("avatar", `阿青送化身到山门口，回来在你蒲团边卧下`);
   travelBtnLbl(); updateHUD(); save(); cloudSoon();
@@ -2853,7 +2853,9 @@ function traceBeat() {
   if (!state) return;
   if (!BTL && !MYST) {
     if (!_encNext) _encNext = Date.now() + ENC_PERIOD * 1000 * (0.35 + Math.random() * 0.65);
-    if (Date.now() >= _encNext) fireEvent();
+    if (Date.now() >= _encNext) {
+      try { fireEvent(); } catch (e) { _encNext = Date.now() + ENC_PERIOD * 1000; console.warn("遭遇异常:", e); }
+    }
   }
   if (!BTL && !MYST && Date.now() - _traceT > 150000) { _traceT = Date.now(); traceRefresh(); }
 }
