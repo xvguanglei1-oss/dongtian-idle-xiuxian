@@ -428,7 +428,7 @@
   .btl-hint{font-size:9.5px;color:#5f6980;text-align:center;margin-top:10px;letter-spacing:.1em}
 
 /* ============ v0.9.1 行迹下移 + 战斗怪 sprite ============ */
-  .trace{top:168px !important}
+  .trace{top:152px !important}
   .btl-fig{position:relative;display:flex;align-items:center;justify-content:center;overflow:visible}
   .btl-fig .btl-bg{position:absolute;height:100%;width:auto;left:50%;transform:translateX(-50%);opacity:.6;pointer-events:none;filter:blur(.4px)}
   .btl-fig .btl-mob{position:relative;z-index:1;height:104px;image-rendering:pixelated;image-rendering:crisp-edges;
@@ -439,7 +439,7 @@
   .btl-fig.hit .btl-bg{opacity:.85;filter:blur(.8px) drop-shadow(0 0 18px rgba(255,90,55,.9))}
 
 /* ============ v0.9.2 首页自动对轰战场 ============ */
-  .trace.battle{top:162px;max-width:min(94vw,560px);width:94vw;
+  .trace.battle{top:164px;max-width:min(94vw,560px);width:94vw;
     background:linear-gradient(90deg,rgba(60,20,10,.10),rgba(14,18,30,.9) 18%,rgba(14,18,30,.9) 82%,rgba(60,20,10,.10));
     border-top:1px solid rgba(255,140,110,.25);border-bottom:1px solid rgba(255,140,110,.25);
     padding:14px 8px 10px}
@@ -521,3 +521,33 @@
   .eq-btl{grid-area:btl;font-size:10px;color:#7f92ad;letter-spacing:.02em}
   .eq-empty{text-align:center;color:#8b94a8;font-size:12.5px;padding:24px 8px;line-height:2.1}
   .eq-rec{font-size:10px;color:#5f6980;text-align:center;margin-top:10px;line-height:1.7}
+
+
+/* ============ v0.9.5 法宝大钮 + 六格面板 ============ */
+  .equip-chip{position:relative;width:46px;height:46px;flex:none;cursor:pointer;z-index:9;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22 preserveAspectRatio=%22none%22><path d=%22M100 8 C146 2 190 32 195 80 C200 130 172 188 126 195 C78 203 18 178 9 124 C1 74 28 16 78 8 C85 7 93 8 100 8 Z%22 fill=%22rgba(22,30,50,.62)%22 stroke=%22rgba(201,168,106,.75)%22 stroke-width=%221.7%22 vector-effect=%22non-scaling-stroke%22/></svg>');
+    background-size:100% 100%;background-repeat:no-repeat;
+    filter:drop-shadow(0 3px 12px rgba(0,0,0,.5));-webkit-tap-highlight-color:transparent}
+  .equip-chip .lg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-brush);font-size:21px;color:#f0c98a;letter-spacing:0;text-shadow:0 0 10px rgba(240,200,140,.45)}
+  .equip-chip:active{transform:scale(.92)}
+  .equip-chip::after{content:"";position:absolute;left:7px;right:7px;top:6px;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(240,210,150,.5),transparent)}
+  /* 六格 */
+  .eq-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 12px}
+  .eq-cell{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;padding:10px 4px 8px;min-height:86px;overflow:hidden;text-align:center;
+    background:rgba(18,24,40,.55);border:1px solid rgba(201,168,106,.14)}
+  .eq-cell::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:rgba(140,150,175,.4)}
+  .eq-cell.qc0::before{background:linear-gradient(90deg,#8f9db4,#5f6d84)}
+  .eq-cell.qc1::before{background:linear-gradient(90deg,#7dbb8d,#417d55)}
+  .eq-cell.qc2::before{background:linear-gradient(90deg,#7aa8e8,#3f6db8)}
+  .eq-cell.qc3::before{background:linear-gradient(90deg,#c58be8,#7b4fb0)}
+  .eq-cell.qc4::before{background:linear-gradient(90deg,#f0c06a,#bd8726)}
+  .eq-cell.qc5::before{background:linear-gradient(90deg,#f08a8a,#c23c3c);height:4px}
+  .eq-cell.empty{background:rgba(12,16,28,.35);border-style:dashed;border-color:rgba(150,160,190,.16)}
+  .eq-ql{font-size:9.5px;letter-spacing:.14em}
+  .eq-cn{font-size:12.5px;color:#e8ecf5;line-height:1.4;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 4px}
+  .eq-cn.dim{color:#4d5570;font-size:11px}
+  .eq-cm{font-size:10px;color:#c9a86a}
+  .eq-bt{font-size:9px;color:#7f92ad;letter-spacing:.02em}
