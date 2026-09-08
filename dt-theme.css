@@ -1,0 +1,324 @@
+/* ============================================================
+   洞天·挂机修仙 —— 设计语言主题层  dt-theme.css
+   版本: 0.2.0   (每次视觉改版 bump 此号 + index.html 引用参数)
+   语言: 「墨线夜谈」手绘墨迹 × 纸墨色彩纪律
+   参照: messenger.abeto.co 的 imperfect/outline 基因
+   ============================================================ */
+/* ============================================================
+     「墨线夜谈」试点 v0.1 —— 不完美手绘 × 纸墨色彩纪律
+     参照 messenger.abeto.co 语言基因：imperfect outline / 克制用色
+     规则：墨黑为主 · 宣纸近白 · 朱砂唯一高饱和 · 一色黛青辅助
+     ============================================================ */
+  :root{
+    /* 色彩纪律：只留这几个色相 */
+    --dt-ink:#e9e2d0;        /* 墨上之纸（主文字） */
+    --dt-ink-dim:#a49a84;    /* 淡墨（次文字） */
+    --dt-paper:#10141f;      /* 夜色底（洞天之外的虚空） */
+    --dt-cinnabar:#b0382a;   /* 朱砂 —— 全界面唯一高饱和（渡劫/印鉴） */
+    --dt-cinnabar-hi:#d9583f;/* 朱砂高光 */
+    --dt-jade:#5f8b7a;       /* 黛青（灵石/生命类点缀，克制使用） */
+    --dt-line:rgba(212,182,120,.28);  /* 旧金描边 —— 不亮的金 */
+    --dt-gold-ink:#c9a86a;   /* 书金 */
+    /* 手写/书法字体栈 */
+    --font-brush:"Kaiti SC","STKaiti","KaiTi","DFKai-SB","BiauKai",serif;
+    --font-body:"Noto Serif SC","Songti SC","STSong","SimSun","Source Han Serif SC",serif;
+  }
+  body{
+    font-family:var(--font-body);
+    letter-spacing:.02em;
+    background:#0a0d16;
+  }
+  /* 旧金 → 旧金（微调，去荧光感） */
+  .realm-badge .big,.card h3,.story-body h4,.j-card h5{font-family:var(--font-brush)}
+  .realm-badge .big{color:#d4b06a;text-shadow:0 0 14px rgba(212,176,106,.35)}
+  .realm-badge{position:relative;padding:14px 18px 14px;display:flex;flex-direction:column;gap:1px;min-width:170px;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 80%22 preserveAspectRatio=%22none%22><path d=%22M8 12 C26 0 54 22 84 4 C112 -10 144 22 178 6 C198 8 196 30 194 44 C198 58 188 70 174 74 C148 80 116 68 86 76 C58 80 30 68 12 76 C2 74 -2 56 6 42 C8 28 -4 16 8 12 Z%22 fill=%22rgba(13,17,26,.94)%22 stroke=%22rgba(201,168,106,.34)%22 stroke-width=%221.3%22 vector-effect=%22non-scaling-stroke%22/></svg>');
+    background-size:100% 100%;background-repeat:no-repeat;
+    filter:drop-shadow(0 6px 16px rgba(0,0,0,.55))}
+  /* 徽章右下角一枚小朱砂印 —— 手绘"盖印"意象 */
+  .realm-badge::after{content:"洞天";position:absolute;right:5px;bottom:4px;
+    font-family:var(--font-brush);font-size:7px;color:rgba(176,56,42,.75);
+    border:1px solid rgba(176,56,42,.5);padding:0 2px;border-radius:2px;transform:rotate(-4deg);
+    letter-spacing:.1em}
+  /* ===== 按钮 = SVG 手绘墨块（2D 矢量 path，真·S 曲线）=====
+     每颗按钮内嵌 <svg class="skin"><path class="ink">：轮廓由贝塞尔曲线(C/Q)构成，
+     波浪起伏、绝无直线边。文字由 .label 叠加。gradGold/gradCin 渐变在 index.html <defs> 中。
+     ---- */
+  .btn{
+    position:relative;display:inline-flex;align-items:center;justify-content:center;
+    border:none;background:transparent;padding:13px 24px;
+    font-family:var(--font-brush);font-size:14px;font-weight:600;letter-spacing:.2em;
+    color:#e8d6a4;text-shadow:0 1px 3px rgba(0,0,0,.5);
+    cursor:pointer;-webkit-tap-highlight-color:transparent;
+    filter:drop-shadow(0 4px 8px rgba(0,0,0,.35));
+    transition:transform .14s, filter .2s;
+    vertical-align:middle;
+  }
+  .btn .skin{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+  .btn .ink{fill:url(#gradGold);stroke:rgba(235,205,140,.55);stroke-width:1.3;
+    vector-effect:non-scaling-stroke}
+  .btn .label{position:relative;z-index:2;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:20px;white-space:nowrap}
+  /* 镜像/倾斜：让每颗按钮轮廓各不同向 */
+  #btnArray .skin{transform:scaleX(-1)}
+  #btnBreak{--tilt:-.8deg}
+  #btnArray{--tilt:.6deg}
+  .btn:hover{filter:drop-shadow(0 6px 12px rgba(0,0,0,.45)) brightness(1.08)}
+  .btn:active{transform:rotate(var(--tilt,0deg)) scale(.95);filter:brightness(.88)}
+  .btn:disabled{opacity:.3;filter:saturate(.25) grayscale(.3)}
+  /* 朱砂主按钮（渡劫/确认）—— 唯一高饱和 */
+  .btn.primary{color:#f9edda;text-shadow:0 1px 3px rgba(70,10,0,.55)}
+  .btn.primary .ink{fill:url(#gradCin);stroke:rgba(255,205,175,.6);stroke-width:1.4}
+  /* 渡劫可点时：印泥脉动 */
+  .btn.ready .ink{animation:inkBeat 1.5s ease-in-out infinite}
+  @keyframes inkBeat{0%,100%{filter:drop-shadow(0 0 1px rgba(230,90,55,0))}
+    50%{filter:drop-shadow(0 0 10px rgba(230,90,55,.9))}}
+
+    50%{box-shadow:inset 0 1px 0 rgba(255,220,200,.35),0 0 30px rgba(200,70,50,.6),0 6px 18px rgba(0,0,0,.45)}}
+  /* 文本浮签里的高亮色：去荧光，转旧金/黛青 */
+  .fmsg .r{color:#c9a86a}.fmsg .g{color:#7fb3a0}.fmsg .b{color:#9db4d9}
+  .feed-avatar .fmsg .r{color:#8f7a4d}
+  .rate b,.story-sum,.j-big{color:#b9c6dd}
+  .card h3{color:#d8b06a}
+  .spirit{position:relative;color:#9ed7b8;font-weight:700;display:flex;gap:5px;align-items:center;padding:6px 14px;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 40%22 preserveAspectRatio=%22none%22><path d=%22M12 8 C42 -2 88 16 138 2 C172 -4 198 6 200 18 C202 30 188 38 174 36 C136 44 88 30 48 38 C18 40 2 36 0 24 C-2 14 6 8 12 8 Z%22 fill=%22rgba(12,18,34,.9)%22 stroke=%22rgba(201,168,106,.28)%22 stroke-width=%221.2%22 vector-effect=%22non-scaling-stroke%22/></svg>');
+    background-size:100% 100%;background-repeat:no-repeat;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
+  .rate{position:relative;font-size:11px;color:#cbd2dc;font-weight:600;display:flex;gap:4px;align-items:center;padding:4px 12px;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 40%22 preserveAspectRatio=%22none%22><path d=%22M12 8 C42 -2 88 16 138 2 C172 -4 198 6 200 18 C202 30 188 38 174 36 C136 44 88 30 48 38 C18 40 2 36 0 24 C-2 14 6 8 12 8 Z%22 fill=%22rgba(12,18,34,.9)%22 stroke=%22rgba(201,168,106,.28)%22 stroke-width=%221.2%22 vector-effect=%22non-scaling-stroke%22/></svg>');
+    background-size:100% 100%;background-repeat:no-repeat;
+    filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
+  .rate b{color:#b9c6dd;font-weight:700}
+  #cloudChip{position:relative;display:flex;align-items:center;gap:5px;max-width:168px;white-space:nowrap;overflow:hidden;padding:4px 12px;font-size:11px;color:#cdd9e8;cursor:pointer;user-select:none;line-height:1.2;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 40%22 preserveAspectRatio=%22none%22><path d=%22M12 8 C42 -2 88 16 138 2 C172 -4 198 6 200 18 C202 30 188 38 174 36 C136 44 88 30 48 38 C18 40 2 36 0 24 C-2 14 6 8 12 8 Z%22 fill=%22rgba(12,18,34,.9)%22 stroke=%22rgba(201,168,106,.28)%22 stroke-width=%221.2%22 vector-effect=%22non-scaling-stroke%22/></svg>');
+    background-size:100% 100%;background-repeat:no-repeat}
+  .spirit.cloud #cloudChip.dot{width:7px;height:7px;border-radius:50%;background:#7a8694;flex:none}
+  /* 进度条：灵气暖金 + 墨形轨道（不再是胶囊矩形） */
+  .exp-track{position:relative;height:18px;border:0;outline:0;overflow:hidden;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 20%22 preserveAspectRatio=%22none%22><path d=%22M10 4 C50 -2 90 12 130 2 C170 -2 198 4 196 12 C198 18 188 18 178 14 C140 16 100 18 60 16 C30 18 12 16 4 14 C-2 10 4 6 10 4 Z%22 fill=%22rgba(10,14,28,.92)%22 stroke=%22rgba(201,168,106,.28)%22 stroke-width=%221.1%22 vector-effect=%22non-scaling-stroke%22/></svg>');
+    background-size:100% 100%;background-repeat:no-repeat}
+  .exp-fill{background:linear-gradient(90deg,#6b5426,#c9a86a 55%,#f0d795);box-shadow:0 0 16px rgba(212,176,106,.55)}
+  .exp-labels b{color:#d4b06a}
+  /* 卡片：宣纸晕染感 + 墨线双框 */
+  .card{position:relative;padding:26px 24px;text-align:center;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 130%22 preserveAspectRatio=%22none%22><path d=%22M16 8 C50 0 92 16 132 4 C170 -2 192 12 198 26 C200 46 188 70 196 88 C198 108 184 124 166 126 C140 132 108 122 80 126 C50 130 24 122 10 118 C0 102 -2 80 2 60 C4 38 -4 20 16 8 Z%22 fill=%22rgba(15,20,34,.94)%22 stroke=%22rgba(201,168,106,.32)%22 stroke-width=%221.4%22 vector-effect=%22non-scaling-stroke%22/></svg>');
+    background-size:100% 100%;background-repeat:no-repeat;
+    filter:drop-shadow(0 22px 60px rgba(0,0,0,.6))}
+  .modal{background:rgba(6,8,14,.7)}
+  /* 修行录里的条卡：去掉圆角白，改墨线左竖 */
+  .j-card{border-radius:5px;background:rgba(255,255,255,.028);border-left:2px solid rgba(201,168,106,.6)}
+  .j-card p{color:#c6cdd8}
+  .chip,.story-btn{border-radius:999px}
+  .story-btn{color:#c9a86a}
+  /* 大境界升字（突破瞬间）也换书法 */
+  .realm-up .t{font-family:var(--font-brush);font-weight:500;letter-spacing:.34em}
+  .realm-up .s{font-family:var(--font-brush);letter-spacing:.3em;color:#a8bfe0}
+  /* 全身纸纹噪点（低透明宣纸颗粒）—— 纹理层 */
+  body::after{content:"";position:fixed;inset:0;z-index:3;pointer-events:none;opacity:.05;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='0.6'/></svg>");}
+/* ================= v0.4.2 按钮三态显式配色 =================
+   熄墨(disabled,灰蓝) / 可点(墨金/朱砂) / 激活ready(亮朱砂+脉动) */
+  .btn .ink{fill:#96733a;stroke:rgba(235,205,140,.5);stroke-width:1.3}
+  .btn.primary .ink{fill:#a93828;stroke:rgba(255,205,175,.6)}
+  .btn.ready .ink{fill:#c74a30}
+  .btn.ready{color:#ffe6cd}
+  /* 非激活=熄墨：灰蓝墨块+去饱和文字，不透明但明显"灭着" */
+  .btn:disabled .ink{fill:#232c46;stroke:rgba(150,175,220,.35)}
+  .btn:disabled{opacity:.9;color:#64718c;filter:grayscale(.65);text-shadow:none;cursor:not-allowed}
+  .btn.primary:disabled{color:#8a7a88}
+
+/* ================= v0.4.2 全界面清洗：墨形统一 =================
+   统一"小墨条"轮廓(200x44)，用于日志/道具/筛选chip/离线奇遇等所有曾圆角矩形的小件 */
+  .fmsg,.art,.chip,.story-btn,.aura-chip,.off-tale,.cp-btn{
+    border:0 !important;border-radius:0 !important;backdrop-filter:none !important;
+    background-color:transparent !important;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(12,17,31,.78)%22 stroke=%22rgba(201,168,106,.26)%22 stroke-width=%221.1%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+    background-size:100% 100% !important;background-repeat:no-repeat !important;
+  }
+  /* 各自内边距微调，文字不贴边 */
+  .fmsg{padding:8px 14px !important}
+  .art{padding:4px 12px !important;background-blend-mode:normal}
+  .chip,.story-btn,.aura-chip{padding:4px 13px !important}
+  .off-tale{padding:10px 14px !important}
+  .cp-btn{padding:4px 12px !important;color:#cfe3fb !important}
+  /* 修行录条目 j-card：弃圆角底，改"左侧朱墨竖线+透明" */
+  .j-card{background:transparent !important;border-radius:0 !important;box-shadow:none !important;
+    border:0 !important;padding:2px 0 2px 14px !important;position:relative}
+  .j-card::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:3px;
+    background:linear-gradient(180deg,#c9a86a 0%,#7a5c26 60%,rgba(201,168,106,.15) 100%)}
+  .j-card.k-开篇::before{background:linear-gradient(180deg,#7fb3a0,#3f6a5a)}
+  .j-card.k-游历::before{background:linear-gradient(180deg,#9db4d9,#3f5578)}
+  .j-card.k-纪事::before{background:linear-gradient(180deg,#b09adb,#6a4f8f)}
+  /* HUD 里 aura-tooltip 弹层、云存档面板：圆角卡 → 墨卡 */
+  .aura-tooltip,#cloudPanel{border-radius:0 !important;border:0 !important;
+    background-color:transparent !important;backdrop-filter:none !important;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 130%22 preserveAspectRatio=%22none%22><path d=%22M16 8 C50 0 92 16 132 4 C170 -2 192 12 198 26 C200 46 188 70 196 88 C198 108 184 124 166 126 C140 132 108 122 80 126 C50 130 24 122 10 118 C0 102 -2 80 2 60 C4 38 -4 20 16 8 Z%22 fill=%22rgba(12,16,26,.95)%22 stroke=%22rgba(201,168,106,.3)%22 stroke-width=%221.3%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+    background-size:100% 100% !important;background-repeat:no-repeat !important}
+  .aura-tooltip{padding:14px 16px !important}
+  #cloudPanel{padding:14px 14px !important}
+  #cloudPanel input{border-radius:0 !important;border:1px solid #2a3a52 !important;background:#0a0f15 !important}
+  /* 修炼日志主/分身栏：底端墨色浮签也覆盖透明，避免旧blur层 */
+  .feed-avatar .fmsg,.feed-main .fmsg{color:inherit}
+  .feed-avatar .fmsg{color:#a3b1c9}
+  .feed-main .fmsg{color:#e6ebf6}
+
+/* ============ v0.4.3 ============
+   ① 彻底清掉 card / realm-badge 残留的圆角矩形底(border+radius+bg)
+   ② 墨形按内容自适应：加大 padding、子元素不溢出、境界徽章用更高的 200x120 墨简
+   ③ 突破按钮三态可读性：熄墨不是“隐身”，朱砂可点态更鲜 */
+  /* ---- ① 圆角矩形兜底清洗 ---- */
+  .card,.realm-badge,#cloudPanel,.aura-tooltip{
+    border-radius:0 !important;border:0 !important;
+    background-color:transparent !important;
+    box-shadow:none !important;
+  }
+  /* ---- ② 境界徽章：换 200x120 墨简(能容纳三行)，内容不溢出，子项整理 ---- */
+  .realm-badge{
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 120%22 preserveAspectRatio=%22none%22><path d=%22M6 14 C30 2 60 26 100 6 C130 -6 170 20 194 10 C200 22 196 40 196 60 C198 76 194 96 194 106 C190 114 170 116 150 112 C120 120 90 106 60 114 C40 118 16 114 8 106 C2 98 4 80 6 62 C4 42 2 24 6 14 Z%22 fill=%22rgba(13,17,26,.94)%22 stroke=%22rgba(201,168,106,.34)%22 stroke-width=%221.3%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+    background-size:100% 100% !important;
+    padding:16px 20px 18px !important;min-width:0;width:auto;max-width:min(52vw,250px);
+  }
+  .realm-badge .big{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:16px;line-height:1.35}
+  .realm-badge .sub{display:block;font-size:10px;line-height:1.45;color:#a7b0c4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .realm-badge .story-btn{margin-top:7px}
+  /* 徽章朱印挪到内部内容底部右 */
+  .realm-badge::after{right:12px;bottom:10px}
+  /* ---- ②' 卡片墨形随内容撑高：给足 padding 与内容安全区 ---- */
+  .card{background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 150%22 preserveAspectRatio=%22none%22><path d=%22M14 10 C48 0 90 18 130 6 C168 0 190 14 196 30 C200 56 188 86 196 110 C198 136 184 146 160 148 C130 150 100 142 74 146 C48 148 22 142 10 136 C0 120 -2 100 2 76 C0 50 -4 24 14 10 Z%22 fill=%22rgba(14,19,33,.96)%22 stroke=%22rgba(201,168,106,.32)%22 stroke-width=%221.4%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+    background-size:100% 100% !important;
+    padding:28px 26px !important;
+    width:auto;max-width:min(92vw,360px);
+  }
+  .story-card{max-width:min(94vw,440px);width:auto;height:auto;min-height:min(70vh,560px);padding:26px 22px 20px !important}
+  .story-body{overflow-y:auto;max-height:min(56vh,460px)}
+  .card-content-wrap{min-width:0}
+  /* 卡片文字不溢出墨形：内部元素限制宽度 */
+  .card h3,.card p,.card .off-tale{max-width:100%;overflow-wrap:break-word;word-break:break-word}
+  /* ---- ③ 按钮三态：熄墨可见，朱砂鲜亮 ---- */
+  .btn .ink{fill:#8f6f38;stroke:rgba(235,205,140,.55)}
+  .btn{color:#e8d6a4}
+  .btn.primary .ink{fill:#b9342a;stroke:rgba(255,205,175,.62)}
+  .btn.primary{color:#fff3e4;text-shadow:0 1px 3px rgba(70,10,0,.6)}
+  .btn.ready .ink{fill:#cf4a30}
+  .btn.ready{color:#fff0da}
+  .btn.ready{animation:none}
+  .btn.ready .ink{animation:inkBeat 1.4s ease-in-out infinite}
+  /* 熄墨：非透明隐藏，而是“灭掉”的可见钮 */
+  .btn:disabled{opacity:1;filter:none;color:#9aa6c0;cursor:not-allowed;text-shadow:none}
+  .btn:disabled .ink{fill:#3a4365;stroke:rgba(170,190,235,.4);filter:none}
+  .btn.primary:disabled{color:#cbb4c4}
+  .btn.primary:disabled .ink{fill:#52405a;stroke:rgba(220,160,190,.4)}
+  .btn .label{white-space:normal;line-height:1.35}
+
+/* ============ v0.4.4 ============
+   ① 突破按钮彻底不透明：全状态 opacity:1，熄灭态也提亮可读
+   ② 左右日志浮签：加内边距与断词，字不再跑出墨形 */
+  .btn,.btn:disabled,.btn.primary,.btn.primary:disabled{opacity:1 !important;filter:none !important}
+  .btn .ink,.btn.primary .ink,.btn:disabled .ink{fill-opacity:1;opacity:1}
+  .btn.primary .ink{fill:#c03d2c;stroke:rgba(255,215,185,.7)}
+  .btn.primary{color:#fff6e8;text-shadow:0 1px 2px rgba(80,12,0,.7)}
+  .btn:disabled .ink{fill:#47517c;stroke:rgba(185,205,255,.55);stroke-width:1.5}
+  .btn:disabled{color:#bcc6de}
+  .btn.primary:disabled .ink{fill:#6b5262;stroke:rgba(235,175,195,.6)}
+  .btn.primary:disabled{color:#e2cfda}
+  /* 日志浮签：安全边距 + 断词约束 */
+  .feed{width:min(224px,46vw)}
+  .feed .fmsg{width:100%;padding:10px 16px 10px 14px !important;overflow:hidden;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3}
+  .feed .fmsg .r,.feed .fmsg .g,.feed .fmsg .b{display:inline;overflow-wrap:anywhere}
+  .feed .fmsg span{overflow-wrap:anywhere}
+
+/* ============ v0.4.5 ============
+   ① 墨块改为 50% 半透明（透出星空又保留形状），文字实亮、描边清楚
+   ② 日志浮签框随字自适应：容器不拉伸、墨条贴内容宽 */
+  /* —— 皮肤填充 50% alpha —— */
+  .btn .ink{fill:rgba(143,111,56,.5);stroke:rgba(235,205,140,.8);stroke-width:1.5}
+  .btn{color:#ecd9a8;text-shadow:0 1px 2px rgba(0,0,0,.65)}
+  .btn.primary .ink{fill:rgba(200,62,44,.5);stroke:rgba(255,215,185,.85);stroke-width:1.6}
+  .btn.primary{color:#fff3e0}
+  .btn.ready .ink{fill:rgba(214,80,50,.55);stroke:rgba(255,230,200,.9)}
+  /* 熄灭态：灰蓝墨 50% + 亮描边 + 文字仍清楚 */
+  .btn:disabled .ink{fill:rgba(71,81,124,.5);stroke:rgba(185,205,255,.75);stroke-width:1.6}
+  .btn:disabled{color:#c6d0e8;text-shadow:none}
+  .btn.primary:disabled .ink{fill:rgba(107,82,98,.5);stroke:rgba(235,175,195,.75)}
+  .btn.primary:disabled{color:#e6d2dd}
+  .btn:disabled{opacity:1 !important;filter:none !important}
+  /* —— 日志浮签：墨条宽度贴合内容 —— */
+  .feed{width:auto;max-width:min(300px,58vw);max-height:min(280px,40vh);
+    display:flex;flex-direction:column-reverse;gap:7px}
+  .feed.feed-avatar{align-items:flex-start}
+  .feed.feed-main{align-items:flex-end}
+  .feed .fmsg{width:auto;max-width:100%;padding:9px 15px;flex:none}
+
+/* ============ v0.4.6 ============
+   ① 熄灭态按钮提亮（立即突破平时 disabled，之前暗得像全透明）
+   ② 左右日志改成"整块半透明播报墙"：无外框线、高度更高、字统一在墙内播报 */
+  /* —— 熄灭态：亮灰蓝 50% 底 + 清晰文字，绝不是隐形 —— */
+  .btn:disabled .ink{fill:rgba(110,125,175,.55);stroke:rgba(200,220,255,.85);stroke-width:1.6}
+  .btn:disabled{color:#dfe6f5}
+  .btn.primary:disabled .ink{fill:rgba(168,120,150,.55);stroke:rgba(245,200,215,.85);stroke-width:1.6}
+  .btn.primary:disabled{color:#f2e3ec}
+  /* —— 播报墙：整块半透明纵向渐隐面板，无边框线 —— */
+  .feed{
+    position:fixed;bottom:150px;left:auto;right:auto;
+    width:min(240px,45vw);max-width:none;max-height:min(38vh,330px);
+    overflow:hidden;z-index:8;display:flex;flex-direction:column-reverse;gap:3px;
+    background:linear-gradient(180deg,rgba(5,8,16,0) 0%,rgba(5,8,16,.30) 42%,rgba(5,8,16,.78) 100%);
+    -webkit-mask-image:linear-gradient(180deg,transparent 0%,#000 26%,#000 100%);
+    mask-image:linear-gradient(180deg,transparent 0%,#000 26%,#000 100%);
+    pointer-events:none;
+  }
+  .feed.feed-avatar{left:12px;align-items:flex-start;text-align:left}
+  .feed.feed-main{right:12px;align-items:flex-end;text-align:right}
+  /* 墙内字幕：去掉逐条墨条底，纯文字在墙内滚动 */
+  .feed .fmsg{
+    background-image:none !important;background:none !important;
+    border:0 !important;border-radius:0 !important;
+    backdrop-filter:none !important;
+    padding:2px 4px 7px;width:auto;max-width:100%;flex:none;
+    display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:5;
+    line-height:1.5;
+  }
+  .feed.feed-main .fmsg{color:#e8ecf5;font-size:12px}
+  .feed.feed-avatar .fmsg{color:#8f9bb3;font-size:11px}
+  .feed .fmsg .r{color:#c9a86a}
+  .feed .fmsg .g{color:#86b5a2}
+  .feed .fmsg .b{color:#9db4d9}
+
+/* ============ v0.4.8：播报墙去遮罩·亮字·下移·节奏匹配 ============ */
+  .feed{
+    background:none !important;
+    -webkit-mask-image:none !important;mask-image:none !important;
+    bottom:124px;max-height:min(34vh,300px);gap:4px;
+  }
+  .feed.feed-main .fmsg{color:#f5f8fe !important;font-size:12.5px}
+  .feed.feed-avatar .fmsg{color:#ccd6ea !important;font-size:11.5px}
+  .feed .fmsg{padding:2px 2px 8px;line-height:1.55}
+  /* 字幕动画时长与 JS life 对齐：主线 12s 淡入→驻留→淡出；分身 6.5s 轻快 */
+  .feed.feed-main .fmsg{animation:msgLifeM 12s ease forwards !important}
+  .feed.feed-avatar .fmsg{animation:msgLifeA 6.5s cubic-bezier(.2,.55,.45,1) forwards !important}
+
+/* ============ v0.4.9：灵石图标 + 右栏字幕亮化与淡罩 ============ */
+  .spirit .sico{width:15px;height:15px;flex:none;margin-right:1px;
+    filter:drop-shadow(0 0 5px rgba(110,225,190,.65))}
+  .spirit{color:#a9e6cc}
+  /* 右栏（主线）字幕：纯白亮字 + 一层很浅的灰罩衬底 */
+  .feed.feed-main{background:rgba(210,220,240,.10) !important}
+  .feed.feed-main .fmsg{color:#ffffff !important;font-weight:500;
+    text-shadow:0 1px 3px rgba(0,0,0,.55)}
+
+/* ============ v0.5.0 P0 云游 ============ */
+  /* 三钮并排不溢出 */
+  .actions{gap:6px;padding:0 8px}
+  .actions .btn{padding:12px 14px;font-size:13px}
+  /* 云游中按钮=人在外(蓝墨)，非熄灭 */
+  #btnTravel.traveling .ink{fill:rgba(96,132,190,.5);stroke:rgba(200,220,255,.8)}
+  #btnTravel.traveling{color:#dce7f8}
+  #btnTravel .ink{fill:rgba(86,148,128,.5);stroke:rgba(150,230,205,.75)}
+  #btnTravel{color:#cdeeda}
+  #pillHints{min-height:15px;font-size:10px;color:#9aa5ba;text-align:right;line-height:1.4}
+  #travelModal .story-body{padding:4px 4px 8px}
+
+/* ============ v0.5.1 阿青 ============ */
+  .feed .fmsg .pet{color:#8fd8bd;font-family:var(--font-brush);font-size:12px;margin-right:4px;
+    text-shadow:0 0 6px rgba(120,215,180,.4)}
+  .feed.feed-main .fmsg .pet{color:#9fdcc4}

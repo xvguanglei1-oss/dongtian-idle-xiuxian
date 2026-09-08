@@ -253,6 +253,64 @@ const STILL_MOMENTS = [
   "清晨于露台采气，朝霞入体，神清气爽",
 ];
 
+
+/* ============ 守山灵兽「阿青」· 左栏洞天日常 ============ */
+const PET = { name: "阿青", kind: "青丘灵狐" };
+const PET_FORGE = [
+  "在后院支起一口旧铁砧，叮叮当当敲到日头偏西",
+  "翻出半截废弃古器，回炉熔了重铸",
+  "拉了半夜风箱，炉火由红转青",
+  "拿山溪水淬火，滋地腾起一片白雾",
+  "把捡来的碎妖丹研成粉，掺进铁水",
+  "对着块灵铁敲了又敲，敲得洞府都跟着震",
+  "用尾巴卷着锤子抡了半天，竟也有模有样",
+  "把三件破铜烂铁熔成一炉，只取其中精华",
+  "炉火将熄时补了一口自己的灵气，火苗猛蹿",
+  "寻了块雷击木烧炭，说这样的火性最烈",
+  "天亮前最后一锤落下，火星溅了一地",
+  "从尾巴上揪了撮毛添进炉里说是引子，竟真成了",
+];
+const PET_COIN = [
+  "不知从哪儿刨出一小捧碎灵石，献宝似的堆在你门口",
+  "把洞府犄角旮旯的碎石都舔得发亮——竟全是成色不错的灵石",
+  "溜下山一趟，回来肚皮鼓鼓，藏着几颗亮晶晶的石头",
+  "蹲在聚灵阵边看灵光流转，忍不住伸爪去拨，竟拢出几颗小晶石",
+  "在灵田垄沟里打滚，起身时泥里带出几颗嵌着的灵石",
+  "偷喝了一口你的灵泉水，呛得直打喷嚏，鼻尖上还粘着一颗碎灵石",
+  "把你的灵石当玩具滚着玩，滚进它窝里好几颗，被你发现时装睡",
+  "雨后在洞天门口的水洼里捞来捞去，捞出几颗冲下来的亮石子",
+];
+const PET_BONUS = [
+  "卧在聚灵阵旁睡着了，灵气顺着尾巴尖往它身上淌，竟也牵动你的气机",
+  "它绕着灵脉眼儿踩了一整夜，你早起只觉神清气爽",
+  "趴在你膝头打盹，呼吸间竟与你吐纳的节奏渐渐合一",
+  "忽然对着你打了个小喷嚏，一团灵光迎面扑来，丹田微微发暖",
+  "叼来一片灵草叶，轻轻放在你眉心——凉意透体，杂念顿消",
+  "夜里它守着阵眼不睡，你竟梦见一条地脉在脚下缓缓游动",
+  "它蹭了蹭你手心，指尖一缕灵力顺着经脉悄悄转了一整圈",
+  "对着你的丹炉吹了口气，炉火窜高一尺，满室药香更浓",
+];
+const PET_STILL = [
+  "在檐下把自己团成一个毛球，尾巴盖住鼻子，睡得很香",
+  "追着自己的尾巴转了三圈，然后若无其事地踱开",
+  "趴在丹炉边烤火，舒服地打了个滚，肚皮朝天",
+  "盯着墙上晃动的光影看了很久，像在参悟什么了不起的事",
+  "叼着一片青枫叶回来，放在你打坐的蒲团边",
+  "蹲在洞天门口望山，不知在想什么",
+  "把尾巴浸进灵泉水里搅着玩，水面漾开一圈圈银光",
+  "夜半爬上屋顶，对着月亮轻轻呜咽了一声，又若无其事地下来",
+  "下雨了，它蹲在檐下看雨，尾巴尖一卷一卷的",
+  "拿爪子拨弄一只路过的甲虫，甲虫装死，它吓了一跳",
+  "把晒着的药草翻了个面，自己却滚了一身药香，连打三个喷嚏",
+  "踩着初雪在院子里留了一串小梅花脚印",
+  "它把脑袋枕在你鞋上睡着了，你一动，它迷迷糊糊换了个方向接着睡",
+  "试着像你一样盘腿打坐，坚持了三息就歪倒，索性四脚朝天晒太阳",
+  "从山门外衔回一枝野桃花，插在门缝里，自己蹲在旁边等着被夸",
+  "对着聚灵阵的灵光扑来扑去，像在扑一只看不见的蝴蝶",
+  "深夜你听见窸窣声，原是它在悄悄往自己窝里拖一片暖玉",
+  "用尾巴扫净了你蒲团上的落叶，又装作什么都没发生",
+];
+
 /* 主角主线叙事(分大境界·右栏) */
 const MAIN_STORY = [
  [
@@ -381,11 +439,150 @@ const MAIN_STORY = [
 
 /* ============ 存档 ============ */
 let state = { realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], journal: [],
-  milestones: {}, peakSpirit: 0, bestArtQ: -1, lastTs: Date.now() };
+  milestones: {}, peakSpirit: 0, bestArtQ: -1, lastTs: Date.now(),
+  mats: {}, pills: {}, buffs: [], travel: null, offlineBoostUntil: 0 };
 let breaking = false;
 let lastReadyHint = false;
 const SAVE_KEY = "dongtian_xiuxian_v2";
 const OFFLINE_CAP = 48 * 3600;   // 离线收益结算上限: 最多补 48 小时
+
+/* ==================== P0 分身云游 · 材料/地界/丹方 ==================== */
+const MATS = {   // 材料库: 9 种 —— 6 株主药按大境界分阶(1凡→6化神)，3 味辅料跨境通用
+  /* —— 主药(灵植)：只在本阶及更高境界的游历中产出 —— */
+  huangjing: { n: "黄精草", t: "灵植", src: "青牛镇一带" },
+  shexian:  { n: "蛇涎果", t: "灵植", src: "镜州坊市" },
+  zihou:    { n: "紫猴花", t: "灵植", src: "乱星海仙市" },
+  xuancan:  { n: "玄冰参", t: "灵植", src: "极渊之海·寒涧" },
+  jiuyou:   { n: "九幽芝", t: "灵植", src: "虚天殿·幽涧" },
+  wenxin:   { n: "问心草", t: "灵植", src: "飞升台·天风崖" },
+  /* —— 辅料(灵液/兽材)：凡有坊市灵脉处皆可得，跨境通用 —— */
+  lingru:   { n: "千年灵乳", t: "灵液", src: "灵脉石乳" },
+  dihuo:    { n: "地火灵液", t: "灵液", src: "地火洞窟" },
+  yaodan:   { n: "妖丹·杂", t: "兽材", src: "游历奇遇" },
+};
+const ZONES = [
+  { big: 0, name: "青牛镇一带", dur: [120, 3600],
+    mats: [ { id: "huangjing", c: 1, a: 2, b: 4 }, { id: "yaodan", c: .12, a: 1, b: 1 } ],
+    locs: [
+      { id: "b0qnt", n: "青牛镇", d: "山脚市集 · 烟火人间",
+        tale: [ "在茶棚歇脚，听卖卦老翁讲镇外山神庙的旧事", "替走货的镖头捎了封家书，得了一小篓山果", "市集角落有人兜售仙家药草，你认出是寻常黄精", "蹲在桥头看了一下午流水，什么也没做，却觉心静" ] },
+      { id: "b0qil", n: "七里坡", d: "官道野店 · 行商歇脚",
+        tale: [ "野店老板娘说后山半夜总有青光，没人敢去", "与一队行商拼桌，听他们讲境外战乱的消息", "坡上老槐挂了满树红绳，都是过路人的心愿", "在店后喂了匹瘦马半把草料，它蹭了蹭你手心" ] },
+      { id: "b0qfc", n: "青枫村", d: "依山小村 · 灵枫成荫",
+        tale: [ "村童追着你喊仙人，你从行囊摸出几颗糖丸分他们", "溪边浣衣妇人指了条进山的捷径", "村后灵枫下埋着半坛陈酿，你替主人守了一夜", "帮猎户修好塌了半边的篱笆，他送你一块熏肉" ] },
+    ] },
+  { big: 1, name: "镜州地界", dur: [1800, 43200],
+    mats: [ { id: "shexian", c: .9, a: 1, b: 2 }, { id: "huangjing", c: .55, a: 1, b: 2 },
+            { id: "lingru", c: .12, a: 1, b: 1 }, { id: "dihuo", c: .07, a: 1, b: 1 },
+            { id: "yaodan", c: .18, a: 1, b: 1 } ],
+    locs: [
+      { id: "b1qxm", n: "七玄门", d: "山门之外 · 外门气象",
+        tale: [ "混在外门弟子堆里听了一堂吐纳课，讲的都是入门货", "守山石阶上坐着一个白发杂役，看你的眼神像是看穿了什么", "后山演武场刀光剑影，你在崖边看了一夜", "下山时被巡山弟子盘问，你报了个假名，他竟信了" ] },
+      { id: "b1jzh", n: "镜州城", d: "大城坊市 · 八方修士",
+        tale: [ "坊市地摊有人卖假灵草，你戳穿后摊主讪讪送了你株真的", "城隍庙后巷有间不挂牌的当铺，掌柜只收来路不明之物", "茶楼里两个散修吹嘘探过某处古修洞府，多半是胡诌", "入夜城头挂起八十一盏灵灯，凡人只当是节庆" ] },
+      { id: "b1moy", n: "墨府药园", d: "药香幽深 · 禁地边缘",
+        tale: [ "循药香摸到一片围墙外，墙头趴着只打盹的黑猫", "药童出来倒药渣，你帮他拾掇，趁机认了半篓药性", "园内深处忽有人声，你屏息躲进柴垛后", "走时在墙根捡到一枚被踩进泥里的青翠叶片" ] },
+      { id: "b1cln", n: "沧澜渡口", d: "江雾漫漫 · 渡口夜泊",
+        tale: [ "雾夜江心有人唱渔歌，声调古拙，像祭文不像歌", "老艄公说这条江底下沉着一条旧龙脉", "帮船家卸了一夜货，得了些散碎银两", "你在渡口石碑下避雨，碑后刻着一副残缺阵图" ] },
+      { id: "b1sps", n: "四平山猎场", d: "妖兽出没 · 猎队集结",
+        tale: [ "一支猎妖队正缺个斥候，你替他们望了一夜风", "山涧里发现半具妖兽骸骨，妖丹被人取走了", "猎户老周分你半壶药酒，说是壮胆用的", "你在崖缝里抠出一块带灵光的碎石" ] },
+      { id: "b1qys", n: "青阳坊", d: "半山集市 · 以物易物",
+        tale: [ "山民以兽骨换盐，你看中一块磨得发亮的骨片", "坊口有个摆摊的盲眼道人，只跟有缘人搭话", "你拿一株路上采的黄精换到半张泛黄药方", "暮色里集市散场，山道上亮起一串灯笼" ] },
+    ] },
+  { big: 2, name: "筑基诸海", dur: [7200, 172800],
+    mats: [ { id: "zihou", c: .9, a: 1, b: 3 }, { id: "shexian", c: .45, a: 1, b: 2 },
+            { id: "lingru", c: .3, a: 1, b: 2 }, { id: "dihuo", c: .22, a: 1, b: 1 },
+            { id: "yaodan", c: .4, a: 1, b: 1 } ],
+    locs: [
+      { id: "b2hfg", n: "黄枫谷", d: "宗门坊市 · 灵植灵药",
+        tale: [ "坊市药铺掌柜眼毒，仍卖了你一株好药", "后山枫林下捡到一枚玉简残片，字迹已漶漫", "守山弟子的灵兽朝你嗅了嗅，竟没示警", "夜里坊市打烊，你在檐下听两个外门弟子聊宗门秘辛" ] },
+      { id: "b2lxn", n: "乱星海", d: "夜航群岛 · 星罗棋布",
+        tale: [ "夜航船上与一位跛脚散修对饮，他酒后吐露沉船灵藏", "小岛渔民把你当仙人，求你为出海的孙儿画道平安符", "潮落后礁石缝里卡着半截储物袋，只有一枚生锈妖丹", "海市蜃楼里看见一口灵气冲霄的古井" ] },
+      { id: "b2kxd", n: "魁星岛", d: "洞府云集 · 海上仙市",
+        tale: [ "岛上修士家家门前悬着测灵旗，见你经过猎猎作响", "你在仙市摆了半天摊，用黄精换到一瓶灵泉水", "岛主府设宴款待各方散修，你混进去吃了顿好的", "夜深人静时，整座岛的洞府灵光次第亮起，像一树星" ] },
+      { id: "b2yjb", n: "燕家堡", d: "岛主城寨 · 铁血秩序",
+        tale: [ "堡门前立着两尊吞海兽像，眼珠是打磨过的妖丹", "堡内不许私斗，伤了人要按岛规断一指", "你替堡中账房誊了一夜海贸册子，得了些酬劳", "离堡那日，海风里飘来堡主千金练剑的破空声" ] },
+    ] },
+  { big: 3, name: "极渊之海", dur: [28800, 518400],
+    mats: [ { id: "xuancan", c: .9, a: 1, b: 3 }, { id: "zihou", c: .3, a: 1, b: 2 },
+            { id: "lingru", c: .5, a: 1, b: 2 }, { id: "dihuo", c: .42, a: 1, b: 2 },
+            { id: "yaodan", c: .6, a: 1, b: 2 } ],
+    locs: [
+      { id: "b3xtw", n: "虚天殿外", d: "古迹重门 · 云海之上",
+        tale: [ "殿门前的石阶共九千九百级，走上去像是踩在云端", "云海里偶有修士御剑而过，谁也没看谁", "门楣古篆年深日久，你逐字揣摩，识得三成", "殿前空地上有座无字碑，有人用剑刻了半行诗" ] },
+      { id: "b3hdx", n: "海底灵墟", d: "沉陆遗迹 · 灵光明灭",
+        tale: [ "海沟里沉睡着一座旧城，屋宇俱是白玉砌成", "你捡到一枚贝壳，壳里藏着一滴千年蚌泪", "遗迹中心的灵脉像断弦的古琴，偶尔自己嗡鸣一声", "离开时一条老鲛人远远望着你，没入深蓝" ] },
+      { id: "b3jyd", n: "极阴岛", d: "幽冥之滨 · 寒潮不息",
+        tale: [ "岛上终年不见日光，却有一种白花在阴影里怒放", "渔家说月亮照不到的海面下，压着一条旧龙", "你在岛礁上发现半座残阵，像是上古封镇之物", "夜里潮声呜咽，分不清是浪还是叹息" ] },
+      { id: "b3ymh", n: "幽冥海沟", d: "极深之处 · 灵压如山",
+        tale: [ "越往深处，水中灵光越密，像坠入一条光的河", "压力大得连法器都微微变形，你不敢再深", "沟底有东西在缓慢翻动，你当机立断返身", "上浮时遇见一群灯笼鱼，为你照了一路" ] },
+    ] },
+  { big: 4, name: "天外诸域", dur: [86400, 1209600],
+    mats: [ { id: "jiuyou", c: .9, a: 1, b: 3 }, { id: "xuancan", c: .32, a: 1, b: 2 },
+            { id: "lingru", c: .7, a: 1, b: 2 }, { id: "dihuo", c: .6, a: 1, b: 2 },
+            { id: "yaodan", c: .8, a: 1, b: 2 } ],
+    locs: [
+      { id: "b4xt", n: "虚天殿", d: "古迹重重 · 一步一禁",
+        tale: [ "殿中长廊悬着历任闯殿者的名字，越深处越少", "你在偏殿找到一副残棋，棋局似乎还未下完", "墙上壁画画的是一场你没见过的战争", "殿深处传来钟声，这里早已没有活人" ] },
+      { id: "b4bh", n: "冰海", d: "亘古寒域 · 万物凝霜",
+        tale: [ "海面冻成整块墨玉，踩上去没有一丝声响", "冰层下有巨大的影子缓缓游过", "你呵出的气在空中凝成细小的冰晶，久久不散", "极北天光垂下，把整片冰海染成青碧" ] },
+      { id: "b4ljx", n: "灵界裂隙", d: "两界夹缝 · 罡风如刀",
+        tale: [ "裂隙中涌出的灵气浓得像酒，吸一口都醉人", "你看见对面有座比山还高的城，只露出一角", "罡风里裹着异界的沙尘，落在掌心竟自行聚成小塔", "裂隙边缘立着块碑，碑文用的是你从未见过的文字" ] },
+    ] },
+  { big: 5, name: "人界之巅", dur: [172800, 2592000],
+    mats: [ { id: "wenxin", c: .9, a: 1, b: 3 }, { id: "jiuyou", c: .35, a: 1, b: 2 },
+            { id: "lingru", c: .85, a: 1, b: 2 }, { id: "dihuo", c: .75, a: 1, b: 2 },
+            { id: "yaodan", c: .85, a: 1, b: 2 } ],
+    locs: [
+      { id: "b5fst", n: "飞升台", d: "人界之巅 · 天劫留痕",
+        tale: [ "台面焦黑，是历次飞升天劫留下的痕迹", "你在台边坐了一夜，看云海在脚下翻涌", "据说从这里望出去，能隐约看见灵界", "台基上刻满了历代飞升者的道号" ] },
+      { id: "b5skl", n: "时空乱流", d: "光阴错乱 · 不可久留",
+        tale: [ "在这里有时一瞬如一年，有时一年如一瞬", "你看见一个像你又不像你的背影，一闪即逝", "乱流里飘着各种年代的残片，有一片写着你的名字", "风把你吹回现世时，衣摆还带着异界的尘埃" ] },
+    ] },
+];
+const RECIPES = {   // 丹方 v2 —— 每方带 big(所属大境0~5)，材料只用本境可集齐之物
+  /* ---- 凡人(凡草单方，未入丹道) ---- */
+  hjing: { big: 0, n: "黄精膏", d: "凡草慢熬，聊胜于无：立时回复约一刻钟修为",
+            need: { huangjing: 3 }, eff: { k: "inst", sec: 900 } },
+  /* ---- 炼气(镜州丹道) ---- */
+  buqi:  { big: 1, n: "补气丹", d: "炼气常备：立时回复约半个时辰修为",
+            need: { shexian: 2, lingru: 1 }, eff: { k: "inst", sec: 1800 } },
+  hlong: { big: 1, n: "黄龙丹", d: "药力绵长：一时辰内修为 +50%",
+            need: { shexian: 3, lingru: 1 }, eff: { k: "buff", mult: 1.5, dur: 3600 } },
+  jinzui:{ big: 1, n: "金髓丸", d: "冲境烈药：一时辰内修为 +120%",
+            need: { shexian: 2, dihuo: 1 }, eff: { k: "buff", mult: 2.2, dur: 3600 } },
+  zhuji: { big: 1, n: "筑基丹", d: "炼气圆满的叩门砖：立获约三时辰修为，此后两时辰修为翻倍",
+            need: { shexian: 4, lingru: 2, yaodan: 2 }, eff: { k: "grand", sec: 10800, mult: 2, dur: 7200 } },
+  /* ---- 筑基(海外丹道) ---- */
+  xisui: { big: 2, n: "洗髓丹", d: "洗髓伐脉：十二时辰内离线收益 +30%",
+            need: { zihou: 2, lingru: 1 }, eff: { k: "offline", dur: 43200, boost: .3 } },
+  yuqing:{ big: 2, n: "玉清丹", d: "筑基培元：立时回复约两时辰修为",
+            need: { zihou: 3, lingru: 1 }, eff: { k: "inst", sec: 7200 } },
+  jiangchen: { big: 2, n: "降尘丹", d: "筑基圆满感结丹机缘：立获约六时辰修为，此后三时辰修为 +120%",
+            need: { zihou: 4, lingru: 2, dihuo: 1, yaodan: 2 }, eff: { k: "grand", sec: 21600, mult: 2.2, dur: 10800 } },
+  /* ---- 结丹(寒域丹道) ---- */
+  guyuan:{ big: 3, n: "固元丹", d: "金丹固本：立时回复约两时辰修为",
+            need: { xuancan: 2, dihuo: 1 }, eff: { k: "inst", sec: 7200 } },
+  ningyuan: { big: 3, n: "凝元丹", d: "三时辰内修为 +200%，冲击金丹后期",
+            need: { xuancan: 3, lingru: 2, yaodan: 2 }, eff: { k: "buff", mult: 3, dur: 10800 } },
+  yingbian: { big: 3, n: "婴变丹", d: "结丹圆满窥元婴大道：立获约六时辰修为，此后四时辰修为 +150%",
+            need: { xuancan: 4, dihuo: 2, lingru: 2, yaodan: 3 }, eff: { k: "grand", sec: 21600, mult: 2.5, dur: 14400 } },
+  /* ---- 元婴(幽域丹道) ---- */
+  yuying:{ big: 4, n: "育婴丹", d: "滋养元婴：立时回复约四时辰修为",
+            need: { jiuyou: 2, lingru: 2 }, eff: { k: "inst", sec: 14400 } },
+  yinghua: { big: 4, n: "婴华丹", d: "四时辰内修为 +250%，元婴期冲关利器",
+            need: { jiuyou: 3, lingru: 2, dihuo: 1 }, eff: { k: "buff", mult: 3.5, dur: 14400 } },
+  tongshen: { big: 4, n: "通神丹", d: "元婴圆满感化神天劫：立获约八时辰修为，此后六时辰修为 +200%",
+            need: { jiuyou: 4, dihuo: 2, lingru: 2, yaodan: 3 }, eff: { k: "grand", sec: 28800, mult: 3, dur: 21600 } },
+  /* ---- 化神(巅峰丹道，静候飞升) ---- */
+  wendao:{ big: 5, n: "问道丹", d: "化神问道：立时回复约四时辰修为",
+            need: { wenxin: 2, lingru: 2 }, eff: { k: "inst", sec: 14400 } },
+  hunyuan: { big: 5, n: "混元一气丹", d: "六时辰内修为 +300%，人界绝巅的一口气",
+            need: { wenxin: 3, dihuo: 2, yaodan: 3 }, eff: { k: "buff", mult: 4, dur: 21600 } },
+  taiyi: { big: 5, n: "太一虚元丹", d: "化神圆满静候飞升的底蕴：立获约十二时辰修为，此后六时辰修为 +250%",
+            need: { wenxin: 4, lingru: 3, dihuo: 2, yaodan: 4 }, eff: { k: "grand", sec: 43200, mult: 3.5, dur: 21600 } },
+};
+
 
 const $ = id => document.getElementById(id);
 const fmt = n => n >= 1e8 ? (n / 1e8).toFixed(2).replace(/\.?0+$/, "") + "亿"
@@ -408,24 +605,54 @@ function adopt(s) {
   if (typeof s.spirit !== "number") s.spirit = 0;
   if (typeof s.arrayLv !== "number" || s.arrayLv < 1) s.arrayLv = 1;
   if (typeof s.lastTs !== "number") s.lastTs = Date.now();
+  if (!s.mats || typeof s.mats !== "object") s.mats = {};
+  if (!s.pills || typeof s.pills !== "object") s.pills = {};
+  if (!Array.isArray(s.buffs)) s.buffs = [];
+  if (typeof s.offlineBoostUntil !== "number") s.offlineBoostUntil = 0;
+  if (!s.travel || typeof s.travel !== "object") s.travel = null;
   return s;
+}
+/* 短档存取: 全链路(LZString)压缩, 不裸存汉字正文; 旧档(未压缩 JSON)自动兼容 */
+function zPack(o) { return "z1:" + LZString.compressToBase64(JSON.stringify(o)); }
+function zUnpack(s) {
+  if (typeof s !== "string") return s;                       // 已是对象(老后端/云端老档)
+  if (s.startsWith("z1:")) { try { return JSON.parse(LZString.decompressFromBase64(s.slice(3))); } catch (e) { return null; } }
+  try { return JSON.parse(s); } catch (e) { return s; }      // 旧版未压缩 JSON
+}
+const JRN_CAP = 300;   // 修行录叙事有界: 超出丢弃最旧, 防存档无限膨胀
+function trimJournal() {
+  if (Array.isArray(state.journal) && state.journal.length > JRN_CAP) {
+    state.journal = state.journal.slice(-JRN_CAP);
+  }
 }
 function save() {
   state.lastTs = Date.now();
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+  trimJournal();
+  try { localStorage.setItem(SAVE_KEY, zPack(state)); } catch (e) {}
 }
 function load() {
   try {
-    const s = JSON.parse(localStorage.getItem(SAVE_KEY));
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+    const s = zUnpack(raw);
     const c = adopt(s);
-    if (c) state = c;
+    if (c) { state = c; trimJournal(); }
   } catch (e) {}
 }
 
 /* ============ 云存档 (save.devgo.cn, ECS 隧道) ============
  * 玩家码即钥匙: 换设备时在新设备输入同一玩家码即继承存档。
  * 本地永远可玩: 云不可用时静默降级为 localStorage。 */
-const CLD_API = "https://save.devgo.cn/api/save";
+function cldApiBase() {
+  // 沙箱本地开发走本地结算后端；线上走 ECS(dongtian-save)
+  try {
+    if (location.hostname === "127.0.0.1" || location.hostname === "localhost") {
+      return "http://127.0.0.1:8090/api/save";
+    }
+  } catch (e) {}
+  return "https://save.devgo.cn/api/save";
+}
+const CLD_API = cldApiBase();
 const CLD_KEY = "dongtian_cloud_id";
 const CLD_ALPH = "abcdefghjkmnpqrstuvwxyz23456789";
 const cld = { id: "", ready: false, dirty: false, lastOkTs: 0, lastOkLocal: 0, lastPushTs: 0 };
@@ -441,10 +668,10 @@ function cldId() {
   }
   return cld.id;
 }
-function cldApi(method, body) {
+function cldApi(method, body, extraQ) {
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), 6000);   // 6s 超时, 弱网不阻塞启动/离线结算
-  return fetch(CLD_API + "?id=" + encodeURIComponent(cldId()), {
+  return fetch(CLD_API + "?id=" + encodeURIComponent(cldId()) + (extraQ ? "&" + extraQ : ""), {
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
@@ -490,8 +717,9 @@ function cldAdoptCloud(s) {
 }
 async function cldPush() {
   state.lastTs = Date.now();
+  trimJournal();
   try {
-    const r = await cldApi("PUT", state);
+    const r = await cldApi("PUT", { __z: zPack(state) });
     state._cloudTs = r.ts || Date.now();
     save();
     cld.ready = true; cld.lastOkTs = Date.now(); cld.lastOkLocal = state.lastTs;
@@ -504,7 +732,8 @@ async function cldPull() {
   if (!window.fetch) { cldUI("off"); return; }
   cldUI("sync");
   try {
-    const r = await cldApi("GET");
+    const r = await cldApi("GET", undefined, "fmt=z1");
+    if (r && r.data) r.data = zUnpack(r.data);
     if (r.found && r.data) {
       const cs = (r.ts || 0);               // 服务端存档时间(权威)
       const ls = (state._cloudTs || 0);
@@ -601,7 +830,12 @@ function cloudInit() {
  * 保证换设备/清缓存也不会漏发或重发。 */
 async function bootCloud() {
   await cldPull();
-  applyOffline();
+  /* 后端权威结算优先: 上传"不推进 lastTs"的快照 → 服务端按服务器时间结算离线区间与云游归来。
+   * 成功 → 采纳返回的已结算档并展示; 云端不可用/非 settle 后端 → 本地 applyOffline 兜底(本地永远可玩)。 */
+  let sr = null;
+  try { sr = await cloudSettle(); } catch (e) { sr = null; }
+  if (sr && sr.settled) presentSettle(sr);
+  else if (!sr) applyOffline();
   cloudSoon();
   updateRealmUI(); updateHUD(); updateArts(); realmPlot();
 }
@@ -609,7 +843,14 @@ async function bootCloud() {
 /* ============ 数值 ============ */
 function realmMult() { return Math.pow(bigIdx() + 1, 2.05); } // 大境界指数
 function artMult() { return state.arts.reduce((m, a) => m * a.mult, 1); }
-function rateNow() { return 4 * realmMult() * artMult() * arrMult(state.arrayLv); }
+function buffMult() {
+  const t = Date.now();
+  state.buffs = (state.buffs || []).filter(b => b.until > t);
+  // 药力相冲，只取当前最强的一道（防 buff 叠乘指数爆炸）
+  if (!(state.buffs || []).length) return 1;
+  return Math.max(...state.buffs.map(b => b.mult));
+}
+function rateNow() { return 4 * realmMult() * artMult() * arrMult(state.arrayLv) * buffMult(); }
 function spiritRate() { return SPIRIT_RATE(state.arrayLv); }
 
 /* 品质与境界挂钩: 凡人只能粗制, 炼气→法器, 筑基→灵器, 结丹→古宝, 元婴→灵宝, 化神→玄天
@@ -665,7 +906,9 @@ function updateHUD() {
   const can = state.exp >= r.need && r.isBigEnd && state.realmIdx < TOTAL_SEGS - 1;
   const btn = $("btnBreak");
   btn.disabled = !can;
-  btn.textContent = can ? "☯ 渡劫突破" : "☯ 立即突破";
+  // 注意：绝不能 btn.textContent=...（会删除按钮内嵌的 SVG 墨块皮肤）→ 只更新文字标签
+  const bt = btn.querySelector(".label");
+  if (bt) bt.innerHTML = can ? "☯ 渡劫突破" : "☯ 立即突破";
   btn.classList.toggle("ready", can);
   if (can && !lastReadyHint) {
     lastReadyHint = true;
@@ -717,7 +960,7 @@ function tapArray() {
     state.spirit -= cost; state.arrayLv++; save(); updateHUD(); cloudSoon();  // 关键节点 → 即时上传
     pushMsg("main", `聚灵阵升至 <span class="g">Lv.${state.arrayLv}</span>（下一级需灵石 ${fmt(arrayCostNow())}）`);
   } else {
-    pushMsg("main", `灵石不足(升至 Lv.${state.arrayLv + 1} 需 ${fmt(cost)})，分身正在四处寻矿…`);
+    pushMsg("main", `灵石不足(升至 Lv.${state.arrayLv + 1} 需 ${fmt(cost)})，阿青见你叹气，尾巴一竖，满山替你找矿去了`);
   }
 }
 
@@ -732,9 +975,16 @@ function pushMsg(side, html) {
   el.className = "fmsg";
   el.innerHTML = html;
   box.insertBefore(el, box.firstChild); // column-reverse 下: 新消息出现在视觉底部
-  const cap = (side === "main") ? 7 : 6;
-  while (box.children.length > cap) box.removeChild(box.lastChild);
-  const life = (side === "main") ? 22500 : 6500;
+  const cap = (side === "main") ? 6 : 5;
+  // 超过条数上限：最旧一条立即淡出，形成"字幕滚动"节奏
+  if (box.children.length > cap) {
+    const old = box.lastChild;
+    old.style.transition = "opacity .55s ease";
+    old.style.opacity = "0";
+    setTimeout(() => { if (old.parentNode) old.parentNode.removeChild(old); }, 560);
+  }
+  // 驻留时长：主线适中、分身更快
+  const life = (side === "main") ? 11500 : 6000;
   setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, life + 300);
 }
 
@@ -1660,28 +1910,29 @@ function pickNoRepeat(arr, key) {
 function adventure() {
   const roll = Math.random();
   const bi = Math.min(bigIdx(), EVENTS.length - 1);
+  const petTag = `<span class="pet">阿青</span>`;
   const artChance = 0.05 + bi * 0.005;
   if (roll < artChance) {
     const a = makeArt();
     state.arts.push(a);
     const r = QUALITY[a.q];
-    pushMsg("avatar", `${pickNoRepeat(ART_HINTS, "art")}，得<span class="r">${a.name}</span>(<span class="${r.cls}">${r.name}</span>)已自动换上`);
-    updateArts(true); save(); cloudSoon();   // 关键节点 → 即时上传
+    pushMsg("avatar", `${petTag}${pickNoRepeat(PET_FORGE, "petF")}，<span class="r">${a.name}</span>(<span class="${r.cls}">${r.name}</span>)出炉——已替你穿戴`);
+    updateArts(true); save(); cloudSoon();
   } else if (roll < 0.30) {
     const g = Math.round(8 + Math.random() * 30 + bigIdx() * 10);
     state.spirit += g;
-    pushMsg("avatar", `${pickNoRepeat(EVENTS[bi], bi)}，换得些许灵石`);
+    pushMsg("avatar", `${petTag}${pickNoRepeat(PET_COIN, "petC")}　灵石+${fmt(g)}`);
   } else if (roll < 0.62) {
     const g = Math.round(14 + Math.random() * 50 + bigIdx() * 16);
     state.spirit += g;
-    pushMsg("avatar", `${pickNoRepeat(EVENTS[bi], bi)}，所得颇丰`);
+    pushMsg("avatar", `${petTag}${pickNoRepeat(PET_BONUS, "petB")}　气机渐盛`);
   } else if (roll < 0.84) {
     const bonus = rateNow() * (4 + Math.random() * 8);
     state.exp += bonus;
-    pushMsg("avatar", `${pickNoRepeat(EVENTS[bi], bi)}，气机随之增长`);
+    pushMsg("avatar", `${petTag}${pickNoRepeat(PET_BONUS, "petB")}　修为+${fmt(bonus)}`);
   } else {
     state.exp += rateNow() * 1.5;
-    pushMsg("avatar", `${pickNoRepeat(STILL_MOMENTS, "still")}`);
+    pushMsg("avatar", `${petTag}${pickNoRepeat(PET_STILL, "petS")}`);
   }
   state.spirit += spiritRate();
   updateHUD();
@@ -1734,24 +1985,72 @@ function applyOffline() {
   let dt = (now - base) / 1000;
   if (dt < 30) return;
   dt = Math.min(dt, OFFLINE_CAP);
-  const gainExp = rateNow() * dt * 0.6;
+  // 洗髓丹: 12时辰内离线收益+30%
+  const offBoost = Date.now() < (state.offlineBoostUntil || 0) ? 1.3 : 1;
+  const gainExp = rateNow() * dt * 0.6 * offBoost;
   const gainSpirit = spiritRate() * dt * 0.7;
-  let guard = 0;
-  while (guard++ < 60) {
-    const r = realm();
-    if (r.isBigEnd) break; // 大境界之间不自动渡劫, 等你亲手 → 离线最多走完当前卷剧情
-    if (state.exp + gainExp >= r.need && state.realmIdx < TOTAL_SEGS - 1) {
-      state.realmIdx++; state.exp = 0;
-    } else break;
+  // 修复: 离线收益真正入账(此前版本只显示未累加)
+  state.exp += gainExp;
+  state.spirit += gainSpirit;
+  // 离线自动精进(与在线 loop / 后端 settle 一致): 推过已修满的小境界段,
+  // 大境界圆满前停——大境界渡劫留待亲手, 剧情绝不越卷
+  {
+    let jg = 0;
+    while (jg++ < 60) {
+      const r0 = realm();
+      if (r0.isBigEnd) break;
+      if (state.realmIdx >= TOTAL_SEGS - 1) break;
+      if (state.exp >= r0.need) { state.exp -= r0.need; state.realmIdx++; }
+      else break;
+    }
   }
-  state.exp += gainExp; state.spirit += gainSpirit;
-  state._settledTs = now;   // 本次结算推进点(防跨会话重复领取)
-  realmPlot(); // 离线推进后, 触发当前大境卷内所有"已到小层"的剧情节点(绝不越卷)
-  save();
-  const h = Math.floor(dt / 3600), m = Math.floor(dt % 3600 / 60);
+  state._settledTs = now;   // 结算推进点(防跨会话重复领取)
+  /* —— 化身归来结算：外出的化身带回材料与见闻 —— */
+  let retTxt = "";
+  if (state.travel) {
+    const loc = locById(state.travel.loc);
+    if (loc) {
+      const z = zoneOfLoc(loc.id);
+      const dur = Math.min(dt, (Date.now() - state.travel.since) / 1000);
+      const early = dur < (z ? z.dur[0] : 120);
+      const ret = { mats: {}, lines: [] };
+      const pool = z ? z.mats : [];
+      if (early) {
+        // 时辰尚短：不空手，但只捋回零星一点
+        for (const dp of pool) {
+          if (Math.random() < dp.c * 0.3) { ret.mats[dp.id] = 1; break; }
+        }
+      } else {
+        for (const dp of pool) {
+          if (Math.random() < dp.c) {
+            const q = dp.a + Math.floor(Math.random() * (dp.b - dp.a + 1));
+            if (q > 0) ret.mats[dp.id] = (ret.mats[dp.id] || 0) + q;
+          }
+        }
+      }
+      ret.lines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
+      if (dur > 7200 && loc.tale.length > 1) ret.lines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
+      for (const k in ret.mats) state.mats[k] = (state.mats[k] || 0) + ret.mats[k];
+      const matTxt = Object.keys(ret.mats).map(k => `${MATS[k].n}×${ret.mats[k]}`).join("、");
+      retTxt = (early ? (matTxt
+                      ? `化身往${loc.n}走了一遭，时辰尚短便折返，只捋回 <b>${matTxt}</b>。阿青在门口迎它，嗅了嗅，又趴回去打盹。`
+                      : `化身往${loc.n}走了一遭，时辰尚短便折返，此行只带回一囊清风。阿青在门口等它，嗅了嗅空气，又趴回去打盹。`)
+                      : `化身自<span class="num">${loc.n}</span>归来，带回 <b>${matTxt || "一囊清风"}</b>。阿青绕着你转了三圈，又嗅了嗅化身衣摆，才心满意足地回去守门。`);
+      retTxt += " 见闻：" + ret.lines.join("｜");
+      if (ret.lines.length) {
+        addJournal({ key: "tr-" + Date.now(), big: realm().big, kind: "游历",
+          title: "云游·" + loc.n, text: ret.lines.join(" ") });
+      }
+      pushMsg("avatar", `阿青迎到山门口｜化身自${loc.n}归来`);
+      state.travel = null;
+    } else state.travel = null;
+  }
+  // 离线面板正文(主身闭关 + 灵石 + 化身归来) —— 修复: 历史版本此段在重构中丢失
+  const hh = Math.floor(dt / 3600), mm = Math.floor((dt % 3600) / 60);
   $("offlineText").innerHTML =
-    `你闭关了 <b>${h ? h + " 小时 " : ""}${m ? m + " 分钟" : "片刻"}</b>。<br>` +
-    `分身运转周天，修为 +<span class="num"> ${fmt(gainExp)}</span><br>灵石 +<span class="num"> ${fmt(gainSpirit)}</span>`;
+    `你于洞天闭关打坐 <b>${hh ? hh + " 小时 " : ""}${mm ? mm + " 分钟" : "片刻"}</b>。<br>` +
+    `主身周天自行运转，修为 +<span class="num"> ${fmt(gainExp)}</span><br>聚灵阵凝出灵石 +<span class="num"> ${fmt(gainSpirit)}</span>` +
+    (retTxt ? `<br><br>${retTxt}` : "");
   // 离线际遇: 与在线同样的叙事池, 随离线时长缓慢累积(每满一小时左右一段, 至多3段)
   const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
   const bigName = realm().big;
@@ -1933,3 +2232,247 @@ window.__game = {
   realmPlot: () => realmPlot(),
   openStory, pushMsg, save, load,
 };
+
+
+/* ==================== P0 分身云游 ==================== */
+function matCount(id) { return (state.mats || {})[id] || 0; }
+function pillCount(id) { return (state.pills || {})[id] || 0; }
+function zoneOfBig(bi) { const z = ZONES[bi]; return z ? z : ZONES[ZONES.length - 1]; }
+function zoneOfLoc(id) { for (const z of ZONES) if (z.locs.some(l => l.id === id)) return z; return null; }
+function locById(id) { for (const z of ZONES) { const l = z.locs.find(x => x.id === id); if (l) return l; } return null; }
+function pickLoc() { const z = zoneOfBig(bigIdx()); return { z, l: z.locs[(Math.random() * z.locs.length) | 0] }; }
+function durTxt(sec) {
+  if (sec >= 86400) { const d = Math.round(sec / 86400 * 10) / 10; return (d % 1 === 0 ? d : d.toFixed(1)) + " 天"; }
+  if (sec >= 3600) return Math.round(sec / 3600) + " 时辰";
+  return Math.max(1, Math.round(sec / 60)) + " 分钟";
+}
+function travelBtnLbl() {
+  const b = $("btnTravel"); if (!b) return;
+  const lb = b.querySelector(".label"); if (!lb) return;
+  if (state.travel) {
+    const l = locById(state.travel.loc);
+    lb.innerHTML = "云游中";
+    b.classList.add("traveling");
+    b.title = l ? "化身正于 " + l.n : "化身在外游历";
+  } else { lb.innerHTML = "云游"; b.classList.remove("traveling"); b.title = ""; }
+}
+function openTravel() {
+  const m = $("travelModal"); if (!m) return;
+  const box = $("travelBody"); if (!box) return;
+  // 行囊材料盘点（全部已知材料，0 则为暗色）
+  const matChips = Object.keys(MATS).map(k => {
+    const has = (state.mats || {})[k] || 0;
+    return `<span style="color:${has > 0 ? "#c9b98a" : "#4b5468"}">${MATS[k].n}${has > 0 ? "×" + has : ""}</span>`;
+  }).join("　");
+  const bagHtml = `<div style="font-size:11px;color:#9aa5ba;margin:10px 0 2px">行囊</div>
+    <div style="font-size:11.5px;line-height:2">${matChips || ""}</div>`;
+  // 丹药匣
+  const pk = Object.keys(state.pills || {});
+  const pillRow = (pk.length ? pk.map(id => {
+    const rp = RECIPES[id];
+    return `<span style="display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(201,168,106,.3);border-radius:4px;padding:3px 8px;margin:2px;font-size:11px;color:#e8d6a4" title="${rp.d}">${rp.n}×${state.pills[id]}<button class="cp-btn" style="color:#a88" onclick="consumePill('${id}')">服</button></span>`;
+  }).join("") : `<span style="color:#6d7688;font-size:11px">尚无丹药</span>`);
+  if (state.travel) {
+    const l = locById(state.travel.loc);
+    const z = zoneOfLoc(state.travel.loc);
+    const sinceMin = Math.floor((Date.now() - state.travel.since) / 60000);
+    box.innerHTML = `<div style="font-size:11px;color:#9aa5ba;margin-bottom:6px">丹药匣</div>
+      <div style="margin-bottom:10px">${pillRow}</div>
+      ${bagHtml}
+      <div style="text-align:center;padding:14px 4px">
+        <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${Math.max(0, sinceMin)}分钟</div>
+        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>阿青守着洞天，等你哪一日归来，化身自会把一路见闻讲给你听。</p></div>`;
+  } else {
+    const z = zoneOfBig(bigIdx());
+    const placeNames = z.locs.map(x => x.n).join("、");
+    box.innerHTML = `<div style="padding:10px 4px 14px;text-align:center;border-bottom:1px dashed rgba(201,168,106,.16)">
+        <div style="font-family:var(--font-brush);font-size:16px;color:#d8b06a;letter-spacing:.06em">${z.name}</div>
+        <p style="color:#8b94a8;font-size:11.5px;margin-top:6px;line-height:1.9">化身会顺着自己的心意，在 ${placeNames} 一带游历。<br>归期大约 ${durTxt(z.dur[0])} 到 ${durTxt(z.dur[1])}，无需盘缠。</p>
+        <button class="btn" style="margin-top:10px" onclick="startTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">遣化身出门</span></button>
+      </div>
+      ${bagHtml}
+      <div style="font-size:11px;color:#9aa5ba;margin:12px 0 6px">丹药匣</div>
+      <div style="margin-bottom:10px">${pillRow}</div>
+      ${craftAreaHTML()}`;
+  }
+  m.classList.add("show");
+  travelBtnLbl();
+}
+function closeTravel() { const m = $("travelModal"); if (m) m.classList.remove("show"); }
+function startTravel() {
+  if (state.travel) { pushMsg("main", "化身尚在云游，归期未至"); closeTravel(); return; }
+  const { l } = pickLoc();
+  state.travel = { loc: l.id, since: Date.now() };
+  pushMsg("main", `你为化身备好行囊。它往<span class="r">${l.n}</span>的方向去了，阿青蹲在门口目送，尾巴搭在你脚边。`);
+  pushMsg("avatar", `阿青送化身到山门口，回来在你蒲团边卧下`);
+  travelBtnLbl(); updateHUD(); save(); cloudSoon();
+  closeTravel();
+}
+function consumePill(id) {
+  const rp = RECIPES[id]; if (!rp) return;
+  if (!state.pills || !state.pills[id]) return;
+  const now = Date.now(); const e = rp.eff;
+  state.pills[id]--;
+  if (state.pills[id] <= 0) delete state.pills[id];
+  if (e.k === "buff") { state.buffs.push({ mult: e.mult, until: now + e.dur * 1000 }); pushMsg("main", `药力化开，周天运转如飞`); }
+  else if (e.k === "inst") { const gg = rateNow() * e.sec; state.exp += gg; pushMsg("main", `药力化开，修为<span class="g">+${fmt(gg)}</span>`); }
+  else if (e.k === "grand") { const gg = rateNow() * e.sec; state.exp += gg; state.buffs.push({ mult: e.mult, until: now + e.dur * 1000 }); pushMsg("main", `感悟天劫真意，修为<span class="g">+${fmt(gg)}</span>，道韵萦绕`); }
+  else if (e.k === "offline") { state.offlineBoostUntil = Math.max(state.offlineBoostUntil || 0, now + e.dur * 1000); pushMsg("main", "洗髓伐脉，此后离线游历更有所得"); }
+  updateHUD(); save(); cloudSoon(); openTravel(); renderPillHints();
+}
+function renderPillHints() {
+  const now = Date.now();
+  const n = (state.buffs || []).length;
+  const o = (state.offlineBoostUntil || 0) > now;
+  const el = $("pillHints");
+  if (el) el.innerHTML = (n ? `<span style="color:#f0c98a">丹力正盛 ×${buffMult().toFixed(1)}</span>` : "") +
+    (o ? (n ? " · " : "") + `<span style="color:#8fd8bd">洗髓·离线+30%</span>` : "");
+}
+
+/* P0 启动引导 */
+travelBtnLbl();
+renderPillHints();
+
+
+/* ==================== P1 炼丹炉（v2 丹方体系） ==================== */
+const DAN_ZONE = ["凡尘", "炼气", "筑基", "结丹", "元婴", "化神"];
+function craftAreaHTML() {
+  const bi = bigIdx();
+  const groups = {};
+  for (const id of Object.keys(RECIPES)) {
+    const big = RECIPES[id].big;
+    (groups[big] = groups[big] || []).push(id);
+  }
+  let html = `<div style="font-size:11px;color:#8a7a55;margin:12px 0 2px;letter-spacing:.1em">【 开炉炼丹 】</div>`;
+  for (let big = 0; big <= bi; big++) {
+    const list = groups[big];
+    if (!list || !list.length) continue;
+    html += `<div style="font-size:10.5px;color:#a98a5a;margin:8px 0 3px">· ${DAN_ZONE[big] || big} · 丹道</div>`;
+    html += list.map(recipeCardHTML).join("");
+  }
+  if (bi < 5) html += `<div style="font-size:10.5px;color:#545d6f;margin-top:9px;font-style:italic">更高一境的丹方，待你亲临其境，自有丹师相授。</div>`;
+  return html;
+}
+function recipeCardHTML(id) {
+  const rp = RECIPES[id];
+  const needTxt = Object.keys(rp.need).map(mid => {
+    const have = (state.mats || {})[mid] || 0, nd = rp.need[mid];
+    const ok = have >= nd;
+    return `<span style="color:${ok ? "#9fd0a8" : "#cf8a7a"}">${MATS[mid].n} ${have}/${nd}</span>`;
+  }).join("　");
+  const can = Object.keys(rp.need).every(mid => ((state.mats || {})[mid] || 0) >= rp.need[mid]);
+  return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;margin:5px 0;background:rgba(255,255,255,.035);border-left:2px solid ${can ? "rgba(159,208,168,.7)" : "rgba(130,130,160,.3)"}">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12.5px;color:${can ? "#e8d6a4" : "#9099ae"}">${rp.n}<span style="font-size:10px;color:#6d7688">　需 ${needTxt}</span></div>
+      <div style="font-size:10px;color:#8b94a8;margin-top:2px;line-height:1.5">${rp.d}</div>
+    </div>
+    <button class="cp-btn" style="flex:none;font-size:12px;padding:4px 12px;color:${can ? "#a9d8ae" : "#5d6677"}" ${can ? `onclick="craftPill('${id}')"` : "disabled"}>开炉</button>
+  </div>`;
+}
+function craftPill(id) {
+  const rp = RECIPES[id]; if (!rp) return;
+  for (const mid in rp.need) {
+    if (((state.mats || {})[mid] || 0) < rp.need[mid]) {
+      pushMsg("main", "材料不齐，丹炉难以为继"); return;
+    }
+  }
+  for (const mid in rp.need) state.mats[mid] -= rp.need[mid];
+  state.pills[id] = (state.pills[id] || 0) + 1;
+  pushMsg("main", `丹炉开火，一炉<span class="r">${rp.n}</span>成了，药香满室。`);
+  pushMsg("avatar", `阿青闻到药香，在丹炉边蹲成一团，尾巴尖轻轻晃`);
+  save(); cloudSoon(); updateHUD(); openTravel();
+}
+
+
+/* ==================== v0.7.0 后端权威结算(Cloud Settle) ==================== */
+async function cloudSettle() {
+  if (!window.fetch || !cld.id) return null;
+  cldUI("sync");
+  // 上传“原样快照”，绝不刷新 state.lastTs —— 后端才能看到真实离线区间
+  let snap = null;
+  try { snap = JSON.parse(JSON.stringify(state)); } catch (e) { return null; }
+  const ctl = new AbortController();
+  const tm = setTimeout(() => ctl.abort(), 5000);
+  try {
+    const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&settle=1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ __z: zPack(snap) }),
+      signal: ctl.signal,
+    });
+    clearTimeout(tm);
+    if (!r.ok) throw new Error("http" + r.status);
+    const j = await r.json();
+    if (j && j.ok && j.data) {
+      const c = adopt(zUnpack(j.data));
+      if (!c) return null;
+      state = c;
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+      state._cloudTs = j.ts || Date.now();
+      cld.ready = true; cld.lastOkTs = Date.now(); cld.lastOkLocal = state.lastTs;
+      cld.lastPushTs = Date.now();
+      cldUI("on");
+      return j;               // { settled, gains, data }
+    }
+    return null;
+  } catch (e) {
+    clearTimeout(tm);
+    cldUI("off");
+    return null;
+  }
+}
+function presentSettle(r) {
+  const gg = (r && r.gains) || {};
+  if (!gg || !gg.settled) return;
+  const dt = gg.dt || 0;
+  const hh = Math.floor(dt / 3600), mm = Math.floor((dt % 3600) / 60);
+  let retTxt = "";
+  // 化身归来叙事(数值已由后端入账; 文案与见闻在本地补全)
+  if (gg.travel) {
+    const tv = gg.travel;
+    const loc = locById(tv.loc);
+    const matTxt = (tv.mats || []).map(x => `${MATS[x.id].n}×${x.q}`).join("、");
+    const taleLines = [];
+    if (loc) {
+      taleLines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
+      if (dt > 7200 && loc.tale.length > 1) {
+        taleLines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
+      }
+      retTxt = tv.early
+        ? (matTxt ? `化身往${loc.n}走了一遭，时辰尚短便折返，只捎回 <b>${matTxt}</b>。阿青在门口迎它，嗅了嗅，又趴回去打盹。`
+                  : `化身往${loc.n}走了一遭，时辰尚短便折返，此行只带回一囊清风。阿青在门口等它，嗅了嗅空气，又趴回去打盹。`)
+        : `化身自<span class="num">${loc.n}</span>归来，带回 <b>${matTxt || "一囊清风"}</b>。阿青绕着你转了三圈，又嗅了嗅化身衣摆，才心满意足地回去守门。`;
+      retTxt += " 见闻：" + taleLines.join("｜");
+      if (taleLines.length) {
+        addJournal({ key: "tr-" + Date.now(), big: realm().big, kind: "游历",
+          title: "云游·" + loc.n, text: taleLines.join(" ") });
+      }
+    } else {
+      retTxt = matTxt ? `化身归来，带回 <b>${matTxt}</b>。` : "";
+    }
+    pushMsg("avatar", `阿青迎到山门口｜化身自${loc ? loc.n : "远方"}归来`);
+  }
+  const jumpTxt = (gg.jumps && gg.jumps > 0)
+    ? `<br><span style="color:#8fd8bd">修为精进，连破 ${gg.jumps} 个小境界</span>` : "";
+  $("offlineText").innerHTML =
+    `你于洞天闭关打坐 <b>${hh ? hh + " 小时 " : ""}${mm ? mm + " 分钟" : "片刻"}</b>。<br>` +
+    `主身周天自行运转，修为 +<span class="num"> ${fmt(gg.exp)}</span><br>聚灵阵凝出灵石 +<span class="num"> ${fmt(gg.spirit)}</span>${jumpTxt}` +
+    (retTxt ? `<br><br>${retTxt}` : "");
+  // 离线际遇叙事(每满 1 时辰一段, 至多 3 段; 纯叙事)
+  const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
+  const bigName = realm().big;
+  const cnt = Math.min(3, Math.max(1, Math.floor(dt / 3600)));
+  const lines = [];
+  for (let i = 0; i < cnt; i++) {
+    const line = pickNoRepeat(MAIN_STORY[bi], "off" + bi);
+    lines.push(line);
+    addJournal({ key: "off-" + Date.now() + "-" + i, big: bigName, kind: "游历", title: "洞天游历", text: line });
+  }
+  const taleEl = $("offlineTale");
+  if (taleEl && lines.length) {
+    taleEl.style.display = "block";
+    taleEl.innerHTML = `<b>离线际遇</b>${lines.map(x => `<br>· ${x}`).join("")}`;
+  }
+  $("offlineModal").classList.add("show");
+  updateRealmUI(); updateHUD();
+}
