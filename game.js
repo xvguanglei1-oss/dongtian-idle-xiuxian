@@ -2962,22 +2962,26 @@ function renderEquip() {
   const box = $("equipBody"); if (!box) return;
   const eb = equipBonus();
   const arr = (state.arts || []).slice(-6);
-  const slots = arr.length ? arr.map((a, i) => {
+  let cells = "";
+  for (let i = 0; i < 6; i++) {
+    const a = arr[i];
+    if (!a) { cells += `<div class="eq-cell empty"><span class="eq-cn dim">空位</span></div>`; continue; }
     const q = QUALITY[a.q] || QUALITY[0];
-    return `<div class="eq-item">
-      <span class="eq-q ${q.cls}">${q.name}</span>
-      <span class="eq-name">${a.name}</span>
-      <span class="eq-cult">修为 ×${a.mult.toFixed(2)}</span>
-      <span class="eq-btl">斗法 攻+${(a.q + 1) * 3} 防+${(a.q + 1) * 2} 血+${(a.q + 1) * 10}</span>
+    cells += `<div class="eq-cell qc${a.q}">
+      <span class="eq-ql ${q.cls}">${q.name}</span>
+      <span class="eq-cn">${a.name}</span>
+      <span class="eq-cm">修为×${a.mult.toFixed(2)}</span>
+      <span class="eq-bt">斗 攻+${(a.q+1)*3} 防+${(a.q+1)*2}</span>
     </div>`;
-  }).join("") : `<div class="eq-empty">藏宝阁空空如也。<br>阿青在后院打铁——日子久了，总会出炉几件趁手的家伙。</div>`;
-  const rec = _eqRecycle.length ? `<div class="eq-rec">近记：${_eqRecycle.join("　·　")}</div>` : "";
+  }
+  const rec = _eqRecycle.length ? `<div class="eq-rec">近记：${_eqRecycle.join(" · ")}</div>` : "";
   box.innerHTML = `
     <div class="eq-sum">
       <span>修为加成 <b>×${artMult().toFixed(2)}</b></span>
       <span>斗法 <b>攻+${eb.atk}</b> <b>防+${eb.def}</b> <b>血+${eb.hp}</b></span>
     </div>
-    <div class="eq-note">阿青每出炉一件，会自动比对你身上六件法宝——胜过最弱那件才换上，<br>旧件熔回灵石；不及身上的，当场炼作灵石。</div>
-    <div class="eq-list">${slots}</div>${rec}`;
-  const row = $("artRow"); if (row) updateArts(false);
+    <div class="eq-grid">${cells}</div>
+    <div class="eq-note">阿青出炉新宝会自动择优：胜过六件中最弱一件才换上，旧件熔回灵石；<br>不如身上所佩的，当场炼作灵石。全程无需你费心。</div>
+    ${rec}`;
 }
+
