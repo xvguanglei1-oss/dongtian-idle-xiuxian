@@ -541,6 +541,20 @@ const ZONES = [
     ] },
 ];
 const RECIPES = {   // 丹方 v2 —— 每方带 big(所属大境0~5)，材料只用本境可集齐之物
+  /* ---- 隐藏丹(丹方残页解锁, h:1; 纵向毕业向: 强力buff, 只取最强一道故须超越公开buff) ---- */
+  xuanwu: { big: 0, h: 1, n: "玄牝丸", d: "上古残方：一个时辰内修为 +60%",
+            need: { huangjing: 5, yaodan: 1 }, eff: { k: "buff", mult: 1.6, dur: 3600 } },
+  tianyuan: { big: 1, h: 1, n: "天元聚气丹", d: "镜州古丹残篇：两个时辰内修为 +200%",
+            need: { shexian: 5, lingru: 2, yaodan: 2 }, eff: { k: "buff", mult: 3, dur: 7200 } },
+  jiuzhuan: { big: 2, h: 1, n: "九转玉髓丹", d: "乱星海沉船古方：三个时辰内修为 +300%",
+            need: { zihou: 5, lingru: 3, dihuo: 2 }, eff: { k: "buff", mult: 4, dur: 10800 } },
+  taishang: { big: 3, h: 1, n: "太上凝金丹", d: "虚天殿壁刻残方：三个时辰内修为 +400%",
+            need: { xuancan: 5, lingru: 3, yaodan: 3 }, eff: { k: "buff", mult: 5, dur: 10800 } },
+  jiutian: { big: 4, h: 1, n: "九天婴华丹", d: "灵界裂隙飘来的丹道：四个时辰内修为 +500%",
+            need: { jiuyou: 5, lingru: 4, dihuo: 3 }, eff: { k: "buff", mult: 6, dur: 14400 } },
+  hunyuan: { big: 5, h: 1, n: "混元无极丹", d: "飞升台前人界第一丹：六个时辰内修为 +700%",
+            need: { wenxin: 5, lingru: 4, dihuo: 3, yaodan: 4 }, eff: { k: "buff", mult: 8, dur: 21600 } },
+
   /* ---- 凡人(凡草单方，未入丹道) ---- */
   hjing: { big: 0, n: "黄精膏", d: "凡草慢熬，聊胜于无：立时回复约一刻钟修为",
             need: { huangjing: 3 }, eff: { k: "inst", sec: 900 } },
@@ -610,6 +624,7 @@ function adopt(s) {
   if (!Array.isArray(s.buffs)) s.buffs = [];
   if (typeof s.offlineBoostUntil !== "number") s.offlineBoostUntil = 0;
   if (!s.travel || typeof s.travel !== "object") s.travel = null;
+  if (!s.pages || typeof s.pages !== "object") s.pages = {};
   return s;
 }
 /* 短档存取: 全链路(LZString)压缩, 不裸存汉字正文; 旧档(未压缩 JSON)自动兼容 */
@@ -2042,11 +2057,17 @@ function applyOffline() {
       ret.lines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
       if (dur > 7200 && loc.tale.length > 1) ret.lines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
       for (const k in ret.mats) state.mats[k] = (state.mats[k] || 0) + ret.mats[k];
+      if (z && Math.random() < PAGE_RATE) {
+        if (!state.pages || typeof state.pages !== "object") state.pages = {};
+        state.pages["b" + z.big] = (state.pages["b" + z.big] || 0) + 1;
+        ret.page = true;
+      }
       const matTxt = Object.keys(ret.mats).map(k => `${MATS[k].n}×${ret.mats[k]}`).join("、");
       retTxt = (early ? (matTxt
                       ? `化身往${loc.n}走了一遭，时辰尚短便折返，只捋回 <b>${matTxt}</b>。阿青在门口迎它，嗅了嗅，又趴回去打盹。`
                       : `化身往${loc.n}走了一遭，时辰尚短便折返，此行只带回一囊清风。阿青在门口等它，嗅了嗅空气，又趴回去打盹。`)
                       : `化身自<span class="num">${loc.n}</span>归来，带回 <b>${matTxt || "一囊清风"}</b>。阿青绕着你转了三圈，又嗅了嗅化身衣摆，才心满意足地回去守门。`);
+      if (ret.page) retTxt += " ｜ 行囊里多出一页<b>丹方残页</b>";
       retTxt += " 见闻：" + ret.lines.join("｜");
       if (ret.lines.length) {
         addJournal({ key: "tr-" + Date.now(), big: realm().big, kind: "游历",
@@ -2346,6 +2367,11 @@ renderPillHints();
 
 
 /* ==================== P1 炼丹炉（v2 丹方体系） ==================== */
+/* ==================== v0.8.0 丹方残页 ==================== */
+const PAGE_RATE = 0.15;      // 每趟云游带回残页概率(前后端一致)
+const PAGES_NEED = [2, 3, 3, 3, 3, 3];   // 各境需集齐页数解锁隐藏丹
+function pagesOf(bi) { return (state.pages && state.pages["b" + bi]) || 0; }
+function hiddenUnlocked(bi) { return pagesOf(bi) >= PAGES_NEED[bi]; }
 const DAN_ZONE = ["凡尘", "炼气", "筑基", "结丹", "元婴", "化神"];
 function craftAreaHTML() {
   const bi = bigIdx();
@@ -2359,7 +2385,23 @@ function craftAreaHTML() {
     const list = groups[big];
     if (!list || !list.length) continue;
     html += `<div style="font-size:10.5px;color:#a98a5a;margin:8px 0 3px">· ${DAN_ZONE[big] || big} · 丹道</div>`;
-    html += list.map(recipeCardHTML).join("");
+    for (const id of list) {
+      const rp = RECIPES[id];
+      if (rp.h) {
+        if (hiddenUnlocked(big)) html += recipeCardHTML(id);
+        else {
+          const got = pagesOf(big);
+          html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;margin:5px 0;background:rgba(120,120,160,.06);border-left:2px dashed rgba(150,140,200,.35)">
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12.5px;color:#8d84b8">???.${DAN_ZONE[big]}古方残卷<span style="font-size:10px;color:#6d6677">　残页 ${got}/${PAGES_NEED[big]}</span></div>
+              <div style="font-size:10px;color:#6d7688;margin-top:2px">云游${DAN_ZONE[big]}一带有机会拾得残页，凑齐自见丹方真容。</div>
+            </div>
+          </div>`;
+        }
+        continue;
+      }
+      html += recipeCardHTML(id);
+    }
   }
   if (bi < 5) html += `<div style="font-size:10.5px;color:#545d6f;margin-top:9px;font-style:italic">更高一境的丹方，待你亲临其境，自有丹师相授。</div>`;
   return html;
@@ -2382,6 +2424,7 @@ function recipeCardHTML(id) {
 }
 function craftPill(id) {
   const rp = RECIPES[id]; if (!rp) return;
+  if (rp.h && !hiddenUnlocked(rp.big)) { pushMsg("main", "丹方残页未集齐，此丹方还锁在雾里"); return; }
   for (const mid in rp.need) {
     if (((state.mats || {})[mid] || 0) < rp.need[mid]) {
       pushMsg("main", "材料不齐，丹炉难以为继"); return;
@@ -2423,8 +2466,10 @@ async function cloudSettle() {
     if (!r.ok) throw new Error("http" + r.status);
     const j = await r.json();
     if (j && j.ok && j.data) {
+      const keepJournal = (state.journal || []).slice();   // 云端净化档不含动态叙事 → 本地叙事不回退
       const c = adopt(zUnpack(j.data));
       if (!c) return null;
+      c.journal = keepJournal.length >= (c.journal || []).length ? keepJournal : c.journal;
       state = c;
       try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
       state._cloudTs = j.ts || Date.now();
@@ -2450,7 +2495,8 @@ function presentSettle(r) {
   if (gg.travel) {
     const tv = gg.travel;
     const loc = locById(tv.loc);
-    const matTxt = (tv.mats || []).map(x => `${MATS[x.id].n}×${x.q}`).join("、");
+    const matTxt = (tv.mats || []).map(x => `${MATS[x.id].n}×${x.q}`).join("、")
+      + (tv.pages ? " ｜ <b>丹方残页×1</b>" : "");
     const taleLines = [];
     if (loc) {
       taleLines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
