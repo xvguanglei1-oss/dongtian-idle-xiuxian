@@ -684,7 +684,13 @@ function load() {
     if (!raw) return;
     const s = zUnpack(raw);
     const c = adopt(s);
-    if (c) { state = c; trimJournal(); }
+    if (c) {
+      state = c; trimJournal();
+      /* v1.3.0 修: 启动瞬间 save() 会无条件把 lastTs 刷成「现在」, 把真实离线段吞掉,
+         导致 applyOffline 算出 dt≈0、云端 settle 也按 0 结算 —— 离线收益形同虚设。
+         载入时先把存档里的原始 lastTs 存进 _lastTs0, 离线结算以它为基准。 */
+      state._lastTs0 = (s && s.lastTs) || c.lastTs || 0;
+    }
   } catch (e) {}
 }
 
@@ -2035,10 +2041,68 @@ function tickBurst(dt) {
 }
 
 /* ============ 离线收益 ============ */
+/* ============ v1.3.0 离线巡猎(本地兜底, 与后端 huntSettle 同式) ============
+ * 云端不可用时照样有巡猎收益: dt ÷ ENC_PERIOD 波, 八成斗法/两成秘境,
+ * 每战修为 = 挂机速率 × FIGHT_EXP_W × 0.6(挂机离线折扣), 灵石 = 灵石速率 × FIGHT_SP_W × 0.7;
+ * 每战必掉一件 → 阿青静默择优: 能顶替就换上(旧件熔灵石), 不入眼当场熔炼。 */
+function keepArtQuiet(a) {          // 静默版 smartEquip: 批量结算不发消息、不存档
+  if (!state.arts || !Array.isArray(state.arts)) state.arts = [];
+  const arts = state.arts;
+  const idx = (typeof a.slot === "number" && a.slot < 4) ? a.slot : arts.length;
+  if (idx >= arts.length) { arts.push(a); return true; }
+  const w = arts[idx];
+  if (!w) { arts[idx] = a; return true; }
+  if (a.q > w.q || (a.q === w.q && a.mult > w.mult)) {
+    state.spirit += Math.round(50 * Math.pow(1.6, w.q));    // 旧件熔回
+    arts[idx] = a; return true;
+  }
+  state.spirit += Math.round(40 * Math.pow(1.5, a.q));      // 新件不入眼, 当场熔作灵石
+  return false;
+}
+function huntOffline(dtSec) {
+  const H = { waves: 0, fights: 0, wins: 0, loses: 0, mysts: 0, exp: 0, spirit: 0, kept: 0, keptName: "", melted: 0, meltSp: 0 };
+  const waves = Math.floor((dtSec || 0) / ENC_PERIOD);
+  if (waves <= 0) return H;
+  H.waves = waves;
+  const rate = rateNow(), spr = spiritRate();
+  for (let i = 0; i < waves; i++) {
+    if (Math.random() < HUNT_FIGHT_RATE) {
+      H.fights++;
+      const lv = (state.realmIdx || 0) + 1, eb = equipBonus();
+      const php = 100 + 620 * lv + eb.hp, patk = 10 + 58 * lv + eb.atk, pdef = 5 + 42 * lv + eb.def;
+      const mhp = 300 * lv, matk = 100 * lv, mdef = 8 * lv;              // 同尺中值怪
+      const win = Math.ceil(mhp / Math.max(1, patk - mdef)) <= Math.ceil(php / Math.max(1, matk - pdef)) && Math.random() > 0.04;
+      if (!win) { H.loses++; continue; }
+      H.wins++;
+      const ge = Math.round(rate * FIGHT_EXP_W * 0.6), gs = Math.round(spr * FIGHT_SP_W * 0.7);
+      state.exp += ge; state.spirit += gs; H.exp += ge; H.spirit += gs;
+      const a = makeArt();
+      if (keepArtQuiet(a)) { H.kept++; if (!H.keptName) H.keptName = a.name; }
+      else { H.melted++; H.meltSp += Math.round(40 * Math.pow(1.5, a.q)); }
+    } else {
+      H.mysts++;
+      const k = Math.random();
+      if (k < 0.45) { const gs = Math.round(spr * MYST_W * 1.2 * 0.7); state.spirit += gs; H.spirit += gs; }
+      else if (k < 0.8) { const ge = Math.round(rate * MYST_W * 0.6); state.exp += ge; H.exp += ge; }
+    }
+  }
+  H.equipped = (state.arts || []).length;
+  return H;
+}
+function huntTxtOf(H) {                 // 离线巡猎纪要(云端 gains.hunt / 本地兜底 共用)
+  if (!H || !H.waves) return "";
+  const kN = H.keptCount != null ? H.keptCount : (Array.isArray(H.kept) ? H.kept.length : (H.kept || 0));
+  const kName = H.keptName || (Array.isArray(H.kept) && H.kept.length ? H.kept[0].name : "");
+  return `<br><br><span style="color:#f0c98a">主身巡猎 ${H.waves} 波</span>：斗法 ${H.fights} 场（胜 ${H.wins} · 负 ${H.loses}）、秘境 ${H.mysts} 处<br>` +
+    `斩获修为 +<span class="num"> ${fmt(H.exp || 0)}</span>、灵石 +<span class="num"> ${fmt(H.spirit || 0)}</span>` +
+    (kN ? `<br>阿青收下 <b>${kN}</b> 件新宝${kName ? `（${kName} 等）` : ""}，藏宝阁在架 ${H.equipped || kN} 件` : "") +
+    (H.melted ? `；余下 <b>${H.melted}</b> 件不入眼，尽数投炉熔作灵石 +<span class="num"> ${fmt(H.meltSp || 0)}</span>` : "");
+}
 function applyOffline() {
   const now = Date.now();
-  /* 结算基准 = 上次活跃与上次结算推进点取大 → 多设备/换档不重不漏 */
-  const base = Math.max(state.lastTs || 0, state._settledTs || 0);
+  /* 结算基准 = 载入时的原始 lastTs(_lastTs0) 与上次结算推进点取大 → 多设备/换档不重不漏
+     (不能用 state.lastTs —— 它已被启动瞬间的 save() 刷成现在, 见 load 处注释) */
+  const base = Math.max(state._lastTs0 || state.lastTs || 0, state._settledTs || 0);
   let dt = (now - base) / 1000;
   if (dt < 30) return;
   dt = Math.min(dt, OFFLINE_CAP);
@@ -2061,6 +2125,9 @@ function applyOffline() {
       else break;
     }
   }
+  /* v1.3.0 离线巡猎: 与在线同一波次模型(dt ÷ 180s 一波)，本地兜底(云端结算走后端 huntSettle) */
+  const HUNT = huntOffline(dt);
+  if (HUNT.waves) { updateArts(false); }
   state._settledTs = now;   // 结算推进点(防跨会话重复领取)
   /* —— 化身归来结算：外出的化身带回材料与见闻 —— */
   let retTxt = "";
@@ -2114,6 +2181,7 @@ function applyOffline() {
   $("offlineText").innerHTML =
     `你于洞天闭关打坐 <b>${hh ? hh + " 小时 " : ""}${mm ? mm + " 分钟" : "片刻"}</b>。<br>` +
     `主身周天自行运转，修为 +<span class="num"> ${fmt(gainExp)}</span><br>聚灵阵凝出灵石 +<span class="num"> ${fmt(gainSpirit)}</span>` +
+    huntTxtOf(HUNT) +
     (retTxt ? `<br><br>${retTxt}` : "");
   // 离线际遇: 与在线同样的叙事池, 随离线时长缓慢累积(每满一小时左右一段, 至多3段)
   const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
@@ -2549,6 +2617,10 @@ async function cloudSettle() {
   // 上传“原样快照”，绝不刷新 state.lastTs —— 后端才能看到真实离线区间
   let snap = null;
   try { snap = cloudSnap(JSON.parse(JSON.stringify(state))); } catch (e) { return null; }
+  /* 上传快照必须以「载入时原始 lastTs」为基准(state.lastTs 已被启动的 save() 刷成现在),
+     后端 settle 取 max(lastTs, _settledAt) 才能算出完整离线区间 */
+  snap.lastTs = Math.max(state._lastTs0 || 0, state._settledTs || 0) || snap.lastTs || 0;
+  snap._settledAt = state._settledTs || 0;
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), 8000);
   try {
@@ -2564,6 +2636,7 @@ async function cloudSettle() {
     if (j && j.ok && j.data) {
       const j0 = zUnpack(j.data);
       if (!adoptKeep(j0)) return null;
+      state._lastTs0 = Date.now(); state._settledTs = Date.now();   // 云端已结算 → 基准推进, 防重复领取
       mailDot();
       state._cloudTs = j.ts || Date.now();
       cld.ready = true; cld.lastOkTs = Date.now(); cld.lastOkLocal = state.lastTs;
@@ -2615,6 +2688,7 @@ function presentSettle(r) {
   $("offlineText").innerHTML =
     `你于洞天闭关打坐 <b>${hh ? hh + " 小时 " : ""}${mm ? mm + " 分钟" : "片刻"}</b>。<br>` +
     `主身周天自行运转，修为 +<span class="num"> ${fmt(gg.exp)}</span><br>聚灵阵凝出灵石 +<span class="num"> ${fmt(gg.spirit)}</span>${jumpTxt}` +
+    huntTxtOf(gg.hunt) +
     (retTxt ? `<br><br>${retTxt}` : "");
   // 离线际遇叙事(每满 1 时辰一段, 至多 3 段; 纯叙事)
   const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
@@ -2755,25 +2829,38 @@ const MYST_TALE = [
 ];
 let BTL = null;                       // 战斗状态(不入存档)
 let MYST = null;                      // 秘境探索状态
-let _traceT = 0, _tracePool = [], _traceLoc = "", _encT = 0, _encNeed = 60 + Math.random() * 40;
+let _traceT = 0, _tracePool = [], _traceLoc = "", _encNext = 0;
 const slp = ms => new Promise(r => setTimeout(r, ms));
+
+/* ============ v1.3.0 巡猎波次(在线/离线同一模型) ============
+ * 一波 = 一次遭遇（八成斗法 / 两成秘境），周期固定 ENC_PERIOD 秒，自上一波收场起算。
+ *   在线：真实演出(约 20~25s)占用周期内时间，「速战」只省眼睛、不加速 —— 与离线严格同频。
+ *   离线：后端按 dt ÷ ENC_PERIOD 折算波次逐波结算（game-core.js 的 huntSettle，与此同式）。
+ * 产出同尺：每战修为 = 挂机速率 × FIGHT_EXP_W（「打一场 ≈ 打坐 90 秒」），
+ *   修为随境界曲线增长；战斗占修为总产出恒为 0.8 × W ÷ PERIOD = 40%，不再随境界漂移。
+ *   （旧式 lv×120 为线性，挂机却是 (大境+1)^2.05 阶梯 —— 占比从 5.6% 一路掉到化神 3.8%） */
+const ENC_PERIOD = 180;        // 波次周期(秒)
+const FIGHT_EXP_W = 155;       // 每战修为 = rateNow × 此秒数(占比 = x/(1+x), x = W/P×0.8×胜率 ≈ 0.66 → 40%)
+const FIGHT_SP_W = 90;         // 每战灵石 = spiritRate × 此秒数(挂机灵石按 0.7 系数 → 战斗约占三成)
+const MYST_W = 45;             // 秘境机缘等效秒数
+const HUNT_FIGHT_RATE = 0.8;   // 波次中斗法占比(余下为秘境)
 
 function warZone() {                   // 斗法地界 = 主身当前大境地界(与化身云游无关)
   return zoneOfBig(bigIdx());
 }
-/* ---------- 节拍: 行迹句 2.5 分钟一换; 主身遭遇 ~80~140s 一次(无论化身是否出门) ---------- */
+/* ---------- 节拍: 行迹句 2.5 分钟一换; 主身巡猎按固定波次周期(与离线同频) ---------- */
 function traceBeat() {
   if (!state) return;
   if (!BTL && !MYST) {
-    _encT += 2.5;
-    if (_encT >= _encNeed) { _encT = 0; _encNeed = 80 + Math.random() * 60; fireEvent(); }
+    if (!_encNext) _encNext = Date.now() + ENC_PERIOD * 1000 * (0.35 + Math.random() * 0.65);
+    if (Date.now() >= _encNext) fireEvent();
   }
   if (!BTL && !MYST && Date.now() - _traceT > 150000) { _traceT = Date.now(); traceRefresh(); }
 }
 function fireEvent() {                // 遇事分发: 八成妖兽伏击, 两成秘境机缘 —— 皆挂主身
   if (BTL || MYST) return;
-  if (Math.random() < 0.2) { fireMyst(); return; }
-  fireFight();
+  _encNext = Date.now() + ENC_PERIOD * 1000;   // 波次计时刻度: 开演即起算(速战不加速)
+  if (Math.random() < HUNT_FIGHT_RATE) fireFight(); else fireMyst();
 }
 function fireFight() {                // 主身斗法: 不再借化身行迹, 出洞天巡猎遇妖
   if (BTL) return;
@@ -2895,9 +2982,11 @@ function warEnd(finalTxt, cls) {
 function btlWin() {
   if (!BTL || BTL.ended) return; BTL.ended = true;
   const m = BTL.mon;
-  // 产出对齐参考(击杀): 灵石≈怪级×8, 修为≈怪级×120(他们 lv*2/lv*100, 按我们的节奏放大补给)
-  const g = Math.round((BTL.lv || 1) * 8);
-  const ge = Math.round((BTL.lv || 1) * 120);
+  /* 产出同尺(参考 exp = maxCultivation/100 = 2^境界, 即「指数曲线 + 每境百战」)：
+     折算成我们的挂机速率 —— 每战 ≈ 打坐 FIGHT_EXP_W 秒、≈ 聚灵 FIGHT_SP_W 秒。
+     修为/灵石随境界同步增长，战斗占修为总产出恒为 40%（见 ENC_PERIOD 注释） */
+  const g = Math.round(spiritRate() * FIGHT_SP_W);
+  const ge = Math.round(rateNow() * FIGHT_EXP_W);
   state.spirit += g; state.exp += ge;
   // 参考"每战必掉装备": 掉落一件同级法宝(品质概率), 走自动择优穿戴
   try { const dr = makeArt(); smartEquip(dr); } catch (e) {}
@@ -2948,8 +3037,8 @@ async function mystRun() {
   else {
     const kind = Math.random();
     let txt;
-    if (kind < 0.45) { const g = Math.round(35 + warZone().big * 30 + Math.random() * 30); state.spirit += g; txt = `你寻到一匣旧藏灵石 —— <b>+${fmt(g)} 灵石</b>`; }
-    else if (kind < 0.8) { const g = Math.round(rateNow() * 90); state.exp += g; txt = `壁刻心法令你顿悟片刻 —— 修为+${fmt(g)}`; }
+    if (kind < 0.45) { const g = Math.round(spiritRate() * MYST_W * 1.2); state.spirit += g; txt = `你寻到一匣旧藏灵石 —— <b>+${fmt(g)} 灵石</b>`; }
+    else if (kind < 0.8) { const g = Math.round(rateNow() * MYST_W); state.exp += g; txt = `壁刻心法令你顿悟片刻 —— 修为+${fmt(g)}`; }
     else txt = "此处只有一室清风，你原路退出，不虚此行。";
     pushMsg("main", `你探秘境归来，${txt.replace(/<[^>]+>/g, "")}`);
     warEnd(txt);
