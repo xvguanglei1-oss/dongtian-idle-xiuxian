@@ -440,7 +440,7 @@ const MAIN_STORY = [
 /* ============ 存档 ============ */
 let state = { realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], journal: [],
   milestones: {}, peakSpirit: 0, bestArtQ: -1, lastTs: Date.now(),
-  mats: {}, pills: {}, buffs: [], travel: null, offlineBoostUntil: 0 };
+  mats: {}, pills: {}, buffs: [], travel: null, mails: [], offlineBoostUntil: 0 };
 let breaking = false;
 let lastReadyHint = false;
 const SAVE_KEY = "dongtian_xiuxian_v2";
@@ -624,6 +624,7 @@ function adopt(s) {
   if (!Array.isArray(s.buffs)) s.buffs = [];
   if (typeof s.offlineBoostUntil !== "number") s.offlineBoostUntil = 0;
   if (!s.travel || typeof s.travel !== "object") s.travel = null;
+  if (!Array.isArray(s.mails)) s.mails = [];
   if (!s.pages || typeof s.pages !== "object") s.pages = {};
   return s;
 }
@@ -2239,6 +2240,7 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { save(); cloudSoon(); }  // 切后台/关页即同步"最后活跃"
 });
 cloudInit();       // 云存档: 先拉云端 → 统一结算离线收益 → 回写(本地永远可玩, 云失败静默)
+setInterval(stayMailCheck, 60000);   // 在线寄包: iOS 常驻标签页也能收到化身手札
 initBg();
 initFxDiag();
 initFxLayer();
@@ -2313,7 +2315,7 @@ function openTravel() {
       ${bagHtml}
       <div style="text-align:center;padding:14px 4px">
         <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${Math.max(0, sinceMin)}分钟</div>
-        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>阿青守着洞天，等你哪一日归来，化身自会把一路见闻讲给你听。</p></div>`;
+        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>化身在外会不时<b style="color:#c9b98a">寄回手札</b>，捎来途中所得；真见了大世面才肯回来。<br>阿青守着洞天，等你哪一日归来。</p></div>`;
   } else {
     const z = zoneOfBig(bigIdx());
     const placeNames = z.locs.map(x => x.n).join("、");
@@ -2364,6 +2366,7 @@ function renderPillHints() {
 /* P0 启动引导 */
 travelBtnLbl();
 renderPillHints();
+mailDot();
 
 
 /* ==================== P1 炼丹炉（v2 丹方体系） ==================== */
@@ -2447,6 +2450,65 @@ function cloudSnap(src) {
   out.journal = (s.journal || []).filter(j => !(j && !j.sid && j.kind === "游历"));
   return out;
 }
+/* ==================== v0.8.1 在线寄包: 化身不归, 周期寄回手札 ==================== */
+let _stayLast = 0;
+function adoptKeep(st) {          // 采用结算后的存档, 但本地叙事(非云端净化)不回退
+  const keep = (state.journal || []).slice();
+  const c = adopt(st);
+  if (!c) return false;
+  c.journal = keep.length >= (c.journal || []).length ? keep : c.journal;
+  state = c;
+  try { localStorage.setItem(SAVE_KEY, zPack(state)); } catch (e) {}
+  return true;
+}
+function mailLine(locId, ts) {
+  const loc = locById(locId);
+  if (!loc || !loc.tale || !loc.tale.length) return "";
+  const t = loc.tale.length;
+  return loc.tale[(((ts || 0) / 60000 | 0) % t + t) % t];
+}
+function mailDot() {
+  const n = (state.mails || []).length;
+  const d = $("mailDot"); if (d) d.style.display = n ? "block" : "none";
+  const b = $("mailChip"); if (b) b.classList.toggle("has-mail", !!n);
+}
+function showTravelMail(mail) {
+  const loc = locById(mail.loc);
+  const where = loc ? loc.n : "远方";
+  pushMsg("avatar", `鸿雁衔书而至｜化身自${where}寄回一封手札`);
+  pushMsg("main", `<span class="b">雁书已入信匣</span>：化身在${where}写了封信，内附几样远行收获。<br>点右上角鸿雁展开，收取后方才归你。`);
+  if ($("mailModal") && $("mailModal").classList.contains("show")) renderMailBox();
+  mailDot();
+}
+async function stayMailCheck() {
+  if (!window.fetch || !cld.id || !cld.ready) return;
+  if (!state.travel || !state.travel.loc) return;          // 化身不在外无需寄包
+  const now0 = Date.now();
+  if (now0 - _stayLast < 240000) return;                   // 4 分钟节流
+  _stayLast = now0;
+  const ctl = new AbortController();
+  const tm = setTimeout(() => ctl.abort(), 7000);
+  try {
+    const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&stay=1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ __z: zPack(cloudSnap(state)) }),
+      signal: ctl.signal,
+    });
+    clearTimeout(tm);
+    if (!r.ok) return;
+    const j = await r.json();
+    if (j && j.ok && j.data) {
+      const c0 = zUnpack(j.data);
+      if (c0 && adoptKeep(c0)) { updateHUD(); mailDot(); }
+      if (j.stay && j.stay.id && ((j.stay.mats && j.stay.mats.length) || j.stay.page)) {
+        showTravelMail(j.stay);
+        updateRealmUI();
+      }
+    }
+  } catch (e) { clearTimeout(tm); }
+}
+/* ==================== v0.8.0 丹方残页(Cloud Settle) 辅助 ==================== */
 async function cloudSettle() {
   if (!window.fetch || !cld.id) return null;
   cldUI("sync");
@@ -2466,12 +2528,9 @@ async function cloudSettle() {
     if (!r.ok) throw new Error("http" + r.status);
     const j = await r.json();
     if (j && j.ok && j.data) {
-      const keepJournal = (state.journal || []).slice();   // 云端净化档不含动态叙事 → 本地叙事不回退
-      const c = adopt(zUnpack(j.data));
-      if (!c) return null;
-      c.journal = keepJournal.length >= (c.journal || []).length ? keepJournal : c.journal;
-      state = c;
-      try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+      const j0 = zUnpack(j.data);
+      if (!adoptKeep(j0)) return null;
+      mailDot();
       state._cloudTs = j.ts || Date.now();
       cld.ready = true; cld.lastOkTs = Date.now(); cld.lastOkLocal = state.lastTs;
       cld.lastPushTs = Date.now();
@@ -2540,4 +2599,70 @@ function presentSettle(r) {
   }
   $("offlineModal").classList.add("show");
   updateRealmUI(); updateHUD();
+}
+
+
+/* ============ v0.8.1 鸿雁信匣: 收信 → 展信 → 点收取入账 ============ */
+const MAIL_BTN_PATH = "M12 8 C28 2 44 10 62 6 C78 3 94 9 112 6 C128 3 146 8 162 5 C178 2 192 8 197 15 C200 24 197 33 194 40 C192 46 196 52 182 53 C168 55 152 49 138 53 C122 57 108 50 92 54 C76 58 60 52 46 55 C32 58 20 52 10 54 C2 54 2 46 3 38 C4 28 2 20 6 14 C8 11 10 9 12 8 Z";
+function openMail() {
+  const m = $("mailModal"); if (!m) return;
+  renderMailBox();
+  m.classList.add("show");
+}
+function closeMail() { const m = $("mailModal"); if (m) m.classList.remove("show"); }
+function mailGoodsTxt(mail) {
+  const g = [];
+  for (const mk of (mail.mats || [])) if (MATS[mk.id]) g.push(`${MATS[mk.id].n}×${mk.q}`);
+  if (mail.page) g.push("丹方残页×1");
+  return g;
+}
+function renderMailBox() {
+  const box = $("mailBody"); if (!box) return;
+  const ml = (state.mails || []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  if (!ml.length) {
+    box.innerHTML = `<div class="mail-empty">信匣空空。<br>遣化身出门远行，它自会托雁足捎信回来——<br>到时候，记得拆开看看。</div>`;
+    return;
+  }
+  box.innerHTML = ml.map(m => {
+    const loc = locById(m.loc);
+    const where = loc ? loc.n : "远方";
+    const mins = Math.max(1, Math.round((Date.now() - (m.ts || Date.now())) / 60000));
+    const ag = mins >= 60 ? (mins / 60 >= 24 ? Math.round(mins / 1440) + " 天前" : Math.round(mins / 60) + " 小时前") : mins + " 分钟前";
+    const g = mailGoodsTxt(m);
+    return `<div class="mail-item">
+      <div class="mail-head">
+        <span class="m-from">${where} · 化身亲笔</span>
+        <span class="m-age">${ag}</span>
+      </div>
+      <p class="mail-txt">“${mailLine(m.loc, m.ts)}”</p>
+      <div class="mail-foot">
+        <span class="m-goods">${g.length ? "内附 " + g.join("、") : "一封平安信，无甚物什"}</span>
+        <button class="btn primary seal" onclick="collectMail('${m.id}')"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="${MAIL_BTN_PATH}"/></svg><span class="label">收 取</span></button>
+      </div>
+    </div>`;
+  }).join("");
+}
+function collectMail(id) {
+  const ml = state.mails || [];
+  const i = ml.findIndex(x => String(x.id) === String(id));
+  if (i < 0) return;
+  const m = ml[i];
+  const got = [];
+  for (const mk of (m.mats || [])) {
+    if (!MATS[mk.id]) continue;
+    state.mats[mk.id] = (state.mats[mk.id] || 0) + mk.q;
+    got.push(MATS[mk.id].n + "×" + mk.q);
+  }
+  if (m.page) {
+    const z = zoneOfLoc(m.loc);
+    if (z) { state.pages["b" + z.big] = (state.pages["b" + z.big] || 0) + 1; got.push("丹方残页×1"); }
+  }
+  ml.splice(i, 1);
+  const loc = locById(m.loc);
+  const where = loc ? loc.n : "远方";
+  const gotTxt = got.length ? '收下 <span class="r">' + got.join("、") + "</span>" : "只余一纸见闻";
+  pushMsg("main", "你拆开" + where + "的来信，" + gotTxt + "。");
+  pushMsg("avatar", "展信收取 · 化身自" + where + "寄回");
+  renderMailBox(); mailDot(); updateHUD();
+  save(); cloudSoon();
 }
