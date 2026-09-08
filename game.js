@@ -2078,6 +2078,7 @@ function applyOffline() {
       state.travel = null;
     } else state.travel = null;
   }
+  travelBtnLbl();            // 本地兜底化身归来 → 云游按钮立刻复位
   // 离线面板正文(主身闭关 + 灵石 + 化身归来) —— 修复: 历史版本此段在重构中丢失
   const hh = Math.floor(dt / 3600), mm = Math.floor((dt % 3600) / 60);
   $("offlineText").innerHTML =
@@ -2459,6 +2460,8 @@ function adoptKeep(st) {          // 采用结算后的存档, 但本地叙事(�
   c.journal = keep.length >= (c.journal || []).length ? keep : c.journal;
   state = c;
   try { localStorage.setItem(SAVE_KEY, zPack(state)); } catch (e) {}
+  travelBtnLbl();            // 云端结算可能清 travel(化身归来) → 按钮文字同步
+  mailDot();
   return true;
 }
 function mailLine(locId, ts) {
