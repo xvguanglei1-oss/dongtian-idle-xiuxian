@@ -437,3 +437,42 @@
     mask-image:radial-gradient(ellipse 60% 75% at 50% 50%,#000 70%,transparent 100%)}
   .btl-fig.hit .btl-mob{filter:drop-shadow(0 0 22px rgba(255,120,80,.95)) brightness(1.05) saturate(1.1) contrast(1.1)}
   .btl-fig.hit .btl-bg{opacity:.85;filter:blur(.8px) drop-shadow(0 0 18px rgba(255,90,55,.9))}
+
+/* ============ v0.9.2 首页自动对轰战场 ============ */
+  .trace.battle{top:162px;max-width:min(94vw,560px);width:94vw;
+    background:linear-gradient(90deg,rgba(60,20,10,.10),rgba(14,18,30,.9) 18%,rgba(14,18,30,.9) 82%,rgba(60,20,10,.10));
+    border-top:1px solid rgba(255,140,110,.25);border-bottom:1px solid rgba(255,140,110,.25);
+    padding:14px 8px 10px}
+  .tk{display:flex;align-items:flex-end;justify-content:space-between;gap:2px;height:168px}
+  .tk-side{display:flex;flex-direction:column;align-items:center;width:86px;flex:none}
+  .tk-fig{position:relative;width:92px;height:112px;display:flex;align-items:flex-end;justify-content:center;overflow:visible}
+  .tk-fig .tk-mob{position:relative;z-index:2;height:74px;image-rendering:pixelated;image-rendering:crisp-edges;
+    filter:drop-shadow(0 0 12px rgba(200,80,55,.85)) brightness(.85) saturate(.92)}
+  .tk-fig .tk-mbg{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);height:88px;opacity:.75;pointer-events:none;z-index:1}
+  .tk-fig .hero-fig-svg{height:118px;filter:drop-shadow(0 0 14px rgba(110,170,220,.4));transform-origin:50% 92%}
+  .tk-fig.hit .tk-mob{animation:figHit2 .4s ease;filter:drop-shadow(0 0 20px rgba(255,120,80,1)) brightness(1.12) saturate(1.15)}
+  .tk-fig.hit .hero-fig-svg{animation:figHit2 .4s ease;filter:drop-shadow(0 0 20px rgba(255,190,120,.9)) brightness(1.2)}
+  .tk-fig.ghost .tk-mob{animation:ghostAway 1.2s ease forwards}
+  @keyframes figHit2{0%{transform:translateX(0)}25%{transform:translateX(-7px)}55%{transform:translateX(6px)}100%{transform:translateX(0)}}
+  @keyframes ghostAway{0%{opacity:1}60%{opacity:.5;transform:scale(1.1) translateY(-6px)}100%{opacity:0;transform:scale(1.6) translateY(-26px)}}
+  .tk-name{font-size:11px;color:#e0b98a;font-family:var(--font-brush);letter-spacing:.14em;margin-top:2px;white-space:nowrap}
+  .tk-side.hero .tk-name{color:#a8e6cc}
+  .tk-hp{width:100%;height:6px;margin-top:4px;background:rgba(8,10,16,.8);border-top:1px solid rgba(255,255,255,.07);overflow:hidden}
+  .tk-hp i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#8f2a18,#d04e35);transition:width .35s cubic-bezier(.2,.6,.3,1)}
+  .tk-hp.h2 i{background:linear-gradient(90deg,#5f8f4a,#bfa860)}
+  .tk-vfx{position:relative;flex:1;height:120px;pointer-events:none}
+  .tk-skill{position:absolute;left:50%;top:6px;transform:translateX(-50%);font-size:12px;color:#ffe4c8;letter-spacing:.16em;
+    font-family:var(--font-brush);opacity:0;text-shadow:0 0 10px rgba(255,170,110,.7);white-space:nowrap}
+  .tk-skill.on{animation:skillShout 1.5s ease forwards}
+  @keyframes skillShout{0%{opacity:0;transform:translateX(-50%) translateY(6px) scale(.9)}16%{opacity:1;transform:translateX(-50%) translateY(0) scale(1.05)}70%{opacity:.85}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
+  .tk-bolt{position:absolute;top:52%;width:44px;height:3px;border-radius:2px;opacity:0}
+  .tk-bolt.hero{left:8%;background:linear-gradient(90deg,rgba(255,235,190,0),#ffe9b0 45%,#ffb46a);box-shadow:0 0 12px #ffd89a;
+    animation:boltHero .55s ease forwards}
+  .tk-bolt.foe{right:8%;background:linear-gradient(270deg,rgba(255,190,190,0),#ff8a9a 45%,#e04455);box-shadow:0 0 12px #ff8095;
+    animation:boltFoe .55s ease forwards}
+  @keyframes boltHero{0%{opacity:0;transform:translateX(0) scaleX(.4)}20%{opacity:1}100%{opacity:0;transform:translateX(300px) scaleX(1.1)}}
+  @keyframes boltFoe{0%{opacity:0;transform:translateX(0) scaleX(.4)}20%{opacity:1}100%{opacity:0;transform:translateX(-300px) scaleX(1.1)}}
+  .tk-dmg{position:absolute;right:6px;top:-2px;z-index:5;font-size:13px;font-weight:800;color:#ff8a70;
+    text-shadow:0 0 8px rgba(255,90,60,.8);animation:dmgUp 1.05s ease forwards;pointer-events:none;white-space:nowrap}
+  .tk-dmg.me{left:6px;right:auto;color:#ffe2a0;text-shadow:0 0 8px rgba(255,190,90,.8)}
+  @keyframes dmgUp{0%{opacity:0;transform:translateY(4px) scale(.8)}18%{opacity:1;transform:translateY(-2px) scale(1.15)}100%{opacity:0;transform:translateY(-26px) scale(1)}}
