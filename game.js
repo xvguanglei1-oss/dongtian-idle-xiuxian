@@ -76,12 +76,12 @@ function bigSub(bi) {
 
 /* ============ 法宝(凡人修仙传梗致敬) ============ */
 const QUALITY = [ // 名/权重/倍率/颜色(符器→玄天)
-  { name: "粗制", w: 40, mult: 1.10, cls: "q1" },
-  { name: "法器", w: 30, mult: 1.30, cls: "q2" },
-  { name: "灵器", w: 16, mult: 1.58, cls: "q3" },
-  { name: "古宝", w: 8,  mult: 2.00, cls: "q4" },
-  { name: "灵宝", w: 4,  mult: 2.70, cls: "q5" },
-  { name: "玄天", w: 2,  mult: 3.80, cls: "q6" },
+  { name: "粗制", w: 50, mult: 1.10, cls: "q1" },
+  { name: "法器", w: 20, mult: 1.30, cls: "q2" },
+  { name: "灵器", w: 15, mult: 1.58, cls: "q3" },
+  { name: "古宝", w: 9,  mult: 2.00, cls: "q4" },
+  { name: "灵宝", w: 5,  mult: 2.70, cls: "q5" },
+  { name: "玄天", w: 1,  mult: 3.80, cls: "q6" },
 ];
 const ART_PREFIX = ["青竹", "金雷", "墨蛟", "噬金", "太阴", "离火", "九幽", "乾蓝", "天外", "血凝", "碧磷", "玄冰", "紫檀", "五色", "遁地", "化血"];
 const ART_SUFFIX = ["飞剑", "古印", "小幡", "玄镜", "宝珠", "仙鼎", "葫芦", "玉尺", "金锁", "飞针", "法螺", "神灯"];
@@ -625,6 +625,19 @@ function adopt(s) {
   if (typeof s.offlineBoostUntil !== "number") s.offlineBoostUntil = 0;
   if (!s.travel || typeof s.travel !== "object") s.travel = null;
   if (!Array.isArray(s.mails)) s.mails = [];
+  // 旧档法宝升级: 按槽位补类型与参考属性(确定性, 同档同值)
+  if (Array.isArray(s.arts)) s.arts.forEach((a, i) => {
+    if (a && typeof a.a !== "number") {
+      a.slot = i; a.tp = SLOT_TYPES[i % 6].k;
+      a.lv = (typeof s.realmIdx === "number" ? s.realmIdx : 0) + 1;
+      const q = typeof a.q === "number" ? a.q : 0;
+      const M = EQ_MULT[q], lv = a.lv, s2 = hashRand((a.name || "") + q + i);
+      if (i % 6 === 0 || i % 6 === 1) { a.a = Math.round((10 + s2 * 40) * lv * M); a.h = 0; a.d = 0; }
+      else if (i % 6 === 2 || i % 6 === 3) { a.h = Math.round((100 + s2 * 300) * lv * M); a.d = Math.round((1 + s2 * 11) * lv * M); a.a = 0; }
+      else if (i % 6 === 4) { a.h = Math.round((40 + s2 * 120) * lv * M); a.d = Math.round((1 + s2 * 5) * lv * M); a.a = Math.round((4 + s2 * 12) * lv * M); }
+      else { a.a = Math.round((6 + s2 * 18) * lv * M); a.d = Math.round((1 + s2 * 7) * lv * M); a.h = 0; }
+    }
+  });
   if (!s.pages || typeof s.pages !== "object") s.pages = {};
   return s;
 }
@@ -890,17 +903,16 @@ function pickQ() {
   for (let i = 0; i < pool.length; i++) { x -= pool[i].w; if (x <= 0) return i; }
   return 0;
 }
-function makeArt() {
+function makeArt() {          // 六槽部位: 槽0兵 1兵 2护 3护 4佩 5诀
   const q = pickQ();
-  let name;
-  const sp = ART_SPECIAL.filter(s => q >= s[0]);
-  if (sp.length && Math.random() < 0.5) {
-    name = sp[Math.floor(Math.random() * sp.length)][1];
-  } else {
-    name = ART_PREFIX[Math.floor(Math.random() * ART_PREFIX.length)]
-         + ART_SUFFIX[Math.floor(Math.random() * ART_SUFFIX.length)];
-  }
-  return { name, q, mult: QUALITY[q].mult, t: Date.now() };
+  const arts = state.arts || [];
+  const slot = arts.length < 6 ? arts.length : Math.floor(Math.random() * 6);
+  const tp = SLOT_TYPES[slot];
+  const lv = (state.realmIdx || 0) + 1;
+  let name = artName(tp.k, q);
+  const art = { name, q, mult: QUALITY[q].mult, t: Date.now(), tp: tp.k, slot, lv };
+  attrAssign(art, tp.k, q, lv);
+  return art;
 }
 
 /* ============ 界面 ============ */
@@ -2674,14 +2686,14 @@ function collectMail(id) {
 /* ============ v0.9.3 情境行迹 + 文字斗法横幅(你来我往) ============ */
 /* 战斗/事件数值参考开源「我的文字修仙全靠刷」: 减伤公式 max(1, atk-def) + 闪避/暴击,
    怪物与玩家均带 攻/防/血 三围, 每轮双方各出手一次 -> 滚动日志 */
-const MONSTERS = {
-  0: { n: "野狼妖",    hp: 30, atk: 7,  def: 2 },
-  1: { n: "夜叉山魈",  hp: 46, atk: 10, def: 3 },
-  2: { n: "赤鬃熊罴",  hp: 70, atk: 15, def: 4 },
-  3: { n: "摄魂夜叉",  hp: 100, atk: 21, def: 5 },
-  4: { n: "化形蛟妖",  hp: 140, atk: 28, def: 6 },
-  5: { n: "域外天魔",  hp: 190, atk: 36, def: 8 },
-};
+const MON_NAMES = [
+  ["野狼妖", "灰鬃豺獠", "山道石魅", "赤目獠牙鬼"],
+  ["夜叉山魈", "雾隐狸妖", "枯藤树魅", "磷火孤魂"],
+  ["赤鬃熊罴", "黑风蛮蟒", "铁背蜈蚣", "嚎风狼王"],
+  ["摄魂夜叉", "白骨将军", "玄甲鬼修", "血煞妖姬"],
+  ["化形蛟妖", "吞云蟒王", "妖目金蟾", "夺魄狐王"],
+  ["域外天魔", "虚空妖影", "蚀心魔君", "混沌妖胎"],
+];
 const SKILLS = [
   ["乱拳",      "死命一搏"],
   ["火弹术",    "青锋剑芒"],
@@ -2738,11 +2750,12 @@ function fireEvent() {                // 遇事分发: 八成妖兽伏击, 两�
 }
 function fireFight() {
   const z = btlZone(); if (!z || BTL) return;
-  const mon = MONSTERS[z.big] || MONSTERS[0];
   const big = z.big;
+  const lv = (state.realmIdx || 0) + 1;              // 同尺: 怪=你的境界级
+  const mon = genMonster(big, lv);
   const eb = equipBonus();
-  const php = 80 + big * 24 + eb.hp, patk = 9 + big * 8 + (state.arrayLv - 1) * 2 + eb.atk, pdef = 2 + big * 2 + eb.def;
-  BTL = { mon, big, turn: 0, php, phpMax: php, patk, pdef, mhp: mon.hp, mhpMax: mon.hp, logs: [], ended: false };
+  const php = 100 + eb.hp, patk = 10 + eb.atk, pdef = 5 + eb.def;   // 参考: 基础+装备加法
+  BTL = { mon, big, lv, turn: 0, php, phpMax: php, patk, pdef, mhp: mon.hp, mhpMax: mon.hp, logs: [], ended: false };
   traceSay(`妖气扑面 —— 一头 <b>${mon.n}</b> 拦住化身去路，斗法已起!`);
   warStart(`妖战 · ${mon.n}`);
   pushMsg("main", `妖气骤起!化身在<span class="r">${locN(z)}</span>撞见一头 ${mon.n}，你来我往斗了起来。`);
@@ -2818,6 +2831,8 @@ function btlWin() {
   if (!BTL || BTL.ended) return; BTL.ended = true;
   const m = BTL.mon, g = Math.round(28 + BTL.big * 42 + Math.random() * 26);
   state.spirit += g;
+  // 参考"每战必掉装备": 掉落一件同级法宝(品质概率), 走自动择优穿戴
+  try { const dr = makeArt(); smartEquip(dr); } catch (e) {}
   pushMsg("main", `化身打退 <span class="r">${m.n}</span>，<span class="g">+${fmt(g)} 灵石</span>落入囊中。`);
   addJournal({ key: "bt-" + Date.now(), big: realm().big, kind: "纪事", title: "斗法 · 退" + m.n,
     text: `化身行至${locN(btlZone())}，遇 ${m.n} 拦路，施「${SKILLS[BTL.big][0]}」「${SKILLS[BTL.big][1]}」数合将其击退，捡得灵石 ${fmt(g)}。` });
@@ -2918,37 +2933,38 @@ window.debugEncounter = debugEncounter;
 /* 数值参考「我的文字修仙全靠刷」品质乘子滚雪球思路, 但保留本作"阿青打铁"法宝叙事;
    自动装: 阿青出炉新法宝 → 若强于身上最弱一件则自动顶替, 被换旧件熔回灵石 */
 let _eqRecycle = [];
-function equipBonus() {                 // 斗法三维: 品质 q0(粗制)~q5(玄天)
+function equipBonus() {                 // 斗法三维 = 六槽装备属性加总(参考加法)
   let atk = 0, def = 0, hp = 0;
-  for (const a of (state.arts || [])) { if (typeof a.q !== "number") continue; atk += (a.q + 1) * 3; def += (a.q + 1) * 2; hp += (a.q + 1) * 10; }
+  for (const a of (state.arts || [])) {
+    if (typeof a.a === "number") atk += a.a;
+    if (typeof a.d === "number") def += a.d;
+    if (typeof a.h === "number") hp += a.h;
+  }
   return { atk, def, hp };
 }
 function smartEquip(a) {
+  const arts = state.arts || [];
+  const idx = (typeof a.slot === "number" && a.slot < 6) ? a.slot : arts.length;
   const q0 = QUALITY[a.q];
-  if ((state.arts || []).length < 6) {
-    state.arts.push(a);
-    pushMsg("avatar", `阿青把 ${a.name}（${q0.name}）放进藏宝阁 —— 已替穿戴。`);
+  if (idx >= arts.length) {                 // 空槽: 直接穿戴
+    arts.push(a); state.arts = arts;
+    pushMsg("avatar", `阿青把 ${a.name}（${q0.name}·${SLOT_TYPES[idx].n}）放进藏宝阁 —— 已替穿戴。`);
     updateArts(true); save(); cloudSoon(); return;
   }
-  // 找出身上最弱一件(品质低者, 同级比倍率)
-  let wi = 0;
-  for (let i = 1; i < state.arts.length; i++) {
-    const x = state.arts[i];
-    if (x.q < state.arts[wi].q || (x.q === state.arts[wi].q && x.mult < state.arts[wi].mult)) wi = i;
-  }
-  const w = state.arts[wi];
+  const w = arts[idx];
+  if (!w) { arts[idx] = a; updateArts(true); save(); cloudSoon(); return; }
   if (a.q > w.q || (a.q === w.q && a.mult > w.mult)) {
     const g = Math.round(50 * Math.pow(1.6, w.q));
     state.spirit += g;
-    state.arts[wi] = a;
+    arts[idx] = a;
     _eqRecycle.unshift(`熔回 ${w.name}(${QUALITY[w.q].name}) +${fmt(g)}`);
     if (_eqRecycle.length > 3) _eqRecycle.pop();
-    pushMsg("avatar", `阿青见 ${a.name}(${q0.name}) 胜过旧佩，便把那 ${w.name} 熔回灵石 +${fmt(g)}，新宝自动换上。`);
+    pushMsg("avatar", `阿青见 ${a.name}(${q0.name}·${SLOT_TYPES[idx].n}) 胜过旧佩，把那 ${w.name} 熔回灵石 +${fmt(g)}，新宝自动换上。`);
     updateArts(true); save(); cloudSoon();
   } else {
     const g = Math.round(40 * Math.pow(1.5, a.q));
     state.spirit += g;
-    pushMsg("avatar", `${a.name}(${q0.name}) 尚不如你身上所佩，阿青随手炼作灵石 +${fmt(g)}。`);
+    pushMsg("avatar", `${a.name}(${q0.name}) 不及身上同槽所佩，阿青炼作灵石 +${fmt(g)}。`);
     updateArts(false); save(); cloudSoon();
   }
 }
@@ -2967,11 +2983,12 @@ function renderEquip() {
     const a = arr[i];
     if (!a) { cells += `<div class="eq-cell empty"><span class="eq-cn dim">空位</span></div>`; continue; }
     const q = QUALITY[a.q] || QUALITY[0];
+    const tn = SLOT_TYPES[i].n;
     cells += `<div class="eq-cell qc${a.q}">
-      <span class="eq-ql ${q.cls}">${q.name}</span>
+      <span class="eq-ql ${q.cls}">${q.name} · ${tn}</span>
       <span class="eq-cn">${a.name}</span>
       <span class="eq-cm">修为×${a.mult.toFixed(2)}</span>
-      <span class="eq-bt">斗 攻+${(a.q+1)*3} 防+${(a.q+1)*2}</span>
+      <span class="eq-bt">攻+${a.a||0} 防+${a.d||0} 血+${a.h||0}</span>
     </div>`;
   }
   const rec = _eqRecycle.length ? `<div class="eq-rec">近记：${_eqRecycle.join(" · ")}</div>` : "";
@@ -2985,3 +3002,42 @@ function renderEquip() {
     ${rec}`;
 }
 
+
+
+/* ============ v1.0.0 参考数值骨架(同尺+加法) ============ */
+/* 对接「我的文字修仙全靠刷」: 玩家攻/血/防 = 基础 + 装备加总; 怪物按玩家境界级线性;
+   装备属性 = 随机基础 × 境界级 lv × 品质乘子 QM; 品质概率 50/20/15/9/5/1 */
+const EQ_MULT = [1.2, 2, 3, 5, 7, 10];                     // q0..q5 属性乘子(参考)
+const SLOT_TYPES = [                                        // 六槽部位: 两兵两护一佩一诀
+  { n: "兵器", k: "w" }, { n: "兵器", k: "w" },
+  { n: "护体", k: "a" }, { n: "护体", k: "a" },
+  { n: "灵佩", k: "p" }, { n: "功法", k: "s" },
+];
+const ARMOR_POOL = ["云纹软甲", "玄铁道衣", "天蚕宝衣", "碧鳞内甲", "朱雀羽衣", "金刚袈裟", "鲛绡冰纱", "紫绶仙衣", "龙鳞软铠", "九曜战衣"];
+const PEND_POOL = ["避尘佩", "养神玉", "锁魂珠", "聚灵环", "玄冰坠", "火灵佩", "护心古镜", "九宫清铃", "碧玉如意", "血珀珠"];
+const SCROLL_POOL = ["太清剑诀", "青元剑经", "大衍残篇", "庚金真解", "紫电玄功", "御风诀", "五行遁法", "斩灵诀", "御剑心经", "长春化生功"];
+function artName(kind, q) {
+  const sp = ART_SPECIAL.filter(s => q >= s[0]);
+  if (sp.length && Math.random() < 0.35) return sp[Math.floor(Math.random() * sp.length)][1];
+  if (kind === "w") return ART_PREFIX[Math.floor(Math.random() * ART_PREFIX.length)] + ART_SUFFIX[Math.floor(Math.random() * ART_SUFFIX.length)];
+  const P = kind === "a" ? ARMOR_POOL : kind === "p" ? PEND_POOL : SCROLL_POOL;
+  return P[Math.floor(Math.random() * P.length)];
+}
+function attrAssign(art, kind, q, lv) {
+  const M = EQ_MULT[q];
+  const r1 = Math.random(), r2 = Math.random(), r3 = Math.random();
+  if (kind === "w") { art.a = Math.max(1, Math.round((10 + r1 * 40) * lv * M)); art.h = 0; art.d = 0; }
+  else if (kind === "a") { art.h = Math.round((100 + r1 * 300) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 11) * lv * M)); art.a = 0; }
+  else if (kind === "p") { art.h = Math.round((40 + r1 * 120) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 5) * lv * M)); art.a = Math.round((4 + r3 * 12) * lv * M); }
+  else { art.a = Math.round((6 + r1 * 18) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 7) * lv * M)); art.h = 0; }
+}
+function genMonster(big, lv) {                            // 怪物 = 参考线性公式(随玩家境界级)
+  const names = MON_NAMES[big] || MON_NAMES[0];
+  return {
+    n: names[Math.floor(Math.random() * names.length)],
+    hp: Math.round((100 + Math.random() * 400) * lv),
+    atk: Math.round((50 + Math.random() * 100) * lv),
+    def: Math.max(1, Math.round((1 + Math.random() * 14) * lv)),
+  };
+}
+function hashRand(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
