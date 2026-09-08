@@ -728,7 +728,7 @@ async function cldPush() {
   state.lastTs = Date.now();
   trimJournal();
   try {
-    const r = await cldApi("PUT", { __z: zPack(state) });
+    const r = await cldApi("PUT", { __z: zPack(cloudSnap(state)) });
     state._cloudTs = r.ts || Date.now();
     save();
     cld.ready = true; cld.lastOkTs = Date.now(); cld.lastOkLocal = state.lastTs;
@@ -2396,12 +2396,20 @@ function craftPill(id) {
 
 
 /* ==================== v0.7.0 后端权威结算(Cloud Settle) ==================== */
+async /* 云端档案净化: 动态叙事(云游/离线见闻等随机正文)不上云,
+ * 只保留可还原的 剧情 sid 引用 与 纪事; 本地存档保持完整不受影响 */
+function cloudSnap(src) {
+  const s = src || state;
+  const out = Object.assign({}, s);
+  out.journal = (s.journal || []).filter(j => !(j && !j.sid && j.kind === "游历"));
+  return out;
+}
 async function cloudSettle() {
   if (!window.fetch || !cld.id) return null;
   cldUI("sync");
   // 上传“原样快照”，绝不刷新 state.lastTs —— 后端才能看到真实离线区间
   let snap = null;
-  try { snap = JSON.parse(JSON.stringify(state)); } catch (e) { return null; }
+  try { snap = cloudSnap(JSON.parse(JSON.stringify(state))); } catch (e) { return null; }
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), 8000);
   try {
