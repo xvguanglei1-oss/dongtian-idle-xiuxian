@@ -2316,7 +2316,7 @@ function openTravel() {
       ${bagHtml}
       <div style="text-align:center;padding:14px 4px">
         <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${Math.max(0, sinceMin)}分钟</div>
-        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>化身在外会不时<b style="color:#c9b98a">寄回手札</b>，捎来途中所得；真见了大世面才肯回来。<br>阿青守着洞天，等你哪一日归来。</p></div>`;
+        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>化身在外会不时<b style="color:#c9b98a">寄回手札</b>，捎来途中所得；真见了大世面才肯回来。<br>阿青守着洞天，等你哪一日归来。</p><div style="text-align:center;margin-top:10px"><button class="cp-btn" onclick="debugEncounter()">⚔ 立即遇妖(临时调试)</button></div></div>`;
   } else {
     const z = zoneOfBig(bigIdx());
     const placeNames = z.locs.map(x => x.n).join("、");
@@ -2673,12 +2673,12 @@ function collectMail(id) {
 
 /* ============ v0.9.0 化身行迹 · 云游斗法 ============ */
 const MONSTERS = {
-  0: { n: "野狼妖",    hp: 26, atk: 6 },
-  1: { n: "夜叉山魈",  hp: 42, atk: 9 },
-  2: { n: "赤鬃熊罴",  hp: 62, atk: 13 },
-  3: { n: "摄魂夜叉",  hp: 88, atk: 18 },
-  4: { n: "化形蛟妖",  hp: 120, atk: 24 },
-  5: { n: "域外天魔",  hp: 160, atk: 31 },
+  0: { n: "野狼妖",    hp: 26, atk: 6,  src: "assets/monsters/m0_wolf.png" },
+  1: { n: "夜叉山魈",  hp: 42, atk: 9,  src: "assets/monsters/m1_shanyao.png" },
+  2: { n: "赤鬃熊罴",  hp: 62, atk: 13, src: "assets/monsters/m2_xiongpi.png" },
+  3: { n: "摄魂夜叉",  hp: 88, atk: 18, src: "assets/monsters/m3_yexia.png" },
+  4: { n: "化形蛟妖",  hp: 120, atk: 24, src: "assets/monsters/m4_jiaoyao.png" },
+  5: { n: "域外天魔",  hp: 160, atk: 31, src: "assets/monsters/m5_tianmo.png" },
 };
 const SKILLS = [
   ["乱拳",      "死命一搏",  "撒腿就跑"],
@@ -2806,17 +2806,17 @@ function btlRender() {
   $("btlPTag").textContent = "你 · " + realm().label;
   // 妖影: 妖气墨团 + 双瞳
   $("btlFoeFig").innerHTML =
-    `<svg viewBox="0 0 120 88" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    `<svg class="btl-bg" viewBox="0 0 120 88" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
       <path d="M30 18 C54 2 92 8 104 30 C114 48 108 72 84 80 C60 88 26 80 18 60 C10 42 14 28 30 18 Z"
-        fill="url(#gradCin)" opacity=".5"/>
+        fill="url(#gradCin)" opacity=".55"/>
       <path d="M34 24 C56 12 88 18 98 34 C106 50 100 68 82 74 C60 80 32 72 24 56 C17 42 20 30 34 24 Z"
         fill="none" stroke="rgba(240,220,200,.5)" stroke-width="1.4"/>
-      <ellipse cx="42" cy="42" rx="6" ry="9" fill="#ffd9c4" opacity=".85"/>
-      <ellipse cx="42" cy="42" rx="3.2" ry="5" fill="#b31f12"/>
-      <ellipse cx="78" cy="42" rx="6" ry="9" fill="#ffd9c4" opacity=".85"/>
-      <ellipse cx="78" cy="42" rx="3.2" ry="5" fill="#b31f12"/>
-      <path d="M50 62 C56 58 64 58 70 62" stroke="rgba(255,200,170,.6)" stroke-width="2" fill="none" stroke-linecap="round"/>
-    </svg>`;
+      <ellipse cx="42" cy="44" rx="5" ry="7" fill="#ffd9c4" opacity=".75"/>
+      <ellipse cx="42" cy="44" rx="2.6" ry="4" fill="#b31f12"/>
+      <ellipse cx="78" cy="44" rx="5" ry="7" fill="#ffd9c4" opacity=".75"/>
+      <ellipse cx="78" cy="44" rx="2.6" ry="4" fill="#b31f12"/>
+    </svg>
+    <img class="btl-mob" src="${m.src}" alt="${m.n}" />`;
   const mp = Math.max(0, BTL.mhp / BTL.mhpMax * 100);
   const pp = Math.max(0, BTL.php / BTL.phpMax * 100);
   $("btlMhp").style.width = mp + "%";
@@ -2926,3 +2926,14 @@ function btlEnd(kind) {
 /* 行迹/遇怪节拍: 2.5s 一拍(遇怪计时), 文案 6s 一换 */
 setInterval(traceBeat, 2500);
 traceRefresh();
+
+/* ============ v0.9.1 调试入口: 立即遇妖 ============ */
+function debugEncounter() {
+  if (!state.travel) { pushMsg("main", "先遣化身出门才能遇妖。"); return; }
+  if (BTL) { pushMsg("main", "正在斗法中。"); return; }
+  // 关闭可能打开的云游面板
+  closeTravel();
+  _encT = 0; _encNeed = 99999;     // 暂时挂起自动遇怪, 测试完再回来
+  fireEncounter();
+}
+window.debugEncounter = debugEncounter;

@@ -426,3 +426,14 @@
     background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(60,74,108,.5)%22 stroke=%22rgba(170,190,235,.45)%22 stroke-width=%221.1%22 vector-effect=%22non-scaling-stroke%22/></svg>')}
   .btl-acts .btn:disabled{opacity:.35;filter:grayscale(.7)}
   .btl-hint{font-size:9.5px;color:#5f6980;text-align:center;margin-top:10px;letter-spacing:.1em}
+
+/* ============ v0.9.1 行迹下移 + 战斗怪 sprite ============ */
+  .trace{top:168px !important}
+  .btl-fig{position:relative;display:flex;align-items:center;justify-content:center;overflow:visible}
+  .btl-fig .btl-bg{position:absolute;height:100%;width:auto;left:50%;transform:translateX(-50%);opacity:.6;pointer-events:none;filter:blur(.4px)}
+  .btl-fig .btl-mob{position:relative;z-index:1;height:104px;image-rendering:pixelated;image-rendering:crisp-edges;
+    filter:drop-shadow(0 0 14px rgba(192,70,50,.85)) brightness(.82) saturate(.9) contrast(1.05);
+    -webkit-mask-image:radial-gradient(ellipse 60% 75% at 50% 50%,#000 70%,transparent 100%);
+    mask-image:radial-gradient(ellipse 60% 75% at 50% 50%,#000 70%,transparent 100%)}
+  .btl-fig.hit .btl-mob{filter:drop-shadow(0 0 22px rgba(255,120,80,.95)) brightness(1.05) saturate(1.1) contrast(1.1)}
+  .btl-fig.hit .btl-bg{opacity:.85;filter:blur(.8px) drop-shadow(0 0 18px rgba(255,90,55,.9))}
