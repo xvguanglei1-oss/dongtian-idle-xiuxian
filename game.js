@@ -2414,7 +2414,7 @@ function openTravel() {
       ${bagHtml}
       <div style="text-align:center;padding:14px 4px">
         <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${Math.max(0, sinceMin)}分钟</div>
-        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>化身在外会不时<b style="color:#c9b98a">寄回手札</b>，捎来途中所得；真见了大世面才肯回来。<br>阿青守着洞天，等你哪一日归来。</p><div style="text-align:center;margin-top:10px"><button class="cp-btn" onclick="debugEncounter()">⚔ 立即斗法(临时调试)</button></div></div>`;
+        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>化身在外会不时<b style="color:#c9b98a">寄回手札</b>，捎来途中所得；真见了大世面才肯回来。<br>阿青守着洞天，等你哪一日归来。</p></div>`;
   } else {
     const z = zoneOfBig(bigIdx());
     const placeNames = z.locs.map(x => x.n).join("、");
@@ -3139,14 +3139,13 @@ function traceTap() { if (!BTL && !MYST) openTravel(); }
 setInterval(traceBeat, 2500);
 traceRefresh();
 renderAutoHunt();                  // v1.4.0: 自动斗法按钮初态(跟存档里的 autoHunt 走)
-/* ============ v0.9.1 调试入口: 立即遇妖(主身遭遇) ============ */
+/* ============ 调试入口: 立即遇妖 —— v1.4.2 已撤下 UI, 需要时在控制台敲 debugEncounter() ============ */
 function debugEncounter() {
   if (BTL || MYST) { pushMsg("main", "正在斗法/探秘中，且待收场。"); return; }
-  // 关闭可能打开的面板
   closeTravel();
   fireEvent();                              // 立即遇事(妖兽伏击/秘境)
 }
-window.debugEncounter = debugEncounter;
+window.debugEncounter = debugEncounter;     // 仅控制台可用, 界面不再摆按钮
 
 
 /* ============ v0.9.4 法宝·装备: 自动择优穿戴 + 装备面板 ============ */
