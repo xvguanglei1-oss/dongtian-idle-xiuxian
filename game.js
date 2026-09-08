@@ -2436,7 +2436,7 @@ function startTravel() {
   if (state.travel) { pushMsg("main", "化身尚在云游，归期未至"); closeTravel(); return; }
   const { l } = pickLoc();
   state.travel = { loc: l.id, since: Date.now() };
-  _encNext = Date.now() + ENC_PERIOD * 1000 * 0.5;   // 新程起步: 重置巡猎波次计时(半周期后首遇)
+  _encNext = autoHuntOn() ? Date.now() + searchMs() : 0;   // 重置巡猎: 自动斗法开则重新起算搜寻
   pushMsg("main", `你为化身备好行囊。它往<span class="r">${l.n}</span>的方向去了，阿青蹲在门口目送，尾巴搭在你脚边。`);
   pushMsg("avatar", `阿青送化身到山门口，回来在你蒲团边卧下`);
   travelBtnLbl(); updateHUD(); save(); cloudSoon();
@@ -2832,18 +2832,79 @@ let MYST = null;                      // 秘境探索状态
 let _traceT = 0, _tracePool = [], _traceLoc = "", _encNext = 0;
 const slp = ms => new Promise(r => setTimeout(r, ms));
 
-/* ============ v1.3.0 巡猎波次(在线/离线同一模型) ============
+/* ============ v1.3.0 巡猎波次(在线/离线同一模型) / v1.4.0 周期收紧 ============
  * 一波 = 一次遭遇（八成斗法 / 两成秘境），周期固定 ENC_PERIOD 秒，自上一波收场起算。
- *   在线：真实演出(约 20~25s)占用周期内时间，「速战」只省眼睛、不加速 —— 与离线严格同频。
+ *   在线：搜寻 SEARCH_MIN~MAX 秒 + 真实演出(约 20~25s) 即一波，「速战」只省眼睛、不加速。
  *   离线：后端按 dt ÷ ENC_PERIOD 折算波次逐波结算（game-core.js 的 huntSettle，与此同式）。
- * 产出同尺：每战修为 = 挂机速率 × FIGHT_EXP_W（「打一场 ≈ 打坐 90 秒」），
- *   修为随境界曲线增长；战斗占修为总产出恒为 0.8 × W ÷ PERIOD = 40%，不再随境界漂移。
- *   （旧式 lv×120 为线性，挂机却是 (大境+1)^2.05 阶梯 —— 占比从 5.6% 一路掉到化神 3.8%） */
-const ENC_PERIOD = 180;        // 波次周期(秒)
-const FIGHT_EXP_W = 155;       // 每战修为 = rateNow × 此秒数(占比 = x/(1+x), x = W/P×0.8×胜率 ≈ 0.66 → 40%)
-const FIGHT_SP_W = 90;         // 每战灵石 = spiritRate × 此秒数(挂机灵石按 0.7 系数 → 战斗约占三成)
+ * 产出同尺：每战修为 = 挂机速率 × FIGHT_EXP_W（「打一场 ≈ 打坐 155 秒」），
+ *   修为随境界曲线增长，占比不随境界漂移。
+ *   （旧式 lv×120 为线性，挂机却是 (大境+1)^2.05 阶梯 —— 占比从 5.6% 一路掉到化神 3.8%）
+ * v1.4.0 用户反馈「升级还是慢」→ 周期 180s 收紧到 90s（一天 960 波 / 768 场，原 480/384），
+ *   W 不动 → 战斗占修为总产出由 40% 抬到 57%，整体修为产出 +42%。 */
+const ENC_PERIOD = 90;         // 波次周期(秒) —— v1.4.0: 180 → 90
+const FIGHT_EXP_W = 155;       // 每战修为 = rateNow × 此秒数(x = W/P×0.8×胜率 ≈ 1.32 → 占 57%)
+const FIGHT_SP_W = 90;         // 每战灵石 = spiritRate × 此秒数(x ≈ 0.77 → 挂机灵石约占四成三)
 const MYST_W = 45;             // 秘境机缘等效秒数
 const HUNT_FIGHT_RATE = 0.8;   // 波次中斗法占比(余下为秘境)
+
+/* ============ v1.4.0 自动斗法(在线表现层) ============
+ * 「自动斗法」开启 → 主身持续巡山, 搜寻 SEARCH_MIN~MAX 秒后遇妖开打(行迹下方有搜寻动态提示);
+ * 关闭 → 只打坐吐纳, 不主动寻妖(可随时再开)。
+ * 注意: 这只是在线的表现层与节奏档, 底层产出/波次模型与离线结算完全一致(同 W/同公式)。
+ * 在线开了自动斗法 ≈ 45~50s 一波(搜寻 ~25s + 斗法 ~20s + 收尾 ~4s), 比离线 90s 一波更密
+ * —— 在线要盯着看, 演出占时间, 给一份「守着屏幕的甜头」; 关掉则退回纯挂机。 */
+const SEARCH_MIN = 18, SEARCH_MAX = 32;
+const SEEK_TALE = [
+  "沿溪涧循妖气而上", "拨开雾色，四下张望", "忽闻林深处有异响",
+  "剑意微鸣，前方有物", "踏破山脊，搜寻妖踪", "拾级而上，草木皆兵",
+  "风里有腥气，循迹而去", "拨草寻径，屏息前行",
+];
+function autoHuntOn() { return !state || state.autoHunt !== false; }     // 默认开(懒人)
+function searchMs() { return (SEARCH_MIN + Math.random() * (SEARCH_MAX - SEARCH_MIN)) * 1000; }
+function toggleAutoHunt() {
+  if (!state) return;
+  state.autoHunt = !autoHuntOn();
+  if (state.autoHunt) { _encNext = Date.now() + searchMs(); seekPick(); }
+  else { _encNext = 0; seekHide(); }
+  renderAutoHunt();
+  pushMsg("main", state.autoHunt
+    ? `<span class="b">自动斗法</span>已开 —— 你佩剑出府，主身自此巡山不止，遇妖即斩。`
+    : `<span class="b">自动斗法</span>已收 —— 你回洞天只打坐吐纳，妖兽暂不来扰。`);
+  save(); cloudSoon();
+}
+function renderAutoHunt() {
+  const b = $("btnAuto"); if (!b) return;
+  const on = autoHuntOn();
+  b.classList.toggle("on", on);
+  /* 只换字, 不动 SVG 皮肤(整锅替换会把墨块皮剥掉) */
+  const ic = b.querySelector(".hb-ic"), tx = b.querySelector(".hb-tx");
+  if (ic) ic.textContent = on ? "⚔" : "☾";
+  if (tx) tx.textContent = `自动斗法 · ${on ? "开" : "关"}`;
+  if (!on) seekHide();
+}
+function seekPick() { _seekLine = SEEK_TALE[Math.floor(Math.random() * SEEK_TALE.length)]; }
+let _seekLine = SEEK_TALE[0];
+/* 只在换句时重绘: traceBeat 每 2.5s 调一次 seekShow, 整锅重设会把跳动/淡入动画掐断重放 */
+let _seekShown = "", _seekAt = 0;
+function seekShow() {
+  const el = $("huntSeek"); if (!el) return;
+  if (!autoHuntOn()) { el.style.display = "none"; _seekShown = ""; return; }
+  const now = Date.now();
+  if (!_seekShown || now - _seekAt > 9000) { seekPick(); _seekAt = now; _seekShown = _seekLine; }
+  if (el.dataset.line !== _seekShown) {
+    el.dataset.line = _seekShown;
+    el.innerHTML = `<span class="sk-txt">${_seekShown}</span><span class="sk-dots"><i></i><i></i><i></i></span>`;
+  }
+  el.style.display = "flex";
+}
+function seekHide() { const el = $("huntSeek"); if (el) { el.style.display = "none"; _seekShown = ""; } }
+function huntBarShow(v) { const bar = $("huntBar"); if (bar) bar.style.display = v ? "flex" : "none"; }
+function huntNext() {                  // 一波收场 → 重新起算搜寻时刻(自动斗法开时才生效)
+  _traceT = Date.now();
+  huntBarShow(true);                   // 收场 → 自动斗法条归位
+  if (autoHuntOn()) { _encNext = Date.now() + searchMs(); seekPick(); }
+  else { _encNext = 0; seekHide(); }
+}
 
 function warZone() {                   // 斗法地界 = 主身当前大境地界(与化身云游无关)
   return zoneOfBig(bigIdx());
@@ -2852,16 +2913,19 @@ function warZone() {                   // 斗法地界 = 主身当前大境地�
 function traceBeat() {
   if (!state) return;
   if (!BTL && !MYST) {
-    if (!_encNext) _encNext = Date.now() + ENC_PERIOD * 1000 * (0.35 + Math.random() * 0.65);
-    if (Date.now() >= _encNext) {
-      try { fireEvent(); } catch (e) { _encNext = Date.now() + ENC_PERIOD * 1000; console.warn("遭遇异常:", e); }
-    }
-  }
+    if (autoHuntOn()) {
+      if (!_encNext) { _encNext = Date.now() + searchMs(); seekPick(); }
+      if (Date.now() >= _encNext) {
+        try { fireEvent(); } catch (e) { _encNext = Date.now() + searchMs(); huntBarShow(true); console.warn("遭遇异常:", e); }
+      } else seekShow();
+    } else seekHide();
+  } else seekHide();
   if (!BTL && !MYST && Date.now() - _traceT > 150000) { _traceT = Date.now(); traceRefresh(); }
 }
 function fireEvent() {                // 遇事分发: 八成妖兽伏击, 两成秘境机缘 —— 皆挂主身
   if (BTL || MYST) return;
-  _encNext = Date.now() + ENC_PERIOD * 1000;   // 波次计时刻度: 开演即起算(速战不加速)
+  seekHide();                          // 妖已现踪 → 收起搜寻提示
+  _encNext = Date.now() + 3600 * 1000; // 占位保险: 真正的下一波时刻由收场时(搜寻)重设
   if (Math.random() < HUNT_FIGHT_RATE) fireFight(); else fireMyst();
 }
 function fireFight() {                // 主身斗法: 不再借化身行迹, 出洞天巡猎遇妖
@@ -2970,6 +3034,7 @@ function traceSay(txt) {
 }
 function warStart(title, lead) {
   const el = $("warBanner"); if (!el) return;
+  huntBarShow(false);                    // v1.4.0: 开打/探秘时整条让位给横幅(二者同一行, 互斥)
   el.style.display = "flex";
   el.innerHTML = `<div class="war-hd"><span class="war-t">${title}</span><span class="war-hp"><i id="tfFoe">—</i>　<i id="tfHero">—</i>　<i id="tfTurn" style="color:#a8904f"></i></span><button class="war-skip" id="warSkipBtn" onclick="warSkip()">⚡</button></div><div class="war-bd" id="warLog"></div>`;
   fieldLine();
@@ -2998,7 +3063,7 @@ function btlWin() {
   warEnd(`妖雾散尽 · 斗法得胜! 灵石 <b>+${fmt(g)}</b>，修为 +${fmt(ge)}`);
   traceSay(`你击退 ${m.n}，<b>+${fmt(g)} 灵石</b>`);
   const wait = (BTL && BTL.skip) ? 2400 : 3800;
-  setTimeout(() => { if (BTL) { BTL = null; _traceT = Date.now(); traceRefresh(); save(); cloudSoon(); } }, wait);
+  setTimeout(() => { if (BTL) { BTL = null; huntNext(); traceRefresh(); save(); cloudSoon(); } }, wait);
   return;
 }
 function btlLose() {
@@ -3010,7 +3075,7 @@ function btlLose() {
     text: `你于${warZone().name}巡猎，不敌 ${m.n}，负伤遁回洞天休养。` });
   traceSay(`你不敌 ${m.n}，负伤归府休养`);
   const wait = (BTL && BTL.skip) ? 2400 : 3800;
-  setTimeout(() => { if (BTL) { BTL = null; _traceT = Date.now(); traceRefresh(); save(); cloudSoon(); } }, wait);
+  setTimeout(() => { if (BTL) { BTL = null; huntNext(); traceRefresh(); save(); cloudSoon(); } }, wait);
 }
 /* ---------- 秘境机缘: 文字探索(主身奇遇) ---------- */
 function fireMyst() {
@@ -3044,7 +3109,7 @@ async function mystRun() {
     else txt = "此处只有一室清风，你原路退出，不虚此行。";
     pushMsg("main", `你探秘境归来，${txt.replace(/<[^>]+>/g, "")}`);
     warEnd(txt);
-    setTimeout(() => { if (MYST) { MYST = null; _traceT = Date.now(); traceRefresh(); save(); cloudSoon(); } }, 3200);
+    setTimeout(() => { if (MYST) { MYST = null; huntNext(); traceRefresh(); save(); cloudSoon(); } }, 3200);
   }
 }
 /* ---------- 行迹刷新(含战斗/秘境中的顶行) ---------- */
@@ -3073,6 +3138,7 @@ function traceRefresh() {
 function traceTap() { if (!BTL && !MYST) openTravel(); }
 setInterval(traceBeat, 2500);
 traceRefresh();
+renderAutoHunt();                  // v1.4.0: 自动斗法按钮初态(跟存档里的 autoHunt 走)
 /* ============ v0.9.1 调试入口: 立即遇妖(主身遭遇) ============ */
 function debugEncounter() {
   if (BTL || MYST) { pushMsg("main", "正在斗法/探秘中，且待收场。"); return; }

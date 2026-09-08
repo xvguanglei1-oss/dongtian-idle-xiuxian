@@ -497,7 +497,8 @@
   .trace.fight .t-txt{color:#ffe4d8;font-size:14.5px;font-weight:600;line-height:1.45}
   .trace.fight .t-txt b{color:#ffb199}
   /* 文字斗法横幅: 行迹带正下方, 细墨纸横向条 */
-  .war-banner{position:fixed;left:0;right:0;top:166px;z-index:9;display:none;
+  /* v1.4.0: 行迹胶囊实测高 ~75px(顶 96), 横幅下移到 176 免得压住; 与 .hunt-bar 同一行, 互斥显隐 */
+  .war-banner{position:fixed;left:0;right:0;top:176px;z-index:9;display:none;
     pointer-events:none}
   .war-banner::before{content:"";position:absolute;inset:0;
     background:linear-gradient(90deg,rgba(10,14,24,.0),rgba(12,16,26,.96) 14%,rgba(12,16,26,.96) 86%,rgba(10,14,24,.0));
@@ -520,6 +521,43 @@
     letter-spacing:.12em;color:#ffb199;background:rgba(150,60,40,.18);border:1px solid rgba(255,140,110,.45);
     border-radius:999px;cursor:pointer;font-family:inherit;transition:transform .12s,opacity .25s}
   .war-skip:active{transform:scale(.92)}
+
+/* ============ v1.4.0 自动斗法: 开关 + 搜寻妖踪动态提示 ============ */
+  .hunt-bar{position:fixed;left:0;right:0;top:176px;z-index:10;
+    display:flex;align-items:center;justify-content:center;gap:10px;pointer-events:none}
+  .hunt-btn{position:relative;pointer-events:auto;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;padding:0 16px;height:31px;
+    font-family:var(--font-brush);font-size:13px;letter-spacing:.16em;
+    color:var(--dt-ink-dim);background:none;border:0;outline:none;
+    transition:color .2s,transform .12s;-webkit-tap-highlight-color:transparent}
+  .hunt-btn .skin{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
+  .hunt-btn .skin .ink{fill:rgba(12,16,26,.82);stroke:rgba(201,168,106,.34);stroke-width:1;
+    transition:fill .25s,stroke .25s}
+  .hunt-btn .hb-ic,.hunt-btn .hb-tx{position:relative;z-index:1}
+  .hunt-btn .hb-ic{font-size:12px;line-height:1;opacity:.8}
+  .hunt-btn:active{transform:scale(.94)}
+  .hunt-btn.on{color:#ffd9a0}
+  .hunt-btn.on .skin .ink{fill:rgba(74,16,8,.86);stroke:rgba(255,140,110,.55);
+    animation:hbPulse 2.4s ease-in-out infinite}
+  .hunt-btn.on .hb-ic{opacity:1;text-shadow:0 0 9px rgba(255,150,110,.75)}
+  @keyframes hbPulse{0%,100%{stroke:rgba(255,140,110,.42)}50%{stroke:rgba(255,178,140,.95)}}
+  /* 搜寻提示: 一颗跳动的朱点 + 行书短句 */
+  .hunt-seek{display:none;align-items:center;gap:7px;pointer-events:none;
+    font-family:var(--font-body);font-size:11.5px;letter-spacing:.08em;color:#8f9ab0;
+    text-shadow:0 1px 6px rgba(6,9,16,.9);white-space:nowrap;
+    animation:skIn .45s ease}
+  .hunt-seek .sk-txt{opacity:.92}
+  .hunt-seek .sk-dots{display:inline-flex;align-items:flex-end;gap:3px;height:9px}
+  .hunt-seek .sk-dots i{width:3px;height:3px;border-radius:50%;background:#d9583f;
+    box-shadow:0 0 6px rgba(217,88,63,.8);animation:skBlink 1.15s ease-in-out infinite}
+  .hunt-seek .sk-dots i:nth-child(2){animation-delay:.18s}
+  .hunt-seek .sk-dots i:nth-child(3){animation-delay:.36s}
+  @keyframes skBlink{0%,100%{opacity:.22;transform:translateY(0)}45%{opacity:1;transform:translateY(-4px)}}
+  @keyframes skIn{0%{opacity:0;transform:translateY(-3px)}100%{opacity:1;transform:none}}
+  @media (max-width:400px){                 /* 窄屏: 提示退到第二行, 免得把按钮挤出去 */
+    .hunt-bar{flex-wrap:wrap;gap:3px;padding:0 6px}
+    .hunt-seek{font-size:10.5px;max-width:88vw;overflow:hidden;text-overflow:ellipsis}
+  }
 
 /* ============ v0.9.4 法宝装备面板 ============ */
   #equipBody{padding:2px 4px 6px}
