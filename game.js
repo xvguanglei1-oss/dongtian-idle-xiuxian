@@ -2669,3 +2669,260 @@ function collectMail(id) {
   renderMailBox(); mailDot(); updateHUD();
   save(); cloudSoon();
 }
+
+
+/* ============ v0.9.0 化身行迹 · 云游斗法 ============ */
+const MONSTERS = {
+  0: { n: "野狼妖",    hp: 26, atk: 6 },
+  1: { n: "夜叉山魈",  hp: 42, atk: 9 },
+  2: { n: "赤鬃熊罴",  hp: 62, atk: 13 },
+  3: { n: "摄魂夜叉",  hp: 88, atk: 18 },
+  4: { n: "化形蛟妖",  hp: 120, atk: 24 },
+  5: { n: "域外天魔",  hp: 160, atk: 31 },
+};
+const SKILLS = [
+  ["乱拳",      "死命一搏",  "撒腿就跑"],
+  ["火弹术",    "青锋剑芒",  "御风遁走"],
+  ["流火刃",    "玄水剑澜",  "御剑遁走"],
+  ["离火神雷",  "庚金剑气",  "金丹遁光"],
+  ["九幽鬼火",  "裂天剑域",  "元婴瞬移"],
+  ["太虚神雷",  "乾坤一掷",  "破碎虚空"],
+];
+const TRACE_ACT = [
+  "正翻山赶路，脚步带起尘烟",
+  "在渡口候船，看江上雾起",
+  "沿溪而行，鞋袜尽湿",
+  "在林间歇脚，就着泉水啃干粮",
+  "于市集闲逛，东瞧西望",
+  "蹲在路边逗一只不怕人的小兽",
+  "对一株古树出神，站了许久",
+  "被骤雨淋了个透，躲进路边破庙",
+  "在崖边盘膝打坐，吐纳调息",
+  "向路过的樵夫问路，绕了个远",
+];
+const MON_CLR = ["#8a6a4a", "#7a8a6a", "#9a5a4a", "#5a5a8a", "#3a5a7a", "#5a3a6a"];
+let BTL = null;                 // 战斗运行时状态(不入存档: 关页即散)
+let _traceT = 0, _encT = 0, _encNeed = 260, _encHint = null, _tracePool = [];
+
+function btlZone() {
+  if (!state.travel || !state.travel.loc) return null;
+  return zoneOfLoc(state.travel.loc);
+}
+function traceBeat() {
+  if (!state) return;
+  // 遇怪计时: 仅在化身在外、非战斗中、无待迎战妖气时累计
+  if (state.travel && !BTL) {
+    if (_encHint) {
+      if (Date.now() - _encHint.ts > 25000) {
+        const m = _encHint.mon; _encHint = null;
+        pushMsg("main", `妖气渐渐散去——<span class="b">${m.n}</span> 等得不耐烦，走了。`);
+        traceRefresh();
+      }
+    } else {
+      _encT += 2.5;
+      if (_encT >= _encNeed) {
+        _encT = 0; _encNeed = 300 + Math.random() * 420;
+        fireEncounter();
+      }
+    }
+  }
+  if (Date.now() - _traceT > 6000) { _traceT = Date.now(); traceRefresh(); }
+}
+function fireEncounter() {
+  const z = btlZone(); if (!z) return;
+  const m = MONSTERS[z.big] || MONSTERS[0];
+  _encHint = { ts: Date.now(), mon: m };
+  const nm = locN(z);
+  pushMsg("main", `<span class="r">妖气!</span> 化身在<span class="r">${nm}</span>撞见一头 ${m.n}，急急传讯回洞天`);
+  traceRefresh();
+  const fl = $("flash"); if (fl) { fl.style.transition = "none"; fl.style.opacity = .45; void fl.offsetWidth; fl.style.transition = "opacity .6s ease"; fl.style.opacity = "0"; }
+}
+function locN(z) {
+  const loc = locById(state.travel && state.travel.loc);
+  if (loc) return loc.n;
+  if (z && z.name) return z.name;
+  return "前路";
+}
+function traceRefresh() {
+  const el = $("traceArea"); if (!el) return;
+  if (state.travel) {
+    const loc = locById(state.travel.loc);
+    const where = loc ? loc.n : "远方";
+    if (_encHint) {
+      if (el.dataset.k === "enc") return;          // 妖气态: 不重复重建防闪
+      el.dataset.k = "enc";
+      el.className = "trace enc";
+      el.innerHTML = `<span class="t-ic">战</span><span class="t-txt">妖气骤起 —— 化身在 <b>${where}</b> 撞见一头 <i>${_encHint.mon.n}</i>，正与其相持!</span><button class="trace-go" onclick="event.stopPropagation();openBattle()">迎战</button>`;
+      return;
+    }
+    const lid = state.travel.loc;
+    if (el.dataset.k !== lid || !_tracePool.length) {   // 换地界即重建文案池
+      el.dataset.k = lid;
+      _tracePool = (loc && loc.tale && loc.tale.length ? loc.tale.slice() : []).concat(TRACE_ACT.slice());
+      if (!_tracePool.length) _tracePool = TRACE_ACT.slice();
+    }
+    const s = _tracePool.shift(); _tracePool.push(s);
+    el.className = "trace travel";
+    el.innerHTML = `<span class="t-ic">迹</span><span class="t-txt">化身在 <b>${where}</b>：${s}</span>`;
+    return;
+  }
+  if (el.dataset.k === "idle") return;             // 在家态静止
+  el.dataset.k = "idle";
+  el.className = "trace idle";
+  el.innerHTML = `<span class="t-ic">云</span><span class="t-txt">化身尚未出行 —— 遣它下山，替你去人间走走?</span><button class="trace-go" onclick="event.stopPropagation();openTravel()">云游</button>`;
+}
+function traceTap() { if (_encHint) openBattle(); else openTravel(); }
+function closeBtl() { const m = $("btlModal"); if (m) m.classList.remove("show"); BTL = null; }
+function openBattle() {
+  const m = $("btlModal"); if (!m || !_encHint) return;
+  const z = btlZone(); if (!z) { _encHint = null; return; }
+  const mon = MONSTERS[z.big] || MONSTERS[0];
+  const big = z.big;
+  const php = 80 + big * 24;
+  BTL = { mon, big, php, phpMax: php, mhp: mon.hp, mhpMax: mon.hp, logs: [] };
+  btlLog(`行至${locN(z)}，妖风扑面 —— 一头 ${mon.n} 拦住去路!`);
+  m.classList.add("show");
+  btlRender();
+  const fl = $("flash"); if (fl) { fl.style.transition = "none"; fl.style.opacity = .5; void fl.offsetWidth; fl.style.transition = "opacity .5s ease"; fl.style.opacity = "0"; }
+}
+function btlLog(s) {
+  if (!BTL) return;
+  BTL.logs.push(s);
+  if (BTL.logs.length > 4) BTL.logs.shift();
+}
+function btlAtk() {
+  if (!BTL) return 0;
+  let a = 8 + BTL.big * 7 + (state.arrayLv - 1) * 2;
+  if (state.arts && state.arts.length) {
+    let q = 0; for (const t of state.arts) q += (t.q || 0) + 1;
+    a *= 1 + 0.06 * q;
+  }
+  return Math.round(a);
+}
+function btlRender() {
+  if (!BTL) return;
+  const m = BTL.mon;
+  $("btlMTag").textContent = m.n;
+  $("btlPTag").textContent = "你 · " + realm().label;
+  // 妖影: 妖气墨团 + 双瞳
+  $("btlFoeFig").innerHTML =
+    `<svg viewBox="0 0 120 88" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <path d="M30 18 C54 2 92 8 104 30 C114 48 108 72 84 80 C60 88 26 80 18 60 C10 42 14 28 30 18 Z"
+        fill="url(#gradCin)" opacity=".5"/>
+      <path d="M34 24 C56 12 88 18 98 34 C106 50 100 68 82 74 C60 80 32 72 24 56 C17 42 20 30 34 24 Z"
+        fill="none" stroke="rgba(240,220,200,.5)" stroke-width="1.4"/>
+      <ellipse cx="42" cy="42" rx="6" ry="9" fill="#ffd9c4" opacity=".85"/>
+      <ellipse cx="42" cy="42" rx="3.2" ry="5" fill="#b31f12"/>
+      <ellipse cx="78" cy="42" rx="6" ry="9" fill="#ffd9c4" opacity=".85"/>
+      <ellipse cx="78" cy="42" rx="3.2" ry="5" fill="#b31f12"/>
+      <path d="M50 62 C56 58 64 58 70 62" stroke="rgba(255,200,170,.6)" stroke-width="2" fill="none" stroke-linecap="round"/>
+    </svg>`;
+  const mp = Math.max(0, BTL.mhp / BTL.mhpMax * 100);
+  const pp = Math.max(0, BTL.php / BTL.phpMax * 100);
+  $("btlMhp").style.width = mp + "%";
+  $("btlPhp").style.width = pp + "%";
+  $("btlMhpTxt").textContent = BTL.mhp + " / " + BTL.mhpMax;
+  $("btlPhpTxt").textContent = BTL.php + " / " + BTL.phpMax;
+  $("btlLog").innerHTML = BTL.logs.map(x => `<div class="bl">${x}</div>`).join("");
+  const sk = SKILLS[BTL.big] || SKILLS[0];
+  $("btlActs").innerHTML =
+    `<button class="btn btl-act" onclick="btlHero(0)">${sk[0]}</button>` +
+    `<button class="btn btl-act acc" onclick="btlHero(1)">${sk[1]}</button>` +
+    `<button class="btn btl-act flee" onclick="btlHero(2)">${sk[2]}</button>`;
+  if (BTL.ended) btlActsOff();
+}
+function btlActsOff() { const a = $("btlActs"); if (a) a.querySelectorAll("button").forEach(b => b.disabled = true); }
+function btlHero(si) {
+  if (!BTL || BTL.ended) return;
+  const sk = SKILLS[BTL.big] || SKILLS[0];
+  BTL.ended = true; btlActsOff();
+  if (si === 2) {                       // 遁走
+    btlLog(`你掐诀施展「${sk[2]}」……`);
+    setTimeout(() => {
+      if (Math.random() < 0.78) {
+        btlLog("遁光一闪，你全身而退；身后妖影发出一声不甘的嚎叫。");
+        btlEnd("run");
+      } else {
+        btlLog("遁光未起，妖爪已至!你只来得及横臂格挡——");
+        btlFoeHit(true, false);
+      }
+    }, 620);
+    return;
+  }
+  // 出手
+  const name = sk[si];
+  btlLog(`你凝神运劲，使出「<b>${name}</b>」!`);
+  setTimeout(() => {
+    const crit = Math.random() < 0.08;
+    const miss = Math.random() < 0.06;
+    if (miss) { btlLog("……招式落空，只斩碎一片残影。"); }
+    else {
+      let dmg = btlAtk();
+      if (si === 1) dmg = Math.round(dmg * 1.75);
+      if (crit) dmg = Math.round(dmg * 1.8);
+      BTL.mhp -= dmg;
+      btlFoeFigFlash();
+      btlLog(`<span class="r">命中!</span> 妖物受创 -${dmg}${crit ? "（会心!）" : ""}`);
+    }
+    if (BTL.mhp <= 0) { btlEnd("win"); return; }
+    setTimeout(() => btlFoeHit(true, true), 620);
+  }, 700);
+}
+function btlFoeHit(allowFlee, afterPlayer) {
+  if (!BTL) return;
+  const dodge = Math.random() < 0.05;
+  if (dodge) { btlLog("妖物扑了个空，溅起一地尘土。"); }
+  else {
+    let d = Math.round(BTL.mon.atk * (0.85 + Math.random() * 0.3));
+    BTL.php -= d;
+    btlHeroFigFlash();
+    btlLog(`<span class="b">${BTL.mon.n}</span> 扑击而至，你受创 -${d}`);
+  }
+  if (BTL.php <= 0) { btlEnd("lose"); return; }
+  BTL.ended = false; btlRender();
+}
+function btlFoeFigFlash() {
+  const f = $("btlFoeFig"); if (!f) return;
+  f.classList.remove("hit"); void f.offsetWidth; f.classList.add("hit");
+}
+function btlHeroFigFlash() {
+  const f = $("btlLog"); if (!f) return;
+  f.classList.remove("pulse"); void f.offsetWidth; f.classList.add("pulse");
+}
+function btlEnd(kind) {
+  if (!BTL) return;
+  const m = BTL.mon;
+  const z = btlZone();
+  const bigName = realm().big;
+  if (kind === "win") {
+    const got = [];
+    state.mats.yaodan = (state.mats.yaodan || 0) + 1;
+    got.push(MATS.yaodan.n + "×1");
+    if (z) for (const dp of z.mats) {
+      if (Math.random() < dp.c) {
+        const q = dp.a + Math.floor(Math.random() * (dp.b - dp.a + 1));
+        if (q > 0) { state.mats[dp.id] = (state.mats[dp.id] || 0) + q; got.push(MATS[dp.id].n + "×" + q); }
+      }
+    }
+    const g = Math.round(rateNow() * 60);
+    state.exp += g;
+    btlLog(`「${m.n}」哀嚎一声化作妖气散去 —— 你赢了!`);
+    pushMsg("main", `化身打退 ${m.n}，斩获 <span class="r">${got.join("、")}</span>，修为+<span class="g">${fmt(g)}</span>`);
+    addJournal({ key: "bt-" + Date.now(), big: bigName, kind: "纪事", title: "斗法 · 退" + m.n, text: `化身行至${locN(z)}，遇 ${m.n} 拦路，施「${SKILLS[BTL.big][0]}」等术将其击退，斩获 ${got.join("、")}。` });
+    setTimeout(() => { closeBtl(); _encHint = null; save(); cloudSoon(); }, 1200);
+  } else if (kind === "lose") {
+    btlLog("你眼前一黑，被妖气卷起掼在山石上……");
+    const f = $("flash"); if (f) { f.style.transition = "none"; f.style.opacity = .7; void f.offsetWidth; f.style.transition = "opacity 1s ease"; f.style.opacity = "0"; }
+    pushMsg("main", `<span class="r">化身不敌 ${m.n}</span>，狼狈遁回洞天。主身替它料理了伤口，阿青在旁呜咽。`);
+    state.travel = null;
+    addJournal({ key: "bt-" + Date.now(), big: bigName, kind: "纪事", title: "斗法 · 败于" + m.n, text: `化身行至${locN(z)}，不敌 ${m.n}，负伤遁回洞天休养。` });
+    travelBtnLbl();
+    setTimeout(() => { closeBtl(); _encHint = null; save(); cloudSoon(); }, 1400);
+  } else {
+    btlLog("你收招回望，妖影仍在原地逡巡——暂不理会，绕道前行。");
+    setTimeout(() => { closeBtl(); _encHint = null; }, 900);
+  }
+}
+/* 行迹/遇怪节拍: 2.5s 一拍(遇怪计时), 文案 6s 一换 */
+setInterval(traceBeat, 2500);
+traceRefresh();

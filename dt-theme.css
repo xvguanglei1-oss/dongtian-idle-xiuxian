@@ -355,3 +355,74 @@
   .btn.seal{padding:2px 8px;font-size:11px;min-height:0;flex:none}
   .btn.seal .label{min-height:16px;gap:0}
   .mail-empty{text-align:center;color:#8b94a8;font-size:12.5px;padding:28px 8px;line-height:2.2}
+
+
+/* ============ v0.9.0 化身行迹 · 云游斗法 ============ */
+  /* —— 行迹条: 屏中上部细长墨条, 无圆角矩形观感 —— */
+  .trace{position:fixed;left:0;right:0;top:118px;z-index:9;display:flex;justify-content:center;pointer-events:auto}
+  .trace{filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}
+  .trace > span{pointer-events:none}
+  .trace .t-txt{font-size:12.5px;line-height:1.8;color:#cfd8ea;letter-spacing:.03em}
+  .trace.travel .t-txt b,.trace.idle .t-txt b{color:#d8b06a}
+  .trace.enc .t-txt{color:#ffe4d8}
+  .trace.enc .t-txt b{color:#ffb199}
+  .trace.enc .t-txt i{font-style:normal;color:#ff8a70;font-weight:700}
+  /* 行迹墨形底: 细长手绘墨条(纯css渐变+描边无角框); travel淡金 / enc朱砂 */
+  #traceArea{background:linear-gradient(90deg,rgba(201,168,106,.0),rgba(20,26,44,.72) 18%,rgba(20,26,44,.72) 82%,rgba(201,168,106,.0));
+    border-top:1px solid rgba(201,168,106,.16);border-bottom:1px solid rgba(201,168,106,.16);
+    padding:7px 4px;max-width:min(92vw,520px);width:auto;margin:0 auto;text-align:center}
+  #traceArea.enc{background:linear-gradient(90deg,rgba(208,80,60,.0),rgba(88,20,10,.8) 20%,rgba(88,20,10,.8) 80%,rgba(208,80,60,.0));
+    border-top:1px solid rgba(255,140,110,.3);border-bottom:1px solid rgba(255,140,110,.3);
+    animation:encPulse 1.3s ease-in-out infinite}
+  @keyframes encPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.22)}}
+  .t-ic{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;margin-right:8px;
+    background:linear-gradient(180deg,#c0472f,#8f2313);color:#fbe9d8;font-size:10px;letter-spacing:0;
+    font-family:var(--font-brush);border-radius:1px 3px 1px 3px;transform:rotate(-3deg);
+    box-shadow:0 0 8px rgba(200,70,45,.5);vertical-align:middle}
+  .trace.travel .t-ic{background:linear-gradient(180deg,#8f9cc0,#4c587c);box-shadow:none;color:#e8ecf5}
+  .trace.idle .t-ic{background:linear-gradient(180deg,#6da88f,#3d6a55);box-shadow:none;color:#e6f4ec}
+  .trace-go{margin-left:10px;padding:3px 12px;font-size:11.5px;letter-spacing:.12em;
+    background:linear-gradient(180deg,rgba(208,70,45,.92),rgba(140,30,15,.92));color:#fff3e6;
+    border:1px solid rgba(255,190,160,.5);border-radius:2px 4px 2px 4px;cursor:pointer;
+    font-family:var(--font-brush);vertical-align:middle;transform:rotate(.6deg);
+    box-shadow:0 2px 8px rgba(0,0,0,.35);animation:goBob 1.9s ease-in-out infinite}
+  .trace.idle .trace-go{background:linear-gradient(180deg,rgba(109,168,143,.9),rgba(50,100,80,.92));border-color:rgba(170,230,205,.5);
+    animation:none;color:#eafaf2}
+  .trace.travel .trace-go{display:none}
+  @keyframes goBob{0%,100%{transform:rotate(.6deg) translateY(0)}50%{transform:rotate(.6deg) translateY(-1.6px)}}
+  /* —— 斗法卡 —— */
+  .btl-card{max-width:430px;width:94%;height:auto;min-height:520px;padding:20px 20px 16px !important}
+  .btl-foe{text-align:center}
+  .btl-fig{height:150px;display:flex;align-items:center;justify-content:center;overflow:visible}
+  .btl-fig svg{height:100%;width:auto;filter:drop-shadow(0 0 18px rgba(176,50,35,.35))}
+  .btl-fig.hit{animation:figHit .38s ease}
+  .btl-fig.hit svg{filter:drop-shadow(0 0 26px rgba(255,120,80,.95)) brightness(1.35)}
+  @keyframes figHit{0%{transform:translateX(0)}22%{transform:translateX(-9px)}55%{transform:translateX(7px)}100%{transform:translateX(0)}}
+  .btl-tag{display:inline-block;padding:2px 12px;font-size:13px;letter-spacing:.22em;color:#f0c9a8;
+    font-family:var(--font-brush);
+    background:linear-gradient(90deg,rgba(176,50,35,.0),rgba(176,50,35,.32),rgba(176,50,35,.0));
+    border-top:1px solid rgba(240,150,120,.22);border-bottom:1px solid rgba(240,150,120,.22)}
+  .btl-tag.you{color:#a8e6cc;border-color:rgba(120,220,180,.18);
+    background:linear-gradient(90deg,rgba(60,150,120,0),rgba(60,150,120,.22),rgba(60,150,120,0))}
+  .hp{height:9px;margin:10px auto 3px;max-width:340px;background:rgba(10,14,24,.72);
+    border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(0,0,0,.5);overflow:hidden}
+  .hp i{display:block;height:100%;width:100%;
+    background:linear-gradient(90deg,#8f2a18,#d04e35);transition:width .45s cubic-bezier(.2,.6,.3,1)}
+  .hp.h2 i{background:linear-gradient(90deg,#6f8c3a,#c2a04a)}
+  .hp-num{font-size:9.5px;color:#8a94a8;font-style:normal;letter-spacing:.08em}
+  .btl-log{margin:12px auto 10px;max-width:360px;min-height:64px;text-align:center}
+  .btl-log .bl{font-size:12px;line-height:1.85;color:#ccd5e6;letter-spacing:.02em}
+  .btl-log .bl .r{color:#ff8a70;font-weight:700}
+  .btl-log .bl .b{color:#8fb6ff;font-weight:700}
+  .btl-log.pulse{animation:logPulse .5s ease}
+  @keyframes logPulse{0%{filter:brightness(2.4)}100%{filter:brightness(1)}}
+  .btl-acts{display:flex;justify-content:center;gap:9px;margin-top:8px;flex-wrap:wrap}
+  .btl-acts .btn{flex:0 1 auto;padding:8px 14px;font-size:13px;letter-spacing:.1em;color:#e8d6a4;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(24,32,52,.5)%22 stroke=%22rgba(201,168,106,.5)%22 stroke-width=%221.1%22 vector-effect=%22non-scaling-stroke%22/></svg>');
+    background-size:100% 100%;background-repeat:no-repeat;border:none;border-radius:0}
+  .btl-acts .btn.acc{color:#ffe2c8;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(178,50,35,.5)%22 stroke=%22rgba(255,180,150,.6)%22 stroke-width=%221.1%22 vector-effect=%22non-scaling-stroke%22/></svg>')}
+  .btl-acts .btn.flee{color:#aab6cc;
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(60,74,108,.5)%22 stroke=%22rgba(170,190,235,.45)%22 stroke-width=%221.1%22 vector-effect=%22non-scaling-stroke%22/></svg>')}
+  .btl-acts .btn:disabled{opacity:.35;filter:grayscale(.7)}
+  .btl-hint{font-size:9.5px;color:#5f6980;text-align:center;margin-top:10px;letter-spacing:.1em}
