@@ -2789,7 +2789,7 @@ function fireFight() {                // 主身斗法: 不再借化身行迹, �
   const pdef = 5 + 42 * lv + eb.def;
   BTL = { mon, big, lv, turn: 0, round: 0, php, phpMax: php, patk, pdef, mhp: mon.hp, mhpMax: mon.hp, logs: [], ended: false, skip: false };
   traceSay(`妖气扑面 —— 一头 <b>${mon.n}</b> 拦住去路，斗法已起!`);
-  warStart(`妖战 · ${mon.n}`, `${mon.n} 拦住去路，龇牙低吼，妖风卷起一地枯叶。`);
+  warStart(`妖战`, `${mon.n} 拦住去路，龇牙低吼，妖风卷起一地枯叶。`);
   pushMsg("main", `妖气骤起!你行至<span class="r">${z.name}</span>一带巡山，撞见一头 ${mon.n}，你来我往斗了起来。`);
   const fl = $("flash"); if (fl) { fl.style.transition = "none"; fl.style.opacity = .38; void fl.offsetWidth; fl.style.transition = "opacity .6s ease"; fl.style.opacity = "0"; }
   btlRun();
@@ -2869,20 +2869,20 @@ function btlLog(s, cls) { if (!BTL) return; BTL.logs.push(s); warAppend(s, cls);
 function fieldLine() {
   if (!BTL) return;
   const el = $("tfFoe"), el2 = $("tfHero"), el3 = $("tfTurn");
-  if (el) el.innerHTML = `${BTL.mon.n} · ${BTL.mhp}/${BTL.mhpMax}`;
-  if (el2) el2.innerHTML = `主身 · ${BTL.php}/${BTL.phpMax}`;
-  if (el3) el3.innerHTML = BTL.round ? `第 ${BTL.round} 合` : "";
+  if (el) el.innerHTML = `敌·${BTL.mhp}/${BTL.mhpMax}`;
+  if (el2) el2.innerHTML = `主身·${BTL.php}/${BTL.phpMax}`;
+  if (el3) el3.innerHTML = BTL.round ? `${BTL.round}合` : "";
 }
 function traceSay(txt) {
   const el = $("traceArea"); if (!el) return;
   el.dataset.k = "fight";
   el.className = "trace fight";
-  el.innerHTML = `<span class="t-ic">战</span><span class="t-txt">${txt}</span>`;
+  el.innerHTML = `<span class="t-row"><span class="t-ic">战</span><span class="t-txt">${txt}</span></span>`;
 }
 function warStart(title, lead) {
   const el = $("warBanner"); if (!el) return;
   el.style.display = "flex";
-  el.innerHTML = `<div class="war-hd"><span class="war-t">${title}</span><span class="war-hp"><i id="tfFoe">—</i>　<i id="tfHero">—</i>　<i id="tfTurn" style="color:#a8904f"></i></span><button class="war-skip" id="warSkipBtn" onclick="warSkip()">⚡ 速战</button></div><div class="war-bd" id="warLog"></div>`;
+  el.innerHTML = `<div class="war-hd"><span class="war-t">${title}</span><span class="war-hp"><i id="tfFoe">—</i>　<i id="tfHero">—</i>　<i id="tfTurn" style="color:#a8904f"></i></span><button class="war-skip" id="warSkipBtn" onclick="warSkip()">⚡</button></div><div class="war-bd" id="warLog"></div>`;
   fieldLine();
   if (lead) warAppend(lead, "lead");
 }
@@ -2927,7 +2927,7 @@ function fireMyst() {
   const z = warZone();
   MYST = { i: 0, logs: [] };
   traceSay(`灵光隐现 —— 你在<b>${z.name}</b>发现一处<b>秘境入口</b>，踏入其中。`);
-  warStart("秘境 · " + z.name, `你循着灵光拨开藤蔓，露出一道幽深的石阶入口。`);
+  warStart(`秘境`, `你循着灵光拨开藤蔓，露出一道幽深的石阶入口。`);
   pushMsg("main", `<span class="b">秘境!</span> 你在${z.name}一带发现一处隐秘入口，进去一探。`);
   mystRun();
 }
@@ -2971,13 +2971,13 @@ function traceRefresh() {
     }
     const s = _tracePool.shift(); _tracePool.push(s);
     el.className = "trace travel";
-    el.innerHTML = `<span class="t-ic">迹</span><span class="t-txt">化身在 <b>${where}</b>：${s}</span>`;
+    el.innerHTML = `<span class="t-row"><span class="t-ic">迹</span><span class="t-txt">化身在 <b>${where}</b>：${s}</span></span>`;
     return;
   }
   if (el.dataset.k === "idle") return;
   el.dataset.k = "idle";
   el.className = "trace idle";
-  el.innerHTML = `<span class="t-ic">云</span><span class="t-txt">化身尚未出行 —— 遣它下山，替你去人间走走?</span><button class="trace-go" onclick="event.stopPropagation();openTravel()">云游</button>`;
+  el.innerHTML = `<span class="t-row"><span class="t-ic">云</span><span class="t-txt">化身尚未出行 —— 遣它下山?</span><button class="trace-go" onclick="event.stopPropagation();openTravel()">云游</button></span>`;
 }
 function traceTap() { if (!BTL && !MYST) openTravel(); }
 setInterval(traceBeat, 2500);

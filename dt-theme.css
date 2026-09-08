@@ -79,16 +79,16 @@
   .feed-avatar .fmsg .r{color:#8f7a4d}
   .rate b,.story-sum,.j-big{color:#b9c6dd}
   .card h3{color:#d8b06a}
-  .spirit{position:relative;color:#9ed7b8;font-weight:700;display:flex;gap:5px;align-items:center;padding:6px 14px;
+  .spirit{position:relative;color:#9ed7b8;font-weight:700;display:flex;gap:4px;align-items:center;padding:3px 10px;font-size:11.5px;height:22px;
     background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 40%22 preserveAspectRatio=%22none%22><path d=%22M12 8 C42 -2 88 16 138 2 C172 -4 198 6 200 18 C202 30 188 38 174 36 C136 44 88 30 48 38 C18 40 2 36 0 24 C-2 14 6 8 12 8 Z%22 fill=%22rgba(12,18,34,.9)%22 stroke=%22rgba(201,168,106,.28)%22 stroke-width=%221.2%22 vector-effect=%22non-scaling-stroke%22/></svg>');
     background-size:100% 100%;background-repeat:no-repeat;
     filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
-  .rate{position:relative;font-size:11px;color:#cbd2dc;font-weight:600;display:flex;gap:4px;align-items:center;padding:4px 12px;
+  .rate{position:relative;font-size:10.5px;color:#cbd2dc;font-weight:600;display:flex;gap:3px;align-items:center;padding:3px 9px;height:22px;
     background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 40%22 preserveAspectRatio=%22none%22><path d=%22M12 8 C42 -2 88 16 138 2 C172 -4 198 6 200 18 C202 30 188 38 174 36 C136 44 88 30 48 38 C18 40 2 36 0 24 C-2 14 6 8 12 8 Z%22 fill=%22rgba(12,18,34,.9)%22 stroke=%22rgba(201,168,106,.28)%22 stroke-width=%221.2%22 vector-effect=%22non-scaling-stroke%22/></svg>');
     background-size:100% 100%;background-repeat:no-repeat;
     filter:drop-shadow(0 2px 6px rgba(0,0,0,.4))}
   .rate b{color:#b9c6dd;font-weight:700}
-  #cloudChip{position:relative;display:flex;align-items:center;gap:5px;max-width:168px;white-space:nowrap;overflow:hidden;padding:4px 12px;font-size:11px;color:#cdd9e8;cursor:pointer;user-select:none;line-height:1.2;
+  #cloudChip{position:relative;display:flex;align-items:center;gap:4px;max-width:128px;white-space:nowrap;overflow:hidden;padding:2px 9px;font-size:10.5px;color:#cdd9e8;cursor:pointer;user-select:none;line-height:1.2;height:20px;
     background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 40%22 preserveAspectRatio=%22none%22><path d=%22M12 8 C42 -2 88 16 138 2 C172 -4 198 6 200 18 C202 30 188 38 174 36 C136 44 88 30 48 38 C18 40 2 36 0 24 C-2 14 6 8 12 8 Z%22 fill=%22rgba(12,18,34,.9)%22 stroke=%22rgba(201,168,106,.28)%22 stroke-width=%221.2%22 vector-effect=%22non-scaling-stroke%22/></svg>');
     background-size:100% 100%;background-repeat:no-repeat}
   .spirit.cloud #cloudChip.dot{width:7px;height:7px;border-radius:50%;background:#7a8694;flex:none}
@@ -324,7 +324,7 @@
   .feed.feed-main .fmsg .pet{color:#9fdcc4}
 
 /* ============ v0.8.1 鸿雁信匣 ============ */
-  .mail-chip{position:relative;width:42px;height:42px;flex:none;cursor:pointer;
+  .mail-chip{position:relative;width:40px;height:40px;flex:none;cursor:pointer;
     filter:drop-shadow(0 3px 10px rgba(0,0,0,.45));-webkit-tap-highlight-color:transparent}
   .mail-chip .m-bg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   .mail-chip .m-bg .ink{fill:rgba(22,30,50,.58);stroke:rgba(201,168,106,.68);stroke-width:1.7}
@@ -359,10 +359,23 @@
 
 /* ============ v0.9.0 化身行迹 · 云游斗法 ============ */
   /* —— 行迹条: 屏中上部细长墨条, 无圆角矩形观感 —— */
-  .trace{position:fixed;left:0;right:0;top:118px;z-index:9;display:flex;justify-content:center;pointer-events:auto}
+  .trace{position:fixed;top:96px;left:50%;transform:translateX(-50%);width:min(62%,270px);z-index:9;display:flex;justify-content:center;pointer-events:auto}
   .trace{filter:drop-shadow(0 4px 14px rgba(0,0,0,.5))}
   .trace > span{pointer-events:none}
-  .trace .t-txt{font-size:12.5px;line-height:1.8;color:#cfd8ea;letter-spacing:.03em}
+  /* v1.2.1: 行迹居中胶囊容器, 避免文本横向撞右上元素, 又能让文字飘在立绘上不显突兀 */
+  .trace > .t-row{pointer-events:auto;display:inline-block;text-align:center;
+    padding:6px 14px;border-radius:14px;background:rgba(10,14,24,.62);backdrop-filter:blur(6px);
+    border:1px solid rgba(201,168,106,.16);max-width:100%;
+    box-shadow:0 6px 18px rgba(0,0,0,.42)}
+  .trace > .t-row > .t-ic{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;
+    margin-right:8px;vertical-align:middle}
+  .trace > .t-row > .t-txt{display:inline;vertical-align:middle;line-height:1.45}
+  .trace > .t-row > .trace-go{display:inline-block;vertical-align:middle;margin-left:10px}
+  .trace.fight > .t-row{background:linear-gradient(90deg,rgba(74,16,8,.92),rgba(74,16,8,.92));
+    border-color:rgba(255,140,110,.3);animation:encPulse 1.6s ease-in-out infinite}
+  .trace.fight > .t-row > .t-txt{font-size:14.5px;line-height:1.45;color:#ffe4d8;font-weight:600}
+  .trace.fight > .t-row > .t-txt b{color:#ffb199}
+  .trace .t-txt{font-size:14.5px;line-height:1.55;color:#e6eaf3;letter-spacing:.04em}
   .trace.travel .t-txt b,.trace.idle .t-txt b{color:#d8b06a}
   .trace.enc .t-txt{color:#ffe4d8}
   .trace.enc .t-txt b{color:#ffb199}
@@ -427,8 +440,8 @@
   .btl-acts .btn:disabled{opacity:.35;filter:grayscale(.7)}
   .btl-hint{font-size:9.5px;color:#5f6980;text-align:center;margin-top:10px;letter-spacing:.1em}
 
-/* ============ v0.9.1 行迹下移 + 战斗怪 sprite ============ */
-  .trace{top:152px !important}
+/* ============ v0.9.1 行迹下移(已解: 法宝行移除后回到顶部) ============ */
+  .trace{top:96px !important}
   .btl-fig{position:relative;display:flex;align-items:center;justify-content:center;overflow:visible}
   .btl-fig .btl-bg{position:absolute;height:100%;width:auto;left:50%;transform:translateX(-50%);opacity:.6;pointer-events:none;filter:blur(.4px)}
   .btl-fig .btl-mob{position:relative;z-index:1;height:104px;image-rendering:pixelated;image-rendering:crisp-edges;
@@ -481,22 +494,23 @@
   .trace.fight{background:linear-gradient(90deg,rgba(208,80,60,.0),rgba(74,16,8,.88) 16%,rgba(74,16,8,.88) 84%,rgba(208,80,60,.0));
     border-top:1px solid rgba(255,140,110,.28);border-bottom:1px solid rgba(255,140,110,.28);
     animation:encPulse 1.6s ease-in-out infinite;padding:8px 4px}
-  .trace.fight .t-txt{color:#ffe4d8;font-size:12.5px}
+  .trace.fight .t-txt{color:#ffe4d8;font-size:14.5px;font-weight:600;line-height:1.45}
   .trace.fight .t-txt b{color:#ffb199}
   /* 文字斗法横幅: 行迹带正下方, 细墨纸横向条 */
-  .war-banner{position:fixed;left:0;right:0;top:212px;z-index:9;display:none;
+  .war-banner{position:fixed;left:0;right:0;top:166px;z-index:9;display:none;
     pointer-events:none}
   .war-banner::before{content:"";position:absolute;inset:0;
     background:linear-gradient(90deg,rgba(10,14,24,.0),rgba(12,16,26,.96) 14%,rgba(12,16,26,.96) 86%,rgba(10,14,24,.0));
     border-top:1px solid rgba(201,168,106,.16);border-bottom:1px solid rgba(201,168,106,.16)}
   .war-banner{display:none;flex-direction:column}
-  .war-hd{display:flex;justify-content:space-between;align-items:baseline;
-    padding:7px 26px 3px;position:relative}
-  .war-t{font-family:var(--font-brush);font-size:12px;color:#e0b98a;letter-spacing:.22em}
-  .war-hp{font-size:10.5px;color:#9aa5ba;letter-spacing:.04em}
-  .war-hp i{font-style:normal;color:#f0c9a8}
+  .war-hd{display:flex;justify-content:space-between;align-items:center;
+    padding:7px 26px 3px;position:relative;flex-wrap:nowrap}
+  .war-t{font-family:var(--font-brush);font-size:14px;color:#e0b98a;letter-spacing:.2em}
+  .war-hp{font-size:9.5px;color:#9aa5ba;letter-spacing:.01em;white-space:nowrap;flex:0 0 auto;text-align:right;line-height:1.4}
+  .war-hp i{font-style:normal;color:#f0c9a8;margin:0 2px}
+  .war-skip{margin-left:8px;padding:1px 7px}
   .war-bd{padding:3px 26px 9px;position:relative}
-  .wl{font-size:12px;line-height:1.95;color:#d2daea;letter-spacing:.02em;animation:wlIn .3s ease}
+  .wl{font-size:13.5px;line-height:1.85;color:#d2daea;letter-spacing:.02em;animation:wlIn .3s ease}
   .wl .r{color:#ff8a70;font-weight:700}
   .wl.lead{color:#c9a86a;font-size:11.5px;letter-spacing:.06em}
   .wl.win{color:#ffd9a0;font-weight:600;margin-top:2px}
@@ -531,12 +545,12 @@
 
 
 /* ============ v0.9.5 法宝大钮 + 六格面板 ============ */
-  .equip-chip{position:relative;width:46px;height:46px;flex:none;cursor:pointer;z-index:9;
+  .equip-chip{position:relative;width:40px;height:40px;flex:none;cursor:pointer;z-index:9;
     background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22 preserveAspectRatio=%22none%22><path d=%22M100 8 C146 2 190 32 195 80 C200 130 172 188 126 195 C78 203 18 178 9 124 C1 74 28 16 78 8 C85 7 93 8 100 8 Z%22 fill=%22rgba(22,30,50,.62)%22 stroke=%22rgba(201,168,106,.75)%22 stroke-width=%221.7%22 vector-effect=%22non-scaling-stroke%22/></svg>');
     background-size:100% 100%;background-repeat:no-repeat;
     filter:drop-shadow(0 3px 12px rgba(0,0,0,.5));-webkit-tap-highlight-color:transparent}
   .equip-chip .lg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-    font-family:var(--font-brush);font-size:21px;color:#f0c98a;letter-spacing:0;text-shadow:0 0 10px rgba(240,200,140,.45)}
+    font-family:var(--font-brush);font-size:18px;color:#f0c98a;letter-spacing:0;text-shadow:0 0 10px rgba(240,200,140,.45)}
   .equip-chip:active{transform:scale(.92)}
   .equip-chip::after{content:"";position:absolute;left:7px;right:7px;top:6px;height:1px;
     background:linear-gradient(90deg,transparent,rgba(240,210,150,.5),transparent)}
