@@ -496,9 +496,16 @@
   .war-hp{font-size:10.5px;color:#9aa5ba;letter-spacing:.04em}
   .war-hp i{font-style:normal;color:#f0c9a8}
   .war-bd{padding:3px 26px 9px;position:relative}
-  .wl{font-size:12px;line-height:1.95;color:#d2daea;letter-spacing:.02em}
+  .wl{font-size:12px;line-height:1.95;color:#d2daea;letter-spacing:.02em;animation:wlIn .3s ease}
   .wl .r{color:#ff8a70;font-weight:700}
+  .wl.lead{color:#c9a86a;font-size:11.5px;letter-spacing:.06em}
   .wl.win{color:#ffd9a0;font-weight:600;margin-top:2px}
+  .wl.lose{color:#ff8a70;font-weight:600;margin-top:2px}
+  @keyframes wlIn{0%{opacity:0;transform:translateY(3px)}100%{opacity:1;transform:none}}
+  .war-skip{pointer-events:auto;margin-left:8px;flex:none;font-size:10px;line-height:1.7;padding:1px 10px;
+    letter-spacing:.12em;color:#ffb199;background:rgba(150,60,40,.18);border:1px solid rgba(255,140,110,.45);
+    border-radius:999px;cursor:pointer;font-family:inherit;transition:transform .12s,opacity .25s}
+  .war-skip:active{transform:scale(.92)}
 
 /* ============ v0.9.4 法宝装备面板 ============ */
   #equipBody{padding:2px 4px 6px}

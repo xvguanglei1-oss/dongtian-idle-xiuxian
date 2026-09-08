@@ -2346,7 +2346,7 @@ function openTravel() {
       ${bagHtml}
       <div style="text-align:center;padding:14px 4px">
         <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${Math.max(0, sinceMin)}分钟</div>
-        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>化身在外会不时<b style="color:#c9b98a">寄回手札</b>，捎来途中所得；真见了大世面才肯回来。<br>阿青守着洞天，等你哪一日归来。</p><div style="text-align:center;margin-top:10px"><button class="cp-btn" onclick="debugEncounter()">⚔ 立即遇妖(临时调试)</button></div></div>`;
+        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>化身在外会不时<b style="color:#c9b98a">寄回手札</b>，捎来途中所得；真见了大世面才肯回来。<br>阿青守着洞天，等你哪一日归来。</p><div style="text-align:center;margin-top:10px"><button class="cp-btn" onclick="debugEncounter()">⚔ 立即斗法(临时调试)</button></div></div>`;
   } else {
     const z = zoneOfBig(bigIdx());
     const placeNames = z.locs.map(x => x.n).join("、");
@@ -2702,9 +2702,11 @@ function collectMail(id) {
 }
 
 
-/* ============ v0.9.3 情境行迹 + 文字斗法横幅(你来我往) ============ */
-/* 战斗/事件数值参考开源「我的文字修仙全靠刷」: 减伤公式 max(1, atk-def) + 闪避/暴击,
-   怪物与玩家均带 攻/防/血 三围, 每轮双方各出手一次 -> 滚动日志 */
+/* ============ v0.9.3 文字斗法横幅 · v1.2.0 主身斗法 ============ */
+/* 叙事分工: 化身 = 云游(离线跑腿, 替主身搜罗材料/丹方残页/见闻, 书信寄回);
+   主身 = 斗法(在线遭遇, 巡猎/秘境以战证道)。
+   数值参考开源「我的文字修仙全靠刷」: 减伤公式 max(1, atk-def) + 闪避/暴击,
+   怪物与玩家均带 攻/防/血 三围, 每合双方各出手一次 -> 逐条滚动日志 */
 const MON_NAMES = [
   ["野狼妖", "灰鬃豺獠", "山道石魅", "赤目獠牙鬼"],
   ["夜叉山魈", "雾隐狸妖", "枯藤树魅", "磷火孤魂"],
@@ -2712,6 +2714,12 @@ const MON_NAMES = [
   ["摄魂夜叉", "白骨将军", "玄甲鬼修", "血煞妖姬"],
   ["化形蛟妖", "吞云蟒王", "妖目金蟾", "夺魄狐王"],
   ["域外天魔", "虚空妖影", "蚀心魔君", "混沌妖胎"],
+  ["裂空妖将", "虚妄魔影", "太阴魅妖", "星陨兽王"],
+  ["九婴相柳", "金甲尸王", "阴阳魔傀", "混元妖圣"],
+  ["真龙残魂", "金鹏魔禽", "界外妖主", "古荒兽尊"],
+  ["天劫雷兽", "不死妖皇", "噬界魔尊", "洪荒古兽"],
+  ["堕落金仙", "太初凶兽", "仙宫叛将", "灭世魔罗"],
+  ["天道残影", "域外天魔尊", "混沌魔神", "太古魔主"],
 ];
 const SKILLS = [
   ["乱拳",      "死命一搏"],
@@ -2720,6 +2728,12 @@ const SKILLS = [
   ["离火神雷",  "庚金剑气"],
   ["九幽鬼火",  "裂天剑域"],
   ["太虚神雷",  "乾坤一掷"],
+  ["虚空湮灭",  "裂天剑罡"],
+  ["混元一气",  "太初剑诀"],
+  ["大衍天雷",  "无极剑域"],
+  ["劫灭神光",  "开天一剑"],
+  ["九霄仙雷",  "诛仙剑阵"],
+  ["混沌仙光",  "太初开天"],
 ];
 const TRACE_ACT = [
   "正翻山赶路，脚步带起尘烟",
@@ -2744,90 +2758,120 @@ let MYST = null;                      // 秘境探索状态
 let _traceT = 0, _tracePool = [], _traceLoc = "", _encT = 0, _encNeed = 60 + Math.random() * 40;
 const slp = ms => new Promise(r => setTimeout(r, ms));
 
-function btlZone() {
-  if (!state.travel || !state.travel.loc) return null;
-  return zoneOfLoc(state.travel.loc);
+function warZone() {                   // 斗法地界 = 主身当前大境地界(与化身云游无关)
+  return zoneOfBig(bigIdx());
 }
-function locN(z) {
-  const loc = locById(state.travel && state.travel.loc);
-  if (loc) return loc.n;
-  return "前路";
-}
-/* ---------- 节拍: 行迹句 2.5 分钟一换; 遇事 60~100s 一次 ---------- */
+/* ---------- 节拍: 行迹句 2.5 分钟一换; 主身遭遇 ~80~140s 一次(无论化身是否出门) ---------- */
 function traceBeat() {
   if (!state) return;
-  if (state.travel && !BTL && !MYST) {
+  if (!BTL && !MYST) {
     _encT += 2.5;
     if (_encT >= _encNeed) { _encT = 0; _encNeed = 80 + Math.random() * 60; fireEvent(); }
   }
   if (!BTL && !MYST && Date.now() - _traceT > 150000) { _traceT = Date.now(); traceRefresh(); }
 }
-function fireEvent() {                // 遇事分发: 八成妖兽伏击, 两成秘境机缘
-  const z = btlZone(); if (!z || BTL || MYST) return;
+function fireEvent() {                // 遇事分发: 八成妖兽伏击, 两成秘境机缘 —— 皆挂主身
+  if (BTL || MYST) return;
   if (Math.random() < 0.2) { fireMyst(); return; }
   fireFight();
 }
-function fireFight() {
-  const z = btlZone(); if (!z || BTL) return;
+function fireFight() {                // 主身斗法: 不再借化身行迹, 出洞天巡猎遇妖
+  if (BTL) return;
+  const z = warZone();
   const big = z.big;
   const lv = (state.realmIdx || 0) + 1;              // 同尺: 怪=你的境界级
   const mon = genMonster(big, lv);
   const eb = equipBonus();
-  const php = 100 + eb.hp, patk = 10 + eb.atk, pdef = 5 + eb.def;   // 参考: 基础+装备加法
-  BTL = { mon, big, lv, turn: 0, php, phpMax: php, patk, pdef, mhp: mon.hp, mhpMax: mon.hp, logs: [], ended: false };
-  traceSay(`妖气扑面 —— 一头 <b>${mon.n}</b> 拦住化身去路，斗法已起!`);
-  warStart(`妖战 · ${mon.n}`);
-  pushMsg("main", `妖气骤起!化身在<span class="r">${locN(z)}</span>撞见一头 ${mon.n}，你来我往斗了起来。`);
+  /* 主身三围 = 基础(随 lv 线性, 懒人免加点——折算参考"每级+3属性点自动分配") + 装备加总;
+     裸装对同尺中值怪约 5~9 合可胜, 有法宝更稳 */
+  const php = 100 + 620 * lv + eb.hp;
+  const patk = 10 + 58 * lv + eb.atk;
+  const pdef = 5 + 42 * lv + eb.def;
+  BTL = { mon, big, lv, turn: 0, round: 0, php, phpMax: php, patk, pdef, mhp: mon.hp, mhpMax: mon.hp, logs: [], ended: false, skip: false };
+  traceSay(`妖气扑面 —— 一头 <b>${mon.n}</b> 拦住去路，斗法已起!`);
+  warStart(`妖战 · ${mon.n}`, `${mon.n} 拦住去路，龇牙低吼，妖风卷起一地枯叶。`);
+  pushMsg("main", `妖气骤起!你行至<span class="r">${z.name}</span>一带巡山，撞见一头 ${mon.n}，你来我往斗了起来。`);
   const fl = $("flash"); if (fl) { fl.style.transition = "none"; fl.style.opacity = .38; void fl.offsetWidth; fl.style.transition = "opacity .6s ease"; fl.style.opacity = "0"; }
   btlRun();
 }
 async function btlRun() {
   while (BTL && !BTL.ended) {
-    await slp(760);
+    await slp(BTL.skip ? 40 : 1250);      // 每合玩家出手前; 首合更长(留出读开场白的空)
     if (!BTL || BTL.ended) break;
+    BTL.round++;
+    fieldLine();
     btlHeroAct();
     if (!BTL || BTL.ended) break;
-    await slp(640);
-    btlFoeAct();
+    await slp(BTL.skip ? 40 : 900);       // 怪物还手前略顿, 一来一回看得清
+    if (BTL && !BTL.ended) btlFoeAct();
   }
 }
+/* 速战: 懒人按钮 —— 不再逐合播报, 直接同步结算到分出胜负 */
+function warSkip() {
+  if (!BTL || BTL.ended || BTL.skip) return;
+  BTL.skip = true;
+  const m = BTL.mon;
+  const btn = $("warSkipBtn"); if (btn) btn.style.opacity = ".45";
+  for (let n = 0; n < 200000 && BTL && !BTL.ended; n++) {
+    if (Math.random() >= 0.05) {
+      let d = Math.max(1, Math.round((BTL.patk - m.def) * (0.85 + Math.random() * 0.3)));
+      if (Math.random() < 0.10) d = Math.round(d * 1.6);
+      BTL.mhp = Math.max(0, BTL.mhp - d);
+      if (BTL.mhp <= 0) { btlWin(); return; }
+    }
+    if (Math.random() >= 0.07) {
+      let d = Math.max(1, Math.round((m.atk - BTL.pdef) * (0.85 + Math.random() * 0.3)));
+      BTL.php = Math.max(0, BTL.php - d);
+      if (BTL.php <= 0) { btlLose(); return; }
+    }
+  }
+  if (BTL && !BTL.ended) (BTL.mhp <= BTL.php ? btlWin() : btlLose());
+}
+window.warSkip = warSkip;
 function btlHeroAct() {
-  if (!BTL) return;
-  const si = (BTL.turn++ % 2), name = SKILLS[BTL.big][si];
+  if (!BTL || BTL.ended) return;
+  const si = (BTL.turn++ % 2), pool = SKILLS[BTL.big] || SKILLS[SKILLS.length - 1], name = pool[si];
+  const m = BTL.mon;
   const miss = Math.random() < 0.05;
-  if (miss) { btlLog(`你使出「${name}」，却斩了个空`); }
+  if (miss) { btlLog(`你祭出「${name}」攻向${m.n} —— 被它侧身闪开，未伤分毫。`); }
   else {
-    let dmg = Math.max(1, Math.round((BTL.patk - BTL.mon.def) * (0.85 + Math.random() * 0.3)));
+    let dmg = Math.max(1, Math.round((BTL.patk - m.def) * (0.85 + Math.random() * 0.3)));
     const crit = Math.random() < 0.10;
     if (crit) dmg = Math.round(dmg * 1.6);
     BTL.mhp = Math.max(0, BTL.mhp - dmg);
-    btlLog(`你使出「${name}」→ <b class="r">${BTL.mon.n}</b> 受创 ${dmg}${crit ? "（会心!）" : "。"} 余 ${BTL.mhp}/${BTL.mhpMax}`);
+    btlLog(`你使出「${name}」，${crit ? "正中要害、会心一击，" : "结结实实打中，"}<b class="r">${m.n}</b> 受创 ${dmg} 点，余 ${BTL.mhp}/${BTL.mhpMax} 气血。`);
   }
   fieldLine();
   if (BTL.mhp <= 0) { btlWin(); }
 }
 function btlFoeAct() {
-  if (!BTL) return;
+  if (!BTL || BTL.ended) return;
   const m = BTL.mon;
-  if (Math.random() < 0.07) { btlLog(`${m.n} 扑了个空，溅起尘土。`); }
+  if (Math.random() < 0.07) { btlLog(`${m.n} 扑向你 —— 你侧身避开，溅起一地尘土。`); }
   else {
     let d = Math.max(1, Math.round((m.atk - BTL.pdef) * (0.85 + Math.random() * 0.3)));
     BTL.php = Math.max(0, BTL.php - d);
-    btlLog(`${m.n} 反扑 → 你 受创 ${d}。余 ${BTL.php}/${BTL.phpMax}`);
+    btlLog(`${m.n} 反扑而至，你受创 ${d} 点，余 ${BTL.php}/${BTL.phpMax} 气血。`);
   }
   fieldLine();
   if (BTL.php <= 0) { btlLose(); }
 }
-function btlLog(s) {
-  if (!BTL) return;
-  BTL.logs.push(s);
-  if (BTL.logs.length > 6) BTL.logs.shift();
+/* 战场日志: 逐条 append, 只留最近 9 行, 新行淡入 */
+function warAppend(s, cls) {
   const el = $("warLog"); if (!el) return;
-  el.innerHTML = BTL.logs.map(x => `<div class="wl">${x}</div>`).join("");
+  const d = document.createElement("div");
+  d.className = "wl" + (cls ? " " + cls : "");
+  d.innerHTML = s;
+  el.appendChild(d);
+  while (el.children.length > 9) el.removeChild(el.firstChild);
 }
+function btlLog(s, cls) { if (!BTL) return; BTL.logs.push(s); warAppend(s, cls); }
 function fieldLine() {
-  const el = $("tfFoe"), el2 = $("tfHero");
-  if (BTL) { if (el) el.innerHTML = `${BTL.mon.n} · ${BTL.mhp}/${BTL.mhpMax}`; if (el2) el2.innerHTML = `化身 · ${BTL.php}/${BTL.phpMax}`; }
+  if (!BTL) return;
+  const el = $("tfFoe"), el2 = $("tfHero"), el3 = $("tfTurn");
+  if (el) el.innerHTML = `${BTL.mon.n} · ${BTL.mhp}/${BTL.mhpMax}`;
+  if (el2) el2.innerHTML = `主身 · ${BTL.php}/${BTL.phpMax}`;
+  if (el3) el3.innerHTML = BTL.round ? `第 ${BTL.round} 合` : "";
 }
 function traceSay(txt) {
   const el = $("traceArea"); if (!el) return;
@@ -2835,16 +2879,18 @@ function traceSay(txt) {
   el.className = "trace fight";
   el.innerHTML = `<span class="t-ic">战</span><span class="t-txt">${txt}</span>`;
 }
-function warStart(title) {
+function warStart(title, lead) {
   const el = $("warBanner"); if (!el) return;
-  el.style.display = "block";
-  el.innerHTML = `<div class="war-hd"><span class="war-t">${title}</span><span class="war-hp"><i id="tfFoe">—</i>　<i id="tfHero">—</i></span></div><div class="war-bd" id="warLog"></div>`;
+  el.style.display = "flex";
+  el.innerHTML = `<div class="war-hd"><span class="war-t">${title}</span><span class="war-hp"><i id="tfFoe">—</i>　<i id="tfHero">—</i>　<i id="tfTurn" style="color:#a8904f"></i></span><button class="war-skip" id="warSkipBtn" onclick="warSkip()">⚡ 速战</button></div><div class="war-bd" id="warLog"></div>`;
   fieldLine();
+  if (lead) warAppend(lead, "lead");
 }
-function warEnd(finalTxt) {
-  const el = $("warLog"), wb = $("warBanner");
-  if (el) el.innerHTML += `<div class="wl win">${finalTxt}</div>`;
-  setTimeout(() => { if (wb) wb.style.display = "none"; }, 2600);
+function warEnd(finalTxt, cls) {
+  if (finalTxt) warAppend(finalTxt, cls || "win");
+  const wb = $("warBanner");
+  const wait = (BTL && BTL.skip) ? 2100 : (MYST ? 2400 : 2700);   // 速战后短留即可
+  setTimeout(() => { if (wb) wb.style.display = "none"; }, wait);
 }
 function btlWin() {
   if (!BTL || BTL.ended) return; BTL.ended = true;
@@ -2855,62 +2901,58 @@ function btlWin() {
   state.spirit += g; state.exp += ge;
   // 参考"每战必掉装备": 掉落一件同级法宝(品质概率), 走自动择优穿戴
   try { const dr = makeArt(); smartEquip(dr); } catch (e) {}
-  pushMsg("main", `化身打退 <span class="r">${m.n}</span>，<span class="g">+${fmt(g)} 灵石</span>、修为+<span class="g">${fmt(ge)}</span>。`);
+  pushMsg("main", `你击退 <span class="r">${m.n}</span>，<span class="g">+${fmt(g)} 灵石</span>、修为+<span class="g">${fmt(ge)}</span>。`);
   addJournal({ key: "bt-" + Date.now(), big: realm().big, kind: "纪事", title: "斗法 · 退" + m.n,
-    text: `化身行至${locN(btlZone())}，遇 ${m.n} 拦路，施「${SKILLS[BTL.big][0]}」「${SKILLS[BTL.big][1]}」数合将其击退，捡得灵石 ${fmt(g)}。` });
-  btlLog(`「${m.n}」哀嚎一声化作妖气四散 —— 斗法得胜! 灵石+${fmt(g)} 修为+${fmt(ge)}`);
-  warEnd(`妖雾散尽 · <b>+${fmt(g)} 灵石</b>`);
-  traceSay(`化身击退 ${m.n}，<b>+${fmt(g)} 灵石</b>`);
-  const gv = g;
-  setTimeout(() => { if (BTL) { BTL = null; _traceT = Date.now(); traceRefresh(); save(); cloudSoon(); } }, 3600);
+    text: `你于${warZone().name}巡猎，遇 ${m.n} 拦路，施「${(SKILLS[BTL.big] || SKILLS[SKILLS.length - 1])[0]}」「${(SKILLS[BTL.big] || SKILLS[SKILLS.length - 1])[1]}」数合将其击退，捡得灵石 ${fmt(g)}。` });
+  warEnd(`妖雾散尽 · 斗法得胜! 灵石 <b>+${fmt(g)}</b>，修为 +${fmt(ge)}`);
+  traceSay(`你击退 ${m.n}，<b>+${fmt(g)} 灵石</b>`);
+  const wait = (BTL && BTL.skip) ? 2400 : 3800;
+  setTimeout(() => { if (BTL) { BTL = null; _traceT = Date.now(); traceRefresh(); save(); cloudSoon(); } }, wait);
   return;
 }
 function btlLose() {
   if (!BTL || BTL.ended) return; BTL.ended = true;
   const m = BTL.mon;
-  btlLog(`你力竭不支，被 ${m.n} 击倒在地……`);
-  warEnd("化身败退 · 回洞天休养");
-  pushMsg("main", `<span class="r">化身不敌 ${m.n}</span>，狼狈遁回洞天。主身替它料理了伤口，阿青在旁呜咽。`);
+  warEnd(`你力竭不支，被 ${m.n} 击倒在地 …… 败退 · 回洞天休养`, "lose");
+  pushMsg("main", `<span class="r">你不敌 ${m.n}</span>，狼狈遁回洞天。阿青在旁呜咽，叼来药囊替你敷上。`);
   addJournal({ key: "bt-" + Date.now(), big: realm().big, kind: "纪事", title: "斗法 · 败于" + m.n,
-    text: `化身行至${locN(btlZone())}，不敌 ${m.n}，负伤遁回洞天休养。` });
-  state.travel = null; travelBtnLbl();
-  traceSay(`化身不敌 ${m.n}，负伤归府`);
-  setTimeout(() => { if (BTL) { BTL = null; _traceT = Date.now(); traceRefresh(); save(); cloudSoon(); } }, 3800);
+    text: `你于${warZone().name}巡猎，不敌 ${m.n}，负伤遁回洞天休养。` });
+  traceSay(`你不敌 ${m.n}，负伤归府休养`);
+  const wait = (BTL && BTL.skip) ? 2400 : 3800;
+  setTimeout(() => { if (BTL) { BTL = null; _traceT = Date.now(); traceRefresh(); save(); cloudSoon(); } }, wait);
 }
-/* ---------- 秘境机缘: 文字探索 ---------- */
+/* ---------- 秘境机缘: 文字探索(主身奇遇) ---------- */
 function fireMyst() {
-  const z = btlZone(); if (!z || MYST) return;
+  if (MYST) return;
+  const z = warZone();
   MYST = { i: 0, logs: [] };
-  const w = locN(z);
-  traceSay(`道旁灵光隐现 —— 化身发现一处<b>秘境入口</b>，踏入其中。`);
-  warStart("秘境 · " + w);
-  pushMsg("main", `<span class="b">秘境!</span> 化身在${w}一带发现一处隐秘入口，进去一探。`);
+  traceSay(`灵光隐现 —— 你在<b>${z.name}</b>发现一处<b>秘境入口</b>，踏入其中。`);
+  warStart("秘境 · " + z.name, `你循着灵光拨开藤蔓，露出一道幽深的石阶入口。`);
+  pushMsg("main", `<span class="b">秘境!</span> 你在${z.name}一带发现一处隐秘入口，进去一探。`);
   mystRun();
 }
 async function mystRun() {
   const lines = [
-    "沿着湿滑的石阶下行，壁上青苔泛着微光……",
+    "沿湿滑石阶下行，壁上青苔泛着微光……",
     MYST_TALE[Math.floor(Math.random() * MYST_TALE.length)],
     "忽闻阴风呼啸 —— ",
   ];
   for (const ln of lines) {
     if (!MYST) return;
-    await slp(1300);
-    const el = $("warLog"); if (el) el.innerHTML = (MYST.logs = (MYST.logs.push(ln), MYST.logs.slice(-6))).map(x => `<div class="wl">${x}</div>`).join("");
+    await slp(950);
+    MYST.logs.push(ln); warAppend(ln);
   }
   if (!MYST) return;
-  // 洞中也可能撞妖(30%)
-  if (Math.random() < 0.3) { const old = MYST; MYST = null; fireFight(); if (BTL) BTL.logs.unshift(`洞中妖气骤起 —— `); }
+  // 洞中也可能撞妖(30%): 顺接成一场主身斗法
+  if (Math.random() < 0.3) { MYST = null; fireFight(); if (BTL) warAppend("话音未落，洞中妖气骤起 —— "); }
   else {
     const kind = Math.random();
     let txt;
-    if (kind < 0.45) { const g = Math.round(35 + (btlZone() ? btlZone().big : 0) * 30 + Math.random() * 30); state.spirit += g; txt = `你寻到一匣旧藏灵石 —— <b>+${fmt(g)} 灵石</b>`; }
+    if (kind < 0.45) { const g = Math.round(35 + warZone().big * 30 + Math.random() * 30); state.spirit += g; txt = `你寻到一匣旧藏灵石 —— <b>+${fmt(g)} 灵石</b>`; }
     else if (kind < 0.8) { const g = Math.round(rateNow() * 90); state.exp += g; txt = `壁刻心法令你顿悟片刻 —— 修为+${fmt(g)}`; }
     else txt = "此处只有一室清风，你原路退出，不虚此行。";
-    const el = $("warLog"); if (el) el.innerHTML += `<div class="wl win">${txt}</div>`;
-    pushMsg("main", `化身探秘境归来，${txt.replace(/<[^>]+>/g, "")}`);
+    pushMsg("main", `你探秘境归来，${txt.replace(/<[^>]+>/g, "")}`);
     warEnd(txt);
-    const keep = txt;
     setTimeout(() => { if (MYST) { MYST = null; _traceT = Date.now(); traceRefresh(); save(); cloudSoon(); } }, 3200);
   }
 }
@@ -2940,11 +2982,10 @@ function traceRefresh() {
 function traceTap() { if (!BTL && !MYST) openTravel(); }
 setInterval(traceBeat, 2500);
 traceRefresh();
-/* ============ v0.9.1 调试入口: 立即遇妖 ============ */
+/* ============ v0.9.1 调试入口: 立即遇妖(主身遭遇) ============ */
 function debugEncounter() {
-  if (!state.travel) { pushMsg("main", "先遣化身出门才能遇妖。"); return; }
-  if (BTL) { pushMsg("main", "正在斗法中。"); return; }
-  // 关闭可能打开的云游面板
+  if (BTL || MYST) { pushMsg("main", "正在斗法/探秘中，且待收场。"); return; }
+  // 关闭可能打开的面板
   closeTravel();
   fireEvent();                              // 立即遇事(妖兽伏击/秘境)
 }
