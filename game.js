@@ -1941,10 +1941,9 @@ function adventure() {
   const artChance = 0.05 + bi * 0.005;
   if (roll < artChance) {
     const a = makeArt();
-    state.arts.push(a);
     const r = QUALITY[a.q];
-    pushMsg("avatar", `${petTag}${pickNoRepeat(PET_FORGE, "petF")}，<span class="r">${a.name}</span>(<span class="${r.cls}">${r.name}</span>)出炉——已替你穿戴`);
-    updateArts(true); save(); cloudSoon();
+    pushMsg("avatar", `${petTag}${pickNoRepeat(PET_FORGE, "petF")}，一件<span class="r">${a.name}</span>(<span class="${r.cls}">${r.name}</span>)出炉`);
+    smartEquip(a);
   } else if (roll < 0.30) {
     const g = Math.round(8 + Math.random() * 30 + bigIdx() * 10);
     state.spirit += g;
@@ -2741,9 +2740,9 @@ function fireFight() {
   const z = btlZone(); if (!z || BTL) return;
   const mon = MONSTERS[z.big] || MONSTERS[0];
   const big = z.big;
-  const php = 80 + big * 24, patk = 9 + big * 8 + (state.arrayLv - 1) * 2, pdef = 2 + big * 2;
-  if (state.arts && state.arts.length) { let q = 0; for (const t of state.arts) q += (t.q || 0) + 1; BTL = { patk: Math.round(patk * (1 + 0.05 * q)) }; }
-  BTL = Object.assign(BTL || {}, { mon, big, turn: 0, php, phpMax: php, patk: BTL && BTL.patk || patk, pdef, mhp: mon.hp, mhpMax: mon.hp, logs: [], ended: false });
+  const eb = equipBonus();
+  const php = 80 + big * 24 + eb.hp, patk = 9 + big * 8 + (state.arrayLv - 1) * 2 + eb.atk, pdef = 2 + big * 2 + eb.def;
+  BTL = { mon, big, turn: 0, php, phpMax: php, patk, pdef, mhp: mon.hp, mhpMax: mon.hp, logs: [], ended: false };
   traceSay(`妖气扑面 —— 一头 <b>${mon.n}</b> 拦住化身去路，斗法已起!`);
   warStart(`妖战 · ${mon.n}`);
   pushMsg("main", `妖气骤起!化身在<span class="r">${locN(z)}</span>撞见一头 ${mon.n}，你来我往斗了起来。`);
@@ -2913,3 +2912,72 @@ function debugEncounter() {
   fireEvent();                              // 立即遇事(妖兽伏击/秘境)
 }
 window.debugEncounter = debugEncounter;
+
+
+/* ============ v0.9.4 法宝·装备: 自动择优穿戴 + 装备面板 ============ */
+/* 数值参考「我的文字修仙全靠刷」品质乘子滚雪球思路, 但保留本作"阿青打铁"法宝叙事;
+   自动装: 阿青出炉新法宝 → 若强于身上最弱一件则自动顶替, 被换旧件熔回灵石 */
+let _eqRecycle = [];
+function equipBonus() {                 // 斗法三维: 品质 q0(粗制)~q5(玄天)
+  let atk = 0, def = 0, hp = 0;
+  for (const a of (state.arts || [])) { if (typeof a.q !== "number") continue; atk += (a.q + 1) * 3; def += (a.q + 1) * 2; hp += (a.q + 1) * 10; }
+  return { atk, def, hp };
+}
+function smartEquip(a) {
+  const q0 = QUALITY[a.q];
+  if ((state.arts || []).length < 6) {
+    state.arts.push(a);
+    pushMsg("avatar", `阿青把 ${a.name}（${q0.name}）放进藏宝阁 —— 已替穿戴。`);
+    updateArts(true); save(); cloudSoon(); return;
+  }
+  // 找出身上最弱一件(品质低者, 同级比倍率)
+  let wi = 0;
+  for (let i = 1; i < state.arts.length; i++) {
+    const x = state.arts[i];
+    if (x.q < state.arts[wi].q || (x.q === state.arts[wi].q && x.mult < state.arts[wi].mult)) wi = i;
+  }
+  const w = state.arts[wi];
+  if (a.q > w.q || (a.q === w.q && a.mult > w.mult)) {
+    const g = Math.round(50 * Math.pow(1.6, w.q));
+    state.spirit += g;
+    state.arts[wi] = a;
+    _eqRecycle.unshift(`熔回 ${w.name}(${QUALITY[w.q].name}) +${fmt(g)}`);
+    if (_eqRecycle.length > 3) _eqRecycle.pop();
+    pushMsg("avatar", `阿青见 ${a.name}(${q0.name}) 胜过旧佩，便把那 ${w.name} 熔回灵石 +${fmt(g)}，新宝自动换上。`);
+    updateArts(true); save(); cloudSoon();
+  } else {
+    const g = Math.round(40 * Math.pow(1.5, a.q));
+    state.spirit += g;
+    pushMsg("avatar", `${a.name}(${q0.name}) 尚不如你身上所佩，阿青随手炼作灵石 +${fmt(g)}。`);
+    updateArts(false); save(); cloudSoon();
+  }
+}
+function openEquip() {
+  const m = $("equipModal"); if (!m) return;
+  renderEquip();
+  m.classList.add("show");
+}
+function closeEquip() { const m = $("equipModal"); if (m) m.classList.remove("show"); }
+function renderEquip() {
+  const box = $("equipBody"); if (!box) return;
+  const eb = equipBonus();
+  const arr = (state.arts || []).slice(-6);
+  const slots = arr.length ? arr.map((a, i) => {
+    const q = QUALITY[a.q] || QUALITY[0];
+    return `<div class="eq-item">
+      <span class="eq-q ${q.cls}">${q.name}</span>
+      <span class="eq-name">${a.name}</span>
+      <span class="eq-cult">修为 ×${a.mult.toFixed(2)}</span>
+      <span class="eq-btl">斗法 攻+${(a.q + 1) * 3} 防+${(a.q + 1) * 2} 血+${(a.q + 1) * 10}</span>
+    </div>`;
+  }).join("") : `<div class="eq-empty">藏宝阁空空如也。<br>阿青在后院打铁——日子久了，总会出炉几件趁手的家伙。</div>`;
+  const rec = _eqRecycle.length ? `<div class="eq-rec">近记：${_eqRecycle.join("　·　")}</div>` : "";
+  box.innerHTML = `
+    <div class="eq-sum">
+      <span>修为加成 <b>×${artMult().toFixed(2)}</b></span>
+      <span>斗法 <b>攻+${eb.atk}</b> <b>防+${eb.def}</b> <b>血+${eb.hp}</b></span>
+    </div>
+    <div class="eq-note">阿青每出炉一件，会自动比对你身上六件法宝——胜过最弱那件才换上，<br>旧件熔回灵石；不及身上的，当场炼作灵石。</div>
+    <div class="eq-list">${slots}</div>${rec}`;
+  const row = $("artRow"); if (row) updateArts(false);
+}

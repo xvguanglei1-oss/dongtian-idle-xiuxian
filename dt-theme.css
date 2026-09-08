@@ -499,3 +499,25 @@
   .wl{font-size:12px;line-height:1.95;color:#d2daea;letter-spacing:.02em}
   .wl .r{color:#ff8a70;font-weight:700}
   .wl.win{color:#ffd9a0;font-weight:600;margin-top:2px}
+
+/* ============ v0.9.4 法宝装备面板 ============ */
+  #equipBody{padding:2px 4px 6px}
+  .eq-sum{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;
+    font-size:12px;color:#9aa5ba;padding:8px 6px;margin-bottom:8px;
+    border-top:1px solid rgba(201,168,106,.14);border-bottom:1px solid rgba(201,168,106,.14)}
+  .eq-sum b{color:#ffd9a0}
+  .eq-note{font-size:10.5px;color:#6f798f;line-height:1.8;padding:0 6px 10px;text-align:center}
+  .eq-list{display:flex;flex-direction:column;gap:7px}
+  .eq-item{display:grid;grid-template-columns:44px 1fr;grid-template-areas:"q name" "q btl" "q cult";
+    column-gap:10px;align-items:center;padding:8px 10px;position:relative;
+    background:linear-gradient(90deg,rgba(20,26,44,.5),rgba(20,26,44,.15));
+    border-top:1px solid rgba(201,168,106,.1);border-bottom:1px solid rgba(201,168,106,.1)}
+  .eq-item::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:2px;
+    background:linear-gradient(180deg,rgba(201,168,106,.0),rgba(201,168,106,.5),rgba(201,168,106,.0))}
+  .eq-q{grid-area:q;font-size:10px;text-align:center;letter-spacing:.1em;white-space:nowrap;
+    border:1px solid currentColor;padding:2px 2px;border-radius:2px;opacity:.95}
+  .eq-name{grid-area:name;font-size:14px;color:#e6ebf5;letter-spacing:.05em}
+  .eq-cult{grid-area:cult;font-size:10.5px;color:#c9a86a}
+  .eq-btl{grid-area:btl;font-size:10px;color:#7f92ad;letter-spacing:.02em}
+  .eq-empty{text-align:center;color:#8b94a8;font-size:12.5px;padding:24px 8px;line-height:2.1}
+  .eq-rec{font-size:10px;color:#5f6980;text-align:center;margin-top:10px;line-height:1.7}
