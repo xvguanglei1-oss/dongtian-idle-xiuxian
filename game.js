@@ -2338,6 +2338,7 @@ function startTravel() {
   if (state.travel) { pushMsg("main", "化身尚在云游，归期未至"); closeTravel(); return; }
   const { l } = pickLoc();
   state.travel = { loc: l.id, since: Date.now() };
+  _encT = 0; _encNeed = 90 + Math.random() * 70;    // 新程起步: 重新计遇妖冷却
   pushMsg("main", `你为化身备好行囊。它往<span class="r">${l.n}</span>的方向去了，阿青蹲在门口目送，尾巴搭在你脚边。`);
   pushMsg("avatar", `阿青送化身到山门口，回来在你蒲团边卧下`);
   travelBtnLbl(); updateHUD(); save(); cloudSoon();
