@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.7";
+const GAME_VER = "v1.7.8";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.4 声音系统(免费素材 + 合成兜底) ============
@@ -22,8 +22,11 @@ const SND = (function () {
     return ctx;
   }
   /* 合成兜底(素材缺失/未载好时应急, 不再是主通道) */
+  /* v1.7.8: 标签页在后台/锁屏时不再放单发音效 —— 避免"听得到打斗、看不到演出"的错位感。
+   * (仅限一次性 SFX; BGM 走 HTMLAudio, 不受此守卫影响, 维持既有播放策略) */
+  function sfxAudible() { try { return document.visibilityState !== "hidden"; } catch (e) { return true; } }
   function tone(f, dur, type, v, when, slideTo) {
-    const c = ac(); if (!c || !enabled) return;
+    const c = ac(); if (!c || !enabled || !sfxAudible()) return;
     const t0 = c.currentTime + (when || 0), o = c.createOscillator(), g = c.createGain();
     o.type = type || "triangle"; o.frequency.setValueAtTime(f, t0);
     if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), t0 + dur);
@@ -39,7 +42,7 @@ myst: () => tone(1175, 0.6, "sine", 0.2, 0),
     lose: () => { tone(220, .6, "sine", .26, 0, 98); },
   };
   function play(name, at) {
-    if (!enabled) return;
+    if (!enabled || !sfxAudible()) return;
     const c = ac(); if (!c) return;
     const t0 = c.currentTime + (at || 0);
     if (buf[name] instanceof AudioBuffer) {
@@ -4018,9 +4021,9 @@ const HUNT_FIGHT_RATE = 0.8;   // 波次中斗法占比(余下为秘境)
  * 「自动斗法」开启 → 主身持续巡山, 搜寻 SEARCH_MIN~MAX 秒后遇妖开打(行迹下方有搜寻动态提示);
  * 关闭 → 只打坐吐纳, 不主动寻妖(可随时再开)。
  * 注意: 这只是在线的表现层与节奏档, 底层产出/波次模型与离线结算完全一致(同 W/同公式)。
- * 在线开了自动斗法 ≈ 45~50s 一波(搜寻 ~25s + 斗法 ~20s + 收尾 ~4s), 比离线 90s 一波更密
- * —— 在线要盯着看, 演出占时间, 给一份「守着屏幕的甜头」; 关掉则退回纯挂机。 */
-const SEARCH_MIN = 18, SEARCH_MAX = 32;
+ * v1.7.8 节奏收紧: 战斗演出拉到 ~20s 后, 搜寻再收短, 让「一波到下一波」稳定 ~30s:
+ *   搜 8~15s + 斗法演出 ~16~20s(含结算驻留) ≈ 30s 一波, 秘境更短。 */
+const SEARCH_MIN = 8, SEARCH_MAX = 15;
 const SEEK_TALE = [
   "沿溪涧循妖气而上", "拨开雾色，四下张望", "忽闻林深处有异响",
   "剑意微鸣，前方有物", "踏破山脊，搜寻妖踪", "拾级而上，草木皆兵",
