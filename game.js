@@ -1,5 +1,8 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
+/* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
+const GAME_VER = "v1.7.0";
+(function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ 境界体系(凡人修仙传风) ============
  * 炼气 1~13 层; 其余大境分 初期/中期/后期/圆满
@@ -1041,14 +1044,17 @@ function adopt(s) {
       s.arts = pick;
     }
     s.arts.forEach((a, i) => {
+      /* 开发阶段: 旧档不迁移(可直接弃档)。仅对"无数值"的极老结构按 v1.0.2 新基准确定性补全,
+         避免结构异常; 已有数值的法宝按原样保留(新档按新公式掉落, 天然一致)。 */
       if (a && typeof a.a !== "number") {
         a.slot = Math.min(i, 3); a.tp = M4T[Math.min(i, 3)];
         a.lv = (typeof s.realmIdx === "number" ? s.realmIdx : 0) + 1;
-        const q = typeof a.q === "number" ? a.q : 0, M = eqMult(q), lv = a.lv, s2 = hashRand((a.name || "") + q + i);
-        if (i % 4 === 0) { a.a = Math.round((10 + s2 * 40) * lv * M); a.h = 0; a.d = 0; }
-        else if (i % 4 === 1) { a.h = Math.round((100 + s2 * 300) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 11) * lv * M)); a.a = 0; }
-        else if (i % 4 === 2) { a.h = Math.round((40 + s2 * 120) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 5) * lv * M)); a.a = Math.round((4 + s2 * 12) * lv * M); }
-        else { a.a = Math.round((6 + s2 * 18) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 7) * lv * M)); a.h = 0; }
+        const q = Math.min(5, Math.max(0, typeof a.q === "number" ? a.q : 0));
+        const M = eqMult(q), lv = a.lv, s2 = hashRand((a.name || "") + q + i);
+        if (i % 4 === 0) { a.a = Math.max(1, Math.round((2 + s2 * 8) * lv * M)); a.h = 0; a.d = 0; }
+        else if (i % 4 === 1) { a.h = Math.round((20 + s2 * 60) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 8) * lv * M)); a.a = 0; }
+        else if (i % 4 === 2) { a.h = Math.round((8 + s2 * 24) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 3) * lv * M)); a.a = Math.round((0.8 + s2 * 2.4) * lv * M); }
+        else { a.a = Math.round((1.2 + s2 * 3.6) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 3) * lv * M)); a.h = 0; }
       }
     });
   }
@@ -3041,19 +3047,44 @@ function tickBurst(dt) {
  * 云端不可用时照样有巡猎收益: dt ÷ ENC_PERIOD 波, 八成斗法/两成秘境,
  * 每战修为 = 挂机速率 × FIGHT_EXP_W × 0.6(挂机离线折扣), 灵石 = 灵石速率 × FIGHT_SP_W × 0.7;
  * 每战必掉一件 → 阿青静默择优: 能顶替就换上(旧件熔灵石), 不入眼当场熔炼。 */
-function keepArtQuiet(a) {          // 静默版 smartEquip: 批量结算不发消息、不存档
+function keepArtQuiet(a) {          // 静默版 smartEquip: 批量结算不发消息、不存档(同槽综合分择优, 同品质可替换)
   if (!state.arts || !Array.isArray(state.arts)) state.arts = [];
   const arts = state.arts;
   const idx = (typeof a.slot === "number" && a.slot < 4) ? a.slot : arts.length;
   if (idx >= arts.length) { arts.push(a); return true; }
   const w = arts[idx];
   if (!w) { arts[idx] = a; return true; }
-  if (a.q > w.q || (a.q === w.q && a.mult > w.mult)) {
+  if (artScore(a) > artScore(w)) {
     state.spirit += Math.round(50 * Math.pow(1.6, w.q));    // 旧件熔回
     arts[idx] = a; return true;
   }
   state.spirit += Math.round(40 * Math.pow(1.5, a.q));      // 新件不入眼, 当场熔作灵石
   return false;
+}
+/* 离线巡猎胜负判定: 与在线 fireFight 同式的随机单场战(新数值), 后端 game-core 同此,
+ * 让离线胜率 ≈ 在线每境稳态 80~95% 而非旧"中值怪+固定4%翻车" */
+function offlineFightWin(big) {
+  const lv = (state.realmIdx || 0) + 1, eb = equipBonus();
+  const php = 100 + 425 * lv + eb.hp, patk = 10 + 58 * lv + eb.atk, pdef = 5 + 33 * lv + eb.def;
+  const hp = Math.round((250 + Math.random() * 400) * lv);
+  const atk = Math.round((60 + Math.random() * 105) * lv * (MON_ATK_SCALE[big] || 1));
+  const def = Math.max(1, Math.round((1 + Math.random() * 14) * lv));
+  let mhp = hp, hphp = php, round = 0;
+  while (true) {
+    round++;
+    if (Math.random() >= 0.05) {                          // 5% 闪空
+      let dmg = Math.max(1, Math.round((patk - def) * (0.85 + Math.random() * 0.3)));
+      if (Math.random() < 0.10) dmg = Math.round(dmg * 1.6);
+      mhp -= dmg;
+      if (mhp <= 0) return true;
+    }
+    if (Math.random() >= 0.07) {                          // 7% 妖闪空
+      let d = Math.max(1, Math.round((atk - pdef) * (0.85 + Math.random() * 0.3)));
+      hphp -= d;
+      if (hphp <= 0) return false;
+    }
+    if (round > 200) return hphp > mhp;
+  }
 }
 function huntOffline(dtSec) {
   const H = { waves: 0, fights: 0, wins: 0, loses: 0, mysts: 0, exp: 0, spirit: 0, kept: 0, keptName: "", melted: 0, meltSp: 0 };
@@ -3064,11 +3095,7 @@ function huntOffline(dtSec) {
   for (let i = 0; i < waves; i++) {
     if (Math.random() < HUNT_FIGHT_RATE) {
       H.fights++;
-      const lv = (state.realmIdx || 0) + 1, eb = equipBonus();
-      const php = 100 + 620 * lv + eb.hp, patk = 10 + 58 * lv + eb.atk, pdef = 5 + 42 * lv + eb.def;
-      const mhp = 300 * lv, matk = 100 * lv, mdef = 8 * lv;              // 同尺中值怪
-      const win = Math.ceil(mhp / Math.max(1, patk - mdef)) <= Math.ceil(php / Math.max(1, matk - pdef)) && Math.random() > 0.04;
-      if (!win) { H.loses++; continue; }
+      if (!offlineFightWin(bigIdx())) { H.loses++; continue; }
       H.wins++;
       const ge = Math.round(rate * FIGHT_EXP_W * 0.6), gs = Math.round(spr * FIGHT_SP_W * 0.7);
       state.exp += ge; state.spirit += gs; H.exp += ge; H.spirit += gs;
@@ -3979,10 +4006,10 @@ function fireFight() {                // 主身斗法: 不再借化身行迹, �
   const mon = genMonster(big, lv);
   const eb = equipBonus();
   /* 主身三围 = 基础(随 lv 线性, 懒人免加点——折算参考"每级+3属性点自动分配") + 装备加总;
-     裸装对同尺中值怪约 5~9 合可胜, 有法宝更稳 */
-  const php = 100 + 620 * lv + eb.hp;
+     裸装对同尺中位怪约 8~12 合可胜, 有法宝 4~7 合, 每境稳态胜率约 80~95% */
+  const php = 100 + 425 * lv + eb.hp;
   const patk = 10 + 58 * lv + eb.atk;
-  const pdef = 5 + 42 * lv + eb.def;
+  const pdef = 5 + 33 * lv + eb.def;
   BTL = { mon, big, lv, turn: 0, round: 0, php, phpMax: php, patk, pdef, mhp: mon.hp, mhpMax: mon.hp, logs: [], ended: false, skip: false };
   traceSay(`妖气扑面 —— 一头 <b>${mon.n}</b> 拦住去路，斗法已起!`);
   warStart(`妖战`, `${mon.n} 拦住去路，龇牙低吼，妖风卷起一地枯叶。`);
@@ -4201,8 +4228,9 @@ window.debugEncounter = debugEncounter;     // 仅控制台可用, 界面不再�
 
 
 /* ============ v0.9.4 法宝·装备: 自动择优穿戴 + 装备面板 ============ */
-/* 数值参考「我的文字修仙全靠刷」品质乘子滚雪球思路, 但保留本作"阿青打铁"法宝叙事;
-   自动装: 阿青出炉新法宝 → 若强于身上最弱一件则自动顶替, 被换旧件熔回灵石 */
+/* 自动装: 阿青出炉新法宝 → 同槽按"斗法综合分"比较(攻/防/血加权), 胜过旧佩才自动顶替,
+   被换旧件熔回灵石; 同品质只要综合分更高也允许替换 → 装备随境界刷新不再冻结 */
+function artScore(a) { return (a.a || 0) + 3 * (a.d || 0) + (a.h || 0) / 30; }   // 同槽排序用的综合分
 let _eqRecycle = [];
 function equipBonus() {                 // 斗法三维 = 六槽装备属性加总(参考加法)
   let atk = 0, def = 0, hp = 0;
@@ -4224,7 +4252,7 @@ function smartEquip(a) {
   }
   const w = arts[idx];
   if (!w) { arts[idx] = a; updateArts(true); save(); cloudSoon(); return; }
-  if (a.q > w.q || (a.q === w.q && a.mult > w.mult)) {
+  if (artScore(a) > artScore(w)) {                          // 同槽择优: 只看综合分, 同品质可替换
     const g = Math.round(50 * Math.pow(1.6, w.q));
     state.spirit += g;
     arts[idx] = a;
@@ -4275,10 +4303,16 @@ function renderEquip() {
 
 
 
-/* ============ v1.0.0 参考数值骨架(同尺+加法) ============ */
-/* 对接「我的文字修仙全靠刷」: 玩家攻/血/防 = 基础 + 装备加总; 怪物按玩家境界级线性;
+/* ============ v1.0.2 数值整体重做(同尺+加法) ============ */
+/* 战斗数值校准目标(模拟器全 54 级/12 境复算): 每境稳态胜率 80~95%、击杀 4~7 合、
+   满配也不一刀秒。做法: ① 品质乘子平缓化(原 [1.2,2,3,5,7,10] → 见下);
+   ② 装备基础量纲约缩小 1/5; ③ 怪物中位血约 450×lv(原 300×lv 中位);
+   ④ 妖兽按大境界(12 档)系数强化, 配合境界装备解锁曲线;
+   ⑤ 自动择优改为"同槽按斗法综合分比较, 同品质也可择优替换"(修复装备等级冻结)。
    装备属性 = 随机基础 × 境界级 lv × 品质乘子 QM; 品质概率 50/20/15/9/5/1 */
-function eqMult(q) { return [1.2, 2, 3, 5, 7, 10][q] || 1.2; }  // q0..q5 属性乘子(参考)
+function eqMult(q) { return [1.15, 1.35, 1.6, 1.9, 2.25, 2.7][q] || 1.15; }  // q0..q5 属性乘子(平缓化)
+/* 妖兽境界难度系数: 高境界妖兽攻按档强化(配合每境法宝档位, 使 12 境胜率同落 80~95%) */
+const MON_ATK_SCALE = [1.15, 0.94, 1, 1.1127, 1.2216, 1.225, 1.2636, 1.23, 1.24, 1.1943, 1.25, 1.2413];
 const SLOT_TYPES = [                                        // 四部位(参考): 兵/护/佩/诀
   { n: "兵器", k: "w" }, { n: "护体", k: "a" },
   { n: "灵佩", k: "p" }, { n: "功法", k: "s" },
@@ -4293,20 +4327,21 @@ function artName(kind, q) {
   const P = kind === "a" ? ARMOR_POOL : kind === "p" ? PEND_POOL : SCROLL_POOL;
   return P[Math.floor(Math.random() * P.length)];
 }
-function attrAssign(art, kind, q, lv) {
+function attrAssign(art, kind, q, lv) {          // 基础量纲 ≈ 旧版 1/5(旧: 兵攻10~50/护血100~400/佩血40~160/诀攻6~24 …)
   const M = eqMult(q);
   const r1 = Math.random(), r2 = Math.random(), r3 = Math.random();
-  if (kind === "w") { art.a = Math.max(1, Math.round((10 + r1 * 40) * lv * M)); art.h = 0; art.d = 0; }
-  else if (kind === "a") { art.h = Math.round((100 + r1 * 300) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 11) * lv * M)); art.a = 0; }
-  else if (kind === "p") { art.h = Math.round((40 + r1 * 120) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 5) * lv * M)); art.a = Math.round((4 + r3 * 12) * lv * M); }
-  else { art.a = Math.round((6 + r1 * 18) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 7) * lv * M)); art.h = 0; }
+  if (kind === "w") { art.a = Math.max(1, Math.round((2 + r1 * 8) * lv * M)); art.h = 0; art.d = 0; }
+  else if (kind === "a") { art.h = Math.round((20 + r1 * 60) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 8) * lv * M)); art.a = 0; }
+  else if (kind === "p") { art.h = Math.round((8 + r1 * 24) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 3) * lv * M)); art.a = Math.round((0.8 + r3 * 2.4) * lv * M); }
+  else { art.a = Math.round((1.2 + r1 * 3.6) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 3) * lv * M)); art.h = 0; }
 }
-function genMonster(big, lv) {                            // 怪物 = 参考线性公式(随玩家境界级)
+function genMonster(big, lv) {                   // 怪物 = 参考线性公式(随玩家境界级); 中位血≈450×lv
   const names = MON_NAMES[big] || MON_NAMES[0];
+  const k = MON_ATK_SCALE[big] || 1;
   return {
     n: names[Math.floor(Math.random() * names.length)],
-    hp: Math.round((100 + Math.random() * 400) * lv),
-    atk: Math.round((50 + Math.random() * 100) * lv),
+    hp: Math.round((250 + Math.random() * 400) * lv),
+    atk: Math.round((60 + Math.random() * 105) * lv * k),
     def: Math.max(1, Math.round((1 + Math.random() * 14) * lv)),
   };
 }
