@@ -1,30 +1,36 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.8";
+const GAME_VER = "v1.7.9";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
-/* ============ v1.7.4 声音系统(免费素材 + 合成兜底) ============
+/* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
  * 音效素材(assets/sound/*.mp3, 来自 Mixkit 免费许可, 可商用无需署名):
- *   hit 玩家命中/ crit 暴击/ hurt 受击/ alert 遇敌红警/ myst 秘境风铃/
- *   win 获胜/ lose 落败/ bell 叠层钟声(遇敌第二层)。
+ *   alert 遇敌战鼓(与技能呼啸/命中完全不同频)/
+ *   hit 玩家命中/ crit 暴击/ hurt 受击/ swing 出招呼啸/ myst 秘境风铃/ win 获胜/ lose 落败。
+ * 同步铁律: 单发音效只在「页面可见 且 战报横幅在台」时播(SND.setStage),
+ *   出场即静音/横幅隐藏则无音 —— 杜绝"听得到打斗、看不到演出"。
  * BGM: assets/music/bgm.mp3 存在即循环(低音量), 素材未就绪时自动回退为合成音。 */
 const SND = (function () {
   let ctx = null, enabled = localStorage.getItem("dt_snd") !== "0";
-  const files = { hit: 1, crit: 1, hurt: 1, alert: 1, swing: 1, boom: 1, myst: 1, win: 1, lose: 1 };
-  const vol = { hit: 0.5, crit: 0.55, hurt: 0.42, alert: 0.5, swing: 0.4, boom: 0.5, myst: 0.5, win: 0.6, lose: 0.5 };
+  const SFX_V = "9";                 // 音效缓存戳: 换素材后递增, 强制重新拉取
+  const files = { hit: 1, crit: 1, hurt: 1, alert: 1, swing: 1, myst: 1, win: 1, lose: 1 };
+  const vol = { hit: 0.5, crit: 0.55, hurt: 0.42, alert: 0.6, swing: 0.42, myst: 0.5, win: 0.6, lose: 0.5 };
   const buf = {};            // name -> AudioBuffer | null(缺素材)
-  const ext = { alert: [["boom", 0.22]] };   // 遇敌: 呼啸主音 + 0.22s 重击收尾(无铃声)
-  let bgmEl = null, bgmStarted = false;
+  const ext = {};            // v1.7.9: 不再给遇敌叠 boom/呼啸, 遇敌=独立战鼓素材
+  let bgmEl = null, bgmStarted = false, stage = 0;   // stage: 战斗/秘境横幅是否正在台上
   function ac() {
     if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; } }
     if (ctx && ctx.state === "suspended") { try { ctx.resume(); } catch (e) {} }
     return ctx;
   }
   /* 合成兜底(素材缺失/未载好时应急, 不再是主通道) */
-  /* v1.7.8: 标签页在后台/锁屏时不再放单发音效 —— 避免"听得到打斗、看不到演出"的错位感。
-   * (仅限一次性 SFX; BGM 走 HTMLAudio, 不受此守卫影响, 维持既有播放策略) */
-  function sfxAudible() { try { return document.visibilityState !== "hidden"; } catch (e) { return true; } }
+  /* v1.7.8/v1.7.9: 只有「页面可见 && 战斗/秘境横幅在台上」才播单发音效 ——
+   * 杜绝后台/横幅未起时的"有声无画"; BGM 走 HTMLAudio 不受影响 */
+  function sfxAudible() {
+    try { if (document.visibilityState === "hidden") return false; } catch (e) {}
+    return stage === 1;
+  }
   function tone(f, dur, type, v, when, slideTo) {
     const c = ac(); if (!c || !enabled || !sfxAudible()) return;
     const t0 = c.currentTime + (when || 0), o = c.createOscillator(), g = c.createGain();
@@ -36,8 +42,10 @@ const SND = (function () {
   }
   const fallback = {
     hit: () => { tone(200, 0.1, "sine", 0.3, 0, 80); }, crit: () => tone(880, 0.14, "square", 0.16, 0),
-    hurt: () => tone(110, 0.18, "sine", 0.3, 0, 50), alert: () => tone(660, 0.14, "square", 0.15, 0),
-myst: () => tone(1175, 0.6, "sine", 0.2, 0),
+    hurt: () => tone(110, 0.18, "sine", 0.3, 0, 50),
+    /* v1.7.9 遇敌兜底: 两声低频战鼓(与出招/命中音完全两路), 素材缺失也不至于"像技能音" */
+    alert: () => { tone(170, 0.26, "sine", 0.55, 0, 55); tone(145, 0.32, "sine", 0.5, 0.32, 45); },
+    myst: () => tone(1175, 0.6, "sine", 0.2, 0),
     win: () => { [[523,0],[659,.13],[784,.26],[1046,.4]].forEach(x => tone(x[0], .3, "triangle", .24, x[1])); },
     lose: () => { tone(220, .6, "sine", .26, 0, 98); },
   };
@@ -54,7 +62,7 @@ myst: () => tone(1175, 0.6, "sine", 0.2, 0),
   function playLayers(name) { play(name); const ex = ext[name]; if (ex) for (const [n, d] of ex) play(n, d); }
   async function load(name) {
     try {
-      const r = await fetch("assets/sound/" + name + ".mp3");
+      const r = await fetch("assets/sound/" + name + ".mp3?v=" + SFX_V);
       if (!r.ok) { buf[name] = null; return; }
       const ab = await r.arrayBuffer();
       const c = ac(); if (!c) { buf[name] = null; return; }
@@ -87,6 +95,7 @@ myst: () => tone(1175, 0.6, "sine", 0.2, 0),
       if (enabled) { ac(); _bgmPlay(); }
       else if (bgmEl) { try { bgmEl.pause(); } catch (e) {} } },
     toggle() { this.setEnabled(!enabled); },
+    setStage(v) { stage = v ? 1 : 0; },          // 横幅上台/收台 由 warStart/warEnd 驱动
     hit() { playLayers("hit"); }, crit() { playLayers("crit"); }, hurt() { playLayers("hurt"); },
     swing() { playLayers("swing"); },
     alert() { playLayers("alert"); }, chime() { playLayers("myst"); },
@@ -4098,7 +4107,6 @@ function fireEvent() {                // 遇事分发: 八成妖兽伏击, 两�
 }
 function fireFight() {                // 主身斗法: 不再借化身行迹, 出洞天巡猎遇妖
   if (BTL) return;
-  SND.alert();                          // v1.7.3 遇敌警示音
   const z = warZone();
   const big = z.big;
   const lv = (state.realmIdx || 0) + 1;              // 同尺: 怪=你的境界级
@@ -4112,6 +4120,7 @@ function fireFight() {                // 主身斗法: 不再借化身行迹, �
   BTL = { mon, big, lv, turn: 0, round: 0, php, phpMax: php, patk, pdef, mhp: mon.hp, mhpMax: mon.hp, logs: [], ended: false, skip: false };
   traceSay(`妖气扑面 —— 一头 <b>${mon.n}</b> 拦住去路，斗法已起!`);
   warStart(`妖战`, `${mon.n} 拦住去路，龇牙低吼，妖风卷起一地枯叶。`);
+  SND.alert();                          // v1.7.9 横幅已上台再击战鼓, 保证"有声必有画"
   pushMsg("main", `妖气骤起!你行至<span class="r">${z.name}</span>一带巡山，撞见一头 ${mon.n}，你来我往斗了起来。`);
   const fl = $("flash"); if (fl) { fl.style.transition = "none"; fl.style.opacity = .38; void fl.offsetWidth; fl.style.transition = "opacity .6s ease"; fl.style.opacity = "0"; }
   btlRun();
@@ -4259,6 +4268,7 @@ function warStart(title, lead) {
   const el = $("warBanner"); if (!el) return;
   huntBarShow(false);                    // v1.4.0: 开打/探秘时整条让位给横幅(二者同一行, 互斥)
   el.style.display = "flex";
+  SND.setStage(true);                    // v1.7.9: 横幅上台 → 允许该场音效出声(有声必有画)
   el.innerHTML = `<div class="war-hd"><span class="war-t">${title}</span><span class="war-hp"><i id="tfFoe">—</i>　<i id="tfHero">—</i>　<i id="tfTurn" style="color:#a8904f"></i></span><button class="war-skip" id="warSkipBtn" onclick="warSkip()">⚡</button></div><div class="war-bd" id="warLog"></div>`;
   fieldLine();
   if (lead) warAppend(lead, "lead");
@@ -4269,9 +4279,9 @@ function warEnd(finalTxt, cls, extra) {
   const wb = $("warBanner");
   /* v1.7.7: 战斗结算驻留更久留复盘(8s), 秘境维持; 轻触战报任意处可提前关闭 */
   const wait = (BTL && BTL.skip) ? 2100 : (MYST ? 2600 : 8000);
-  const close = () => { if (wb) { wb.style.display = "none"; wb.removeEventListener("click", close); } };
+  const close = () => { if (wb) { wb.style.display = "none"; wb.removeEventListener("click", close); } SND.setStage(false); };
   if (wb) { wb.style.pointerEvents = "auto"; wb.addEventListener("click", close);
-    setTimeout(() => { wb.removeEventListener("click", close); if (wb) wb.style.display = "none"; }, wait); }
+    setTimeout(() => { wb.removeEventListener("click", close); if (wb) wb.style.display = "none"; SND.setStage(false); }, wait); }
 }
 function btlWin() {
   if (!BTL || BTL.ended) return; BTL.ended = true;
@@ -4323,11 +4333,11 @@ function btlLose() {
 /* ---------- 秘境机缘: 文字探索(主身奇遇) ---------- */
 function fireMyst() {
   if (MYST) return;
-  SND.chime();                         // v1.7.3 秘境风铃
   const z = warZone();
   MYST = { i: 0, logs: [] };
   traceSay(`灵光隐现 —— 你在<b>${z.name}</b>发现一处<b>秘境入口</b>，踏入其中。`);
   warStart(`秘境`, `你循着灵光拨开藤蔓，露出一道幽深的石阶入口。`);
+  SND.chime();                         // v1.7.9 横幅上台后再起风铃(有声必有画)
   pushMsg("main", `<span class="b">秘境!</span> 你在${z.name}一带发现一处隐秘入口，进去一探。`);
   mystRun();
 }
