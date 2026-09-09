@@ -843,7 +843,12 @@ function cloudPushNow() {
   cldPush().then(ok => { if (ok) cldUI("on"); });
 }
 function cloudPullNow() { cldPull(); }
-function cloudSoon() { if (!cld.ready) cld.dirty = true; else cloudPushNow(); }
+const CLOUD_PUSH_MIN = 300000;   // v1.5.1: 静默兜底窗口 5 分钟(窗口内所有高频进度合并为 1 次 PUT)
+function cloudSoon() { cld.dirty = true; }   // v1.5.1: 高频自动事件(战斗/秘境/装备择优/收信)只标脏, 由定时器合并上传, 不再每场推一次
+function cloudFlush() {                       // v1.5.1: 关键节点/关页/切后台 → 强制立即推(不可逆操作不丢)
+  if (!cld.ready) { cld.dirty = true; return; }
+  cloudPushNow();
+}
 function cloudTogglePanel(ev) {
   ev = ev || window.event;
   if (ev) ev.stopPropagation();
@@ -887,9 +892,9 @@ function cloudInit() {
   bootCloud();           // 首次: 先同步云端, 再统一结算一次离线收益
   /* 低频兜底上传: 每 60s 检查一次, 仅在"有未同步进度"且"距上次成功上传 ≥5 分钟"时才传,
    * 避免高频轮询; 关键节点(突破/升阵/离线结算/切后台)另行即时上传 */
-  setInterval(() => {
+  setInterval(() => {   // v1.5.1: 每 60s 检查, 有未同步进度且距上次成功推 ≥5 分钟才推(合并窗口内所有高频进度)
     if (!cld.ready) return;
-    if (state.lastTs > cld.lastOkLocal && Date.now() - cld.lastPushTs > 300000) cloudPushNow();
+    if (cld.dirty && Date.now() - cld.lastPushTs > CLOUD_PUSH_MIN) { cld.dirty = false; cloudPushNow(); }
   }, 60000);
 }
 
@@ -904,7 +909,7 @@ async function bootCloud() {
   try { sr = await cloudSettle(); } catch (e) { sr = null; }
   if (sr && sr.settled) presentSettle(sr);
   else if (!sr) applyOffline();
-  cloudSoon();
+  cloudFlush();   // v1.5.1: 启动结算后尽快把建档/离线收益上云
   updateRealmUI(); updateHUD(); updateArts(); realmPlot();
 }
 
@@ -1010,7 +1015,7 @@ function doBreak() {
     state.exp = 0;
     breaking = false;
     updateRealmUI(); updateHUD(); save();
-    cloudSoon();   // 渡劫成功 → 立即同步云端
+    cloudFlush();   // v1.5.1: 渡劫突破是不可逆的关键跃迁 → 立即上云
     const nr = realm();
     const greet = ["金丹凝形！", "元婴出窍！", "化神之姿！", "踏入筑基！"][nr.bigIdx - 2] || "";
     pushMsg("main", `<span class="g">${nr.big}</span>！${greet || "修行又进一步"}`);
@@ -1024,7 +1029,7 @@ function arrayCostNow() { return ARRAY_COST(state.arrayLv); }
 function tapArray() {
   const cost = arrayCostNow();
   if (state.spirit >= cost) {
-    state.spirit -= cost; state.arrayLv++; save(); updateHUD(); cloudSoon();  // 关键节点 → 即时上传
+    state.spirit -= cost; state.arrayLv++; save(); updateHUD(); cloudFlush();  // v1.5.1: 花灵石升阵 → 立即上云
     pushMsg("main", `聚灵阵升至 <span class="g">Lv.${state.arrayLv}</span>（下一级需灵石 ${fmt(arrayCostNow())}）`);
   } else {
     pushMsg("main", `灵石不足(升至 Lv.${state.arrayLv + 1} 需 ${fmt(cost)})，阿青见你叹气，尾巴一竖，满山替你找矿去了`);
@@ -1829,7 +1834,7 @@ function realmPlot() {
     }
   }
   if (fired > 1) pushMsg("main", `<span class="b">仙途拾遗</span>｜修行之间你又经历了 ${fired} 段际遇，均已记入修行录。`);
-  if (fired > 0) cloudSoon();   // 主线新剧情入修行录 → 视为关键时刻, 即时同步云端
+  if (fired > 0) cloudFlush();   // v1.5.1: 主线剧情入修行录 → 关键节点立即上云
   void last;
 }
 
@@ -2337,9 +2342,9 @@ realmPlot(); // 启动即按当前境界推进已及剧情
   }
 }
 setInterval(save, 8000);
-addEventListener("pagehide", () => { save(); cloudSoon(); });
+addEventListener("pagehide", () => { save(); cloudFlush(); });
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") { save(); cloudSoon(); }  // 切后台/关页即同步"最后活跃"
+  if (document.visibilityState === "hidden") { save(); cloudFlush(); }  // 切后台/关页即同步"最后活跃"(关页时刻必须立刻推, 不能等节流窗口)
 });
 cloudInit();       // 云存档: 先拉云端 → 统一结算离线收益 → 回写(本地永远可玩, 云失败静默)
 setInterval(stayMailCheck, 60000);   // 在线寄包: iOS 常驻标签页也能收到化身手札
@@ -2442,7 +2447,7 @@ function startTravel() {
   _encNext = autoHuntOn() ? Date.now() + searchMs() : 0;   // 重置巡猎: 自动斗法开则重新起算搜寻
   pushMsg("main", `你为化身备好行囊。它往<span class="r">${l.n}</span>的方向去了，阿青蹲在门口目送，尾巴搭在你脚边。`);
   pushMsg("avatar", `阿青送化身到山门口，回来在你蒲团边卧下`);
-  travelBtnLbl(); traceRefresh(); updateHUD(); save(); cloudSoon();   // v1.5.0: 立刻刷行迹, 别再挂着"遣它下山?"
+  travelBtnLbl(); traceRefresh(); updateHUD(); save(); cloudFlush();   // v1.5.0: 立刻刷行迹, 别再挂着"遣它下山?"  v1.5.1: 云游派发是关键节点 → 立即上云
   closeTravel();
 }
 function consumePill(id) {
