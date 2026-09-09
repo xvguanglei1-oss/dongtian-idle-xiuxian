@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>洞天 · 挂机修仙 · 墨线夜谈 v1.7.38</title>
+<title>洞天 · 挂机修仙 · 墨线夜谈 v1.7.39</title>
 <meta name="description" content="洞天挂机修仙：主身巡猎斗法、分身云游寻宝，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -122,11 +122,14 @@
   .cult img{filter:drop-shadow(0 0 7px var(--rg,rgba(232,197,107,.45))) drop-shadow(0 0 20px var(--rg,rgba(232,197,107,.3)))}
   .cult .bodyL{animation:bodyBreath 5.4s ease-in-out infinite}
   .cult .robe{animation:robeBreath 5.4s ease-in-out infinite .2s}
-  .cult .hair{animation:hairBreath 5.4s ease-in-out infinite .4s;transform-origin:50% 6% !important}  /* 头发以发顶为轴: 头顶不动, 仅发梢随呼吸下探 */}
-  .cult .bodyL,.cult .robe{transform-origin:50% 90%}  /* 身体/衣袍以盘坐臀线为轴 */
+  .cult .bodyL,.cult .robe{transform-origin:50% 4%}   /* v1.7.39: 锚头顶 — 头皮钉死, 身体/袍摆向下呼吸探伸(原臀线锚让头顶随动≈4px, 已移除) */
+  /* v1.7.39: 头发拆两层 — 上层(0~18%, 头/鬓)静止钉死; 下层(18%+ 垂发)以分界为轴微缩放, 头皮不再上下晃 */
+  .cult .hair-top{clip-path:inset(0 0 82% 0);-webkit-clip-path:inset(0 0 82% 0)}
+  .cult .hair-low{clip-path:inset(18% 0 0 0);-webkit-clip-path:inset(18% 0 0 0);
+    transform-origin:50% 18%;animation:hairLowBreath 5.4s ease-in-out .4s infinite}
   @keyframes bodyBreath{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.012)}}
   @keyframes robeBreath{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.02)}}
-  @keyframes hairBreath{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.028)}}
+  @keyframes hairLowBreath{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.02)}}
 
   /* 中央按钮 */
   .actions{position:fixed;left:0;right:0;bottom:58px;z-index:10;display:flex;justify-content:center;gap:10px;padding:0 14px}
@@ -344,7 +347,8 @@
   <div class="cult" id="cult">
     <img class="bodyL" src="assets/cultivator_body.png" alt="">
     <img class="robe" src="assets/cultivator_robe.png" alt="">
-    <img class="hair" src="assets/cultivator_hair.png" alt="">
+    <img class="hair-low" src="assets/cultivator_hair.png" alt="">
+    <img class="hair-top" src="assets/cultivator_hair.png" alt="">
   </div>
 </div>
 
@@ -358,7 +362,7 @@
 </div>
 
 <div class="exp-wrap">
-  <div class="exp-labels"><span>境界进度<span class="ver-tag" id="verTag">v1.7.38</span></span><span><b id="expText">0</b> / <b id="expNeed">1000</b></span></div>
+  <div class="exp-labels"><span>境界进度<span class="ver-tag" id="verTag">v1.7.39</span></span><span><b id="expText">0</b> / <b id="expNeed">1000</b></span></div>
   <div class="exp-track"><div class="exp-fill" id="expFill"></div></div>
 </div>
 
@@ -481,7 +485,7 @@
 </div>
 
 <script src="assets/lz-string.min.js"></script>
-<script src="game.js?v=1.7.38"></script>
+<script src="game.js?v=1.7.39"></script>
 
 </body>
 </html>
