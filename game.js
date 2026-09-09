@@ -1,8 +1,78 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.2";
+const GAME_VER = "v1.7.3";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
+
+/* ============ v1.7.3 声音系统(合成音效 + 可插拔 BGM/胜利素材) ============
+ * 无素材也自带打击感: 命中/暴击/受击/遇敌/秘境/获胜号角/失败 全部 WebAudio 现场合成, 零文件零版权;
+ * 若放入了素材文件(assets/music/bgm.mp3 主曲, assets/sound/victory.mp3 胜利曲)则自动优先使用。
+ * 开关持久化在 localStorage(dt_snd): 0=静音 1=开启(默认开)。 */
+const SND = (function () {
+  let ctx = null, enabled = localStorage.getItem("dt_snd") !== "0";
+  let bgmEl = null, bgmStarted = false, hasVictory = false, hasBgm = false;
+  const probe = src => { try { return fetch(src, { method: "HEAD", cache: "no-store" }).then(r => r.ok).catch(() => false); } catch (e) { return Promise.resolve(false); } };
+  function ac() { if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; } } return ctx; }
+  function tone(freq, dur, type, vol, when, slideTo) {
+    const c = ac(); if (!c || !enabled) return;
+    const t0 = c.currentTime + (when || 0);
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type || "triangle"; o.frequency.setValueAtTime(freq, t0);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol || 0.5, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  function noise(dur, vol, lpFreq, when) {
+    const c = ac(); if (!c || !enabled) return;
+    const t0 = c.currentTime + (when || 0), n = Math.floor(c.sampleRate * dur);
+    const buf = c.createBuffer(1, n, c.sampleRate), ch = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) ch[i] = Math.random() * 2 - 1;
+    const s = c.createBufferSource(); s.buffer = buf;
+    const g = c.createGain(); g.gain.setValueAtTime(vol || 0.3, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    const f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = lpFreq || 1200;
+    s.connect(f); f.connect(g); g.connect(c.destination); s.start(t0); s.stop(t0 + dur + 0.02);
+  }
+  return {
+    get enabled() { return enabled; },
+    setEnabled(v) { enabled = !!v; localStorage.setItem("dt_snd", enabled ? "1" : "0");
+      const b = document.getElementById("btnSnd"); if (b) b.textContent = enabled ? "🔊" : "🔇";
+      if (!enabled) { try { if (bgmEl) bgmEl.pause(); } catch (e) {} }
+      else if (bgmStarted && bgmEl && bgmEl.paused) { try { bgmEl.play().catch(() => {}); } catch (e) {} } },
+    toggle() { this.setEnabled(!enabled); },
+    /* 命中/受击/暴击: 短瞬态, 不抢戏 */
+    hit() { noise(0.09, 0.34, 900); tone(220, 0.12, "sine", 0.22, 0, 90); },
+    hurt() { noise(0.12, 0.26, 500); tone(120, 0.18, "sine", 0.26, 0, 55); },
+    crit() { noise(0.07, 0.4, 2400); tone(880, 0.16, "square", 0.12, 0); tone(1320, 0.22, "triangle", 0.14, 0.03); },
+    /* 遇敌红警: 两记短促警音; 秘境: 风铃上行 */
+    alert() { tone(660, 0.16, "square", 0.14, 0); tone(660, 0.16, "square", 0.14, 0.22); },
+    chime() { tone(784, 0.5, "sine", 0.2, 0); tone(988, 0.5, "sine", 0.18, 0.12); tone(1175, 0.7, "sine", 0.15, 0.24); },
+    /* 获胜号角: 有素材 assets/sound/victory.mp3 优先播, 否则合成上行分解和弦收束 */
+    victory() {
+      if (hasVictory) {
+        try { const v = new Audio("assets/sound/victory.mp3"); v.volume = 0.55; const p = v.play(); if (p && p.catch) p.catch(() => {}); return; } catch (e) {}
+      }
+      const seq = [[523.3, 0], [659.3, 0.13], [784, 0.26], [1046.5, 0.4], [1046.5, 0.78]];
+      for (const [f, d] of seq) { tone(f, d > 0.6 ? 0.6 : 0.3, "triangle", 0.26, d); }
+      tone(523.3, 0.8, "triangle", 0.1, 0.42); tone(784, 0.8, "triangle", 0.1, 0.42);
+    },
+    fail() { tone(220, 0.7, "sine", 0.3, 0, 98); tone(110, 0.9, "sine", 0.26, 0.12, 55); },
+    /* BGM: 有 assets/music/bgm.mp3 才循环播放(低音量); 浏览器要求首次交互后才出声 */
+    bgm() {
+      if (!hasBgm || bgmStarted || !enabled) return;
+      try { bgmEl = new Audio("assets/music/bgm.mp3"); bgmEl.loop = true; bgmEl.volume = 0.3; } catch (e) { return; }
+      const tryPlay = () => { if (!enabled) return; const p = bgmEl.play(); if (p && p.catch) p.catch(() => {}); };
+      const once = () => { bgmStarted = true; tryPlay(); document.removeEventListener("pointerdown", once); };
+      document.addEventListener("pointerdown", once);
+    },
+    /* 探测素材文件是否存在(每次加载探测一次即可) */
+    initFiles() { Promise.all([probe("assets/sound/victory.mp3"), probe("assets/music/bgm.mp3")]).then(r => { hasVictory = r[0]; hasBgm = r[1]; this.bgm(); }); },
+  };
+})();
+(function initSndUI() { const b = document.getElementById("btnSnd"); if (b) b.textContent = SND.enabled ? "🔊" : "🔇"; })();
+SND.initFiles();
 
 /* ============ 境界体系(凡人修仙传风) ============
  * 炼气 1~13 层; 其余大境分 初期/中期/后期/圆满
@@ -4000,6 +4070,7 @@ function fireEvent() {                // 遇事分发: 八成妖兽伏击, 两�
 }
 function fireFight() {                // 主身斗法: 不再借化身行迹, 出洞天巡猎遇妖
   if (BTL) return;
+  SND.alert();                          // v1.7.3 遇敌警示音
   const z = warZone();
   const big = z.big;
   const lv = (state.realmIdx || 0) + 1;              // 同尺: 怪=你的境界级
@@ -4061,7 +4132,7 @@ function btlHeroAct() {
   else {
     let dmg = Math.max(1, Math.round((BTL.patk - m.def) * (0.85 + Math.random() * 0.3)));
     const crit = Math.random() < 0.10;
-    if (crit) dmg = Math.round(dmg * 1.6);
+    if (crit) { dmg = Math.round(dmg * 1.6); SND.crit(); } else SND.hit();   // v1.7.3 打击反馈
     BTL.mhp = Math.max(0, BTL.mhp - dmg);
     btlLog(`你使出「${name}」，${crit ? "正中要害、会心一击，" : "结结实实打中，"}<b class="r">${m.n}</b> 受创 ${dmg} 点，余 ${BTL.mhp}/${BTL.mhpMax} 气血。`);
   }
@@ -4074,7 +4145,7 @@ function btlFoeAct() {
   if (Math.random() < 0.07) { btlLog(`${m.n} 扑向你 —— 你侧身避开，溅起一地尘土。`); }
   else {
     let d = Math.max(1, Math.round((m.atk - BTL.pdef) * (0.85 + Math.random() * 0.3)));
-    BTL.php = Math.max(0, BTL.php - d);
+    BTL.php = Math.max(0, BTL.php - d); SND.hurt();        // v1.7.3 受击反馈
     btlLog(`${m.n} 反扑而至，你受创 ${d} 点，余 ${BTL.php}/${BTL.phpMax} 气血。`);
   }
   fieldLine();
@@ -4119,6 +4190,7 @@ function warEnd(finalTxt, cls) {
 }
 function btlWin() {
   if (!BTL || BTL.ended) return; BTL.ended = true;
+  SND.victory();                      // v1.7.3 胜利号角
   const m = BTL.mon;
   /* 产出同尺(参考 exp = maxCultivation/100 = 2^境界, 即「指数曲线 + 每境百战」)：
      折算成我们的挂机速率 —— 每战 ≈ 打坐 FIGHT_EXP_W 秒、≈ 聚灵 FIGHT_SP_W 秒。
@@ -4139,6 +4211,7 @@ function btlWin() {
 }
 function btlLose() {
   if (!BTL || BTL.ended) return; BTL.ended = true;
+  SND.fail();                        // v1.7.3 落败低音
   const m = BTL.mon;
   warEnd(`你力竭不支，被 ${m.n} 击倒在地 …… 败退 · 回洞天休养`, "lose");
   pushMsg("main", `<span class="r">你不敌 ${m.n}</span>，狼狈遁回洞天。阿青在旁呜咽，叼来药囊替你敷上。`);
@@ -4151,6 +4224,7 @@ function btlLose() {
 /* ---------- 秘境机缘: 文字探索(主身奇遇) ---------- */
 function fireMyst() {
   if (MYST) return;
+  SND.chime();                         // v1.7.3 秘境风铃
   const z = warZone();
   MYST = { i: 0, logs: [] };
   traceSay(`灵光隐现 —— 你在<b>${z.name}</b>发现一处<b>秘境入口</b>，踏入其中。`);
