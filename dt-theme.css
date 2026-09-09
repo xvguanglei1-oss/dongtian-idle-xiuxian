@@ -96,7 +96,7 @@
   .exp-track{position:relative;height:18px;border:0;outline:0;overflow:hidden;
     background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 20%22 preserveAspectRatio=%22none%22><path d=%22M10 4 C50 -2 90 12 130 2 C170 -2 198 4 196 12 C198 18 188 18 178 14 C140 16 100 18 60 16 C30 18 12 16 4 14 C-2 10 4 6 10 4 Z%22 fill=%22rgba(10,14,28,.92)%22 stroke=%22rgba(201,168,106,.28)%22 stroke-width=%221.1%22 vector-effect=%22non-scaling-stroke%22/></svg>');
     background-size:100% 100%;background-repeat:no-repeat}
-  .exp-fill{background:linear-gradient(90deg,#6b5426,#c9a86a 55%,#f0d795);box-shadow:0 0 16px rgba(212,176,106,.55)}
+  .exp-fill{background:linear-gradient(90deg,#2c7a52,#52b980 55%,#9fe3b4);box-shadow:0 0 16px rgba(110,220,160,.5)}   /* v1.7.44: 填充条粗块改玉青绿(金线细可留, 粗即屎黄) */
   .exp-labels b{color:#d4b06a}
   /* 卡片：宣纸晕染感 + 墨线双框 */
   .card{position:relative;padding:26px 24px;text-align:center;
