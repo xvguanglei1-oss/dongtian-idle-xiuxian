@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.5";
+const GAME_VER = "v1.7.6";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.4 声音系统(免费素材 + 合成兜底) ============
@@ -4246,11 +4246,15 @@ function warStart(title, lead) {
   fieldLine();
   if (lead) warAppend(lead, "lead");
 }
-function warEnd(finalTxt, cls) {
+function warEnd(finalTxt, cls, extra) {
   if (finalTxt) warAppend(finalTxt, cls || "win");
+  if (extra) { const es = Array.isArray(extra) ? extra : [extra]; for (const e of es) { if (e) warAppend(e, "drop"); } }
   const wb = $("warBanner");
-  const wait = (BTL && BTL.skip) ? 2100 : (MYST ? 2600 : 3500);   // v1.7.2: 战报结尾多停一会; 速战短留即可
-  setTimeout(() => { if (wb) wb.style.display = "none"; }, wait);
+  /* v1.7.6: 战斗结算驻留更久留复盘(8s), 秘境维持; 轻触战报任意处可提前关闭 */
+  const wait = (BTL && BTL.skip) ? 2100 : (MYST ? 2600 : 8000);
+  const close = () => { if (wb) { wb.style.display = "none"; wb.removeEventListener("click", close); } };
+  if (wb) { wb.style.pointerEvents = "auto"; wb.addEventListener("click", close);
+    setTimeout(() => { wb.removeEventListener("click", close); if (wb) wb.style.display = "none"; }, wait); }
 }
 function btlWin() {
   if (!BTL || BTL.ended) return; BTL.ended = true;
@@ -4262,12 +4266,26 @@ function btlWin() {
   const g = Math.round(spiritRate() * FIGHT_SP_W);
   const ge = Math.round(rateNow() * FIGHT_EXP_W);
   state.spirit += g; state.exp += ge;
-  // 参考"每战必掉装备": 掉落一件同级法宝(品质概率), 走自动择优穿戴
-  try { const dr = makeArt(); smartEquip(dr); } catch (e) {}
+  // 参考"每战必掉装备": 掉落一件同级法宝(品质概率), 走自动择优穿戴, 并在结算战报展示
+  let dropInfo = "";
+  try {
+    const dr = makeArt();
+    const arts = state.arts || [];
+    const idx = (typeof dr.slot === "number" && dr.slot < 4) ? dr.slot : arts.length;
+    const before = arts[idx];
+    const preLen = arts.length;
+    smartEquip(dr);
+    const now = (state.arts || [])[idx];
+    const qn = (QUALITY[dr.q] || QUALITY[0]).name;
+    const slotN = SLOT_TYPES[idx] ? SLOT_TYPES[idx].n : "";
+    if (preLen < 4 && idx >= preLen || !before) dropInfo = `　拾获 <b class="r">「${dr.name}」</b>（${qn}·${slotN}）—— 阿青已替你收进藏宝阁。`;
+    else if (now === dr) dropInfo = `　拾获 <b class="r">「${dr.name}」</b>（${qn}·${slotN}）胜过旧佩，自动换上。`;
+    else dropInfo = `　拾获 <b class="r">「${dr.name}」</b>（${qn}·${slotN}）不及身上所佩，阿青熔作灵石。`;
+  } catch (e) {}
   pushMsg("main", `你击退 <span class="r">${m.n}</span>，<span class="g">+${fmt(g)} 灵石</span>、修为+<span class="g">${fmt(ge)}</span>。`);
   addJournal({ key: "bt-" + Date.now(), big: realm().big, kind: "纪事", title: "斗法 · 退" + m.n,
     text: `你于${warZone().name}巡猎，遇 ${m.n} 拦路，施「${(SKILLS[BTL.big] || SKILLS[SKILLS.length - 1])[0]}」「${(SKILLS[BTL.big] || SKILLS[SKILLS.length - 1])[1]}」数合将其击退，捡得灵石 ${fmt(g)}。` });
-  warEnd(`妖雾散尽 · 斗法得胜! 灵石 <b>+${fmt(g)}</b>，修为 +${fmt(ge)}`);
+  warEnd(`妖雾散尽 · 斗法得胜! 灵石 <b>+${fmt(g)}</b>，修为 +<b>${fmt(ge)}</b>`, "win", dropInfo);
   traceSay(`你击退 ${m.n}，<b>+${fmt(g)} 灵石</b>`);
   const wait = (BTL && BTL.skip) ? 2400 : 3800;
   setTimeout(() => { if (BTL) { BTL = null; huntNext(); traceRefresh(); save(); cloudSoon(); } }, wait);
