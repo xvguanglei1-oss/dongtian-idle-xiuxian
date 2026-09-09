@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.12";
+const GAME_VER = "v1.7.13";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3181,25 +3181,18 @@ function keepArtQuiet(a) {          // 静默版 smartEquip: 批量结算不发�
  * 让离线胜率 ≈ 在线每境稳态 80~95% 而非旧"中值怪+固定4%翻车" */
 function offlineFightWin(big) {
   const lv = (state.realmIdx || 0) + 1, eb = equipBonus();
-  const php = 100 + 425 * lv + eb.hp, patk = 10 + 58 * lv + eb.atk, pdef = 5 + 33 * lv + eb.def;
-  const hp = Math.round((250 + Math.random() * 400) * lv);
-  const atk = Math.round((60 + Math.random() * 105) * lv * (MON_ATK_SCALE[big] || 1));
-  const def = Math.max(1, Math.round((1 + Math.random() * 14) * lv));
-  let mhp = hp, hphp = php, round = 0;
+  const hs = finalStats({ hp: 100 + 330 * lv, atk: 10 + 46 * lv, def: 5 + 26 * lv },
+    { hp: eb.hp || 0, atk: eb.atk || 0, def: eb.def || 0 }, eb.agg);
+  const mon = genMonster(big, lv);                        // 同在线同式(含词缀妖兽)
+  const ms = finalStats({ hp: mon.hp, atk: mon.atk, def: mon.def }, {}, fxAgg(mon.fx ? [mon] : []));
+  let mhp = ms.hp, hphp = hs.hp, round = 0;
   while (true) {
     round++;
-    if (Math.random() >= 0.05) {                          // 5% 闪空
-      let dmg = Math.max(1, Math.round((patk - def) * (0.85 + Math.random() * 0.3)));
-      if (Math.random() < 0.10) dmg = Math.round(dmg * 1.6);
-      mhp -= dmg;
-      if (mhp <= 0) return true;
-    }
-    if (Math.random() >= 0.07) {                          // 7% 妖闪空
-      let d = Math.max(1, Math.round((atk - pdef) * (0.85 + Math.random() * 0.3)));
-      hphp -= d;
-      if (hphp <= 0) return false;
-    }
-    if (round > 200) return hphp > mhp;
+    const sh = tryStrike(hs.atk, hs, ms.def, ms.dodge);   // 玩家出手(会心/暴击/破甲同在线)
+    if (!sh.miss) { mhp -= sh.dmg; if (mhp <= 0) return true; }
+    const sf = tryStrike(ms.atk, ms, hs.def, hs.dodge);   // 妖兽还手
+    if (!sf.miss) { hphp -= sf.dmg; if (hphp <= 0) return false; }
+    if (round > 300) return hphp > mhp;
   }
 }
 function huntOffline(dtSec) {
@@ -4113,24 +4106,29 @@ function fireEvent() {                // 遇事分发: 八成妖兽伏击, 两�
   seekHide();                          // 妖已现踪 → 收起搜寻提示
   _encNext = Date.now() + 3600 * 1000; // 占位保险: 真正的下一波时刻由收场时(搜寻)重设
   if (Math.random() < HUNT_FIGHT_RATE) fireFight(); else fireMyst();
-}
-function fireFight() {                // 主身斗法: 不再借化身行迹, 出洞天巡猎遇妖
+}function fireFight() {                // 主身斗法: 不再借化身行迹, 出洞天巡猎遇妖
   if (BTL) return;
   const z = warZone();
   const big = z.big;
   const lv = (state.realmIdx || 0) + 1;              // 同尺: 怪=你的境界级
   const mon = genMonster(big, lv);
   const eb = equipBonus();
-  /* 主身三围 = 基础(随 lv 线性, 懒人免加点——折算参考"每级+3属性点自动分配") + 装备加总;
-     裸装对同尺中位怪约 8~12 合可胜, 有法宝 4~7 合, 每境稳态胜率约 80~95% */
-  const php = 100 + 425 * lv + eb.hp;
-  const patk = 10 + 58 * lv + eb.atk;
-  const pdef = 5 + 33 * lv + eb.def;
-  BTL = { mon, big, lv, turn: 0, round: 0, php, phpMax: php, patk, pdef, mhp: mon.hp, mhpMax: mon.hp, logs: [], ended: false, skip: false };
+  /* 主身三围(装备为属性主力): 裸身线性已收小, 装备数值+词条乘区为主要来源;
+     裸装能过凡人, 之后战力由掉落与词条驱动 */
+  const hs = finalStats({ hp: 100 + 330 * lv, atk: 10 + 46 * lv, def: 5 + 26 * lv },
+    { hp: eb.hp || 0, atk: eb.atk || 0, def: eb.def || 0 }, eb.agg);
+  const ms = finalStats({ hp: mon.hp, atk: mon.atk, def: mon.def }, {}, fxAgg(mon.fx ? [mon] : []));
+  BTL = { mon, ms, monNm: mon.n, big, lv, turn: 0, round: 0,
+    php: hs.hp, phpMax: hs.hp, patk: hs.atk, pdef: hs.def,
+    crit: hs.crit, critB: hs.critB, critD: hs.critD, pen: hs.pen, dodge: hs.dodge, life: hs.life,
+    mhp: ms.hp, mhpMax: ms.hp,
+    logs: [], ended: false, skip: false };
+  let mTag = "";
+  if (mon.fx && mon.fx.length) mTag = "（凶煞：" + mon.fx.map(fmtFxTag).join(" · ") + "）";
   traceSay(`妖气扑面 —— 一头 <b>${mon.n}</b> 拦住去路，斗法已起!`);
-  warStart(`妖战`, `${mon.n} 拦住去路，龇牙低吼，妖风卷起一地枯叶。`);
+  warStart(`妖战`, `${mon.n} 拦住去路，龇牙低吼，妖风卷起一地枯叶。${mTag}`);
   SND.alert();                          // v1.7.9 横幅已上台再击战鼓, 保证"有声必有画"
-  pushMsg("main", `妖气骤起!你行至<span class="r">${z.name}</span>一带巡山，撞见一头 ${mon.n}，你来我往斗了起来。`);
+  pushMsg("main", `妖气骤起!你行至<span class="r">${z.name}</span>一带巡山，撞见一头 ${mon.n}${mTag}，你来我往斗了起来。`);
   const fl = $("flash"); if (fl) { fl.style.transition = "none"; fl.style.opacity = .38; void fl.offsetWidth; fl.style.transition = "opacity .6s ease"; fl.style.opacity = "0"; }
   btlRun();
 }
@@ -4151,55 +4149,72 @@ async function btlRun() {
 function warSkip() {
   if (!BTL || BTL.ended || BTL.skip) return;
   BTL.skip = true;
-  const m = BTL.mon;
   const btn = $("warSkipBtn"); if (btn) btn.style.opacity = ".45";
   for (let n = 0; n < 200000 && BTL && !BTL.ended; n++) {
-    if (Math.random() >= 0.05) {
-      let d = Math.max(1, Math.round((BTL.patk - m.def) * (0.85 + Math.random() * 0.3)));
-      if (Math.random() < 0.10) d = Math.round(d * 1.6);
-      BTL.mhp = Math.max(0, BTL.mhp - d);
-      if (BTL.mhp <= 0) { btlWin(); return; }
-    }
-    if (Math.random() >= 0.07) {
-      let d = Math.max(1, Math.round((m.atk - BTL.pdef) * (0.85 + Math.random() * 0.3)));
-      BTL.php = Math.max(0, BTL.php - d);
-      if (BTL.php <= 0) { btlLose(); return; }
-    }
+    const stH = tryStrike(BTL.patk, BTL, BTL.ms.def, BTL.ms.dodge);   // 玩家出手
+    if (!stH.miss) { BTL.mhp = Math.max(0, BTL.mhp - stH.dmg); if (BTL.mhp <= 0) { btlWin(); return; } }
+    const stF = tryStrike(BTL.ms.atk, BTL.ms, BTL.pdef, BTL.dodge);   // 妖兽还手
+    if (!stF.miss) { BTL.php = Math.max(0, BTL.php - stF.dmg); if (BTL.php <= 0) { btlLose(); return; } }
   }
   if (BTL && !BTL.ended) (BTL.mhp <= BTL.php ? btlWin() : btlLose());
 }
-window.warSkip = warSkip;
+window.warSkip = warSkip;/* v1.7.13 通用判定: 命中(闪避→落空) → 破甲(无视目标防御%) → 会心(×1.5)/暴击(×2.0) → 爆伤增幅 */
+function tryStrike(atk, sAtk, tDef, tDodge) {
+  const dodgeCh = 0.04 + ((tDodge || 0)) / 100;           // 基础脱手4% + 目标闪避
+  if (Math.random() < dodgeCh) return { miss: true, dodge: (tDodge || 0) > 0 };
+  const pen = (sAtk.pen || 0) / 100;
+  const defEff = tDef * (1 - pen);
+  let dmg = Math.max(1, Math.round((atk - defEff) * (0.85 + Math.random() * 0.3)));
+  let kind = null;
+  const r = Math.random();
+  if ((sAtk.critB || 0) / 100 >= r) kind = "critB";
+  else if ((sAtk.crit || 0) / 100 >= Math.random()) kind = "crit";
+  const cd = 1 + (sAtk.critD || 0) / 100;
+  if (kind === "critB") dmg = Math.round(dmg * 2 * cd);
+  else if (kind === "crit") dmg = Math.round(dmg * 1.5 * cd);
+  return { miss: false, kind, dmg, pen: (sAtk.pen || 0) > 0 };
+}
 async function btlHeroAct() {
   if (!BTL || BTL.ended) return;
   const si = (BTL.turn++ % 2), pool = SKILLS[BTL.big] || SKILLS[SKILLS.length - 1], name = pool[si];
-  const m = BTL.mon;
-  const miss = Math.random() < 0.05;
+  const monNm = BTL.monNm;
   /* ① 出招瞬现 + 呼啸即刻起(不等文字), ② 稍顿 ③ 命中判定与音效/受创文字 */
   btlNow(`⚡ 你使出「${name}」`, "cast"); SND.swing();   // cast: 技能行专属色
   if (!BTL.skip) await slp(300);
-  if (miss) { btlLog(`…… 却见${m.n} 侧身一闪，你这一式落空。`); }
-  else {
-    let dmg = Math.max(1, Math.round((BTL.patk - m.def) * (0.85 + Math.random() * 0.3)));
-    const crit = Math.random() < 0.10;
-    if (crit) { dmg = Math.round(dmg * 1.6); SND.crit(); } else SND.hit();   // v1.7.3 打击反馈(瞬时)
-    BTL.mhp = Math.max(0, BTL.mhp - dmg);
+  const st = tryStrike(BTL.patk, BTL, BTL.ms.def, BTL.ms.dodge);
+  if (st.miss) {
+    btlLog(st.dodge
+      ? `「<b class="dodge">闪避!</b>」${monNm} 身形一晃，你这一击落空。`
+      : `…… ${monNm} 侧身一闪，你落空了。`);
+  } else {
+    BTL.mhp = Math.max(0, BTL.mhp - st.dmg);
+    SND.crit();   // 命中统一"扎实"音(区分度已由画面/文案承担)
+    const lead = st.kind === "critB" ? `<b class="critb">暴击!</b> ` : st.kind === "crit" ? `<b class="crit">会心!</b> ` : st.pen ? `<b class="w">破甲</b> ` : "";
     fieldLine();
-    btlLog(`${crit ? "◇ 正中要害、会心一击！" : ""}<b class="r">${m.n}</b> 受创 <b class="r">${dmg}</b> 点。`);   // v1.7.12 血条已示剩余, 只报伤害
+    btlLog(`${lead}<b class="r">${monNm}</b> 受创 <b class="r">${st.dmg}</b> 点。`);
+    if (BTL.life > 0) {
+      const heal = Math.round(st.dmg * BTL.life / 100);
+      if (heal > 0) { BTL.php = Math.min(BTL.phpMax, BTL.php + heal); fieldLine(); }
+    }
   }
   fieldLine();
   if (BTL.mhp <= 0) { btlWin(); }
 }
 async function btlFoeAct() {
   if (!BTL || BTL.ended) return;
-  const m = BTL.mon;
-  if (Math.random() < 0.07) { btlLog(`${m.n} 猛地扑来，你侧身避开，溅起一地尘土。`); }
-  else {
-    let d = Math.max(1, Math.round((m.atk - BTL.pdef) * (0.85 + Math.random() * 0.3)));
-    btlNow(`${m.n} 反扑而至！`); SND.swing();               // 敌袭也先有声有影
+  const monNm = BTL.monNm;
+  const st = tryStrike(BTL.ms.atk, BTL.ms, BTL.pdef, BTL.dodge);
+  if (st.miss) {
+    btlLog(st.dodge
+      ? `「<b class="dodge">闪避!</b>」你侧身一晃，${monNm} 扑了个空。`
+      : `${monNm} 猛地扑来，你侧身避开，溅起一地尘土。`);
+  } else {
+    btlNow(`${monNm} 反扑而至！`); SND.swing();               // 敌袭也先有声有影
     if (!BTL.skip) await slp(240);
-    BTL.php = Math.max(0, BTL.php - d); SND.hurt();         // v1.7.3 受击反馈(瞬时)
+    BTL.php = Math.max(0, BTL.php - st.dmg); SND.hurt();      // 受击反馈(瞬时)
+    const lead = st.kind === "critB" ? `<b class="critb">暴击!</b> ` : st.kind === "crit" ? `<b class="crit">会心!</b> ` : st.pen ? `<b class="w">破甲</b> ` : "";
     fieldLine();
-    btlLog(`　你受创 <b class="r">${d}</b> 点。`);   // v1.7.12 同上, 剩余由血条实时显示
+    btlLog(`　${lead}你受创 <b class="r">${st.dmg}</b> 点。`);
   }
   fieldLine();
   if (BTL.php <= 0) { btlLose(); }
@@ -4436,14 +4451,15 @@ window.debugEncounter = debugEncounter;     // 仅控制台可用, 界面不再�
    被换旧件熔回灵石; 同品质只要综合分更高也允许替换 → 装备随境界刷新不再冻结 */
 function artScore(a) { return (a.a || 0) + 3 * (a.d || 0) + (a.h || 0) / 30; }   // 同槽排序用的综合分
 let _eqRecycle = [];
-function equipBonus() {                 // 斗法三维 = 六槽装备属性加总(参考加法)
+function equipBonus() {                 // 装备数值加总 + 词条聚合(v1.7.13)
   let atk = 0, def = 0, hp = 0;
-  for (const a of (state.arts || [])) {
+  const arts = state.arts || [];
+  for (const a of arts) {
     if (typeof a.a === "number") atk += a.a;
     if (typeof a.d === "number") def += a.d;
     if (typeof a.h === "number") hp += a.h;
   }
-  return { atk, def, hp };
+  return { atk, def, hp, agg: fxAgg(arts) };
 }
 function smartEquip(a) {
   const arts = state.arts || [];
@@ -4482,27 +4498,33 @@ function renderEquip() {
   const eb = equipBonus();
   const arr = (state.arts || []).slice(-6);
   let cells = "";
+  const fxCls = { atk:"fx-atk", hp:"fx-hp", dfn:"fx-dfn", crit:"fx-crit", critB:"fx-critb", critD:"fx-critd", pen:"fx-pen", dodge:"fx-dodge", life:"fx-life" };
+  const fxNames = { atk:"攻击", hp:"生命", dfn:"防御", crit:"会心", critB:"暴击", critD:"爆伤", pen:"破甲", dodge:"闪避", life:"吸血" };
   for (let i = 0; i < 4; i++) {
     const a = arr[i];
     if (!a) { cells += `<div class="eq-cell empty"><span class="eq-cn dim">空位</span></div>`; continue; }
     const q = QUALITY[a.q] || QUALITY[0];
     const tn = SLOT_TYPES[i].n;
+    const fxLine = (a.fx || []).length
+      ? `<div class="eq-fx">${a.fx.map(f => `<span class="f ${fxCls[f.k] || ""}">${fxNames[f.k]}<b>+${f.v}%</b></span>`).join("")}</div>` : "";
     cells += `<div class="eq-cell qc${a.q}">
-      <span class="eq-ql ${q.cls}">${q.name} · ${tn}</span>
-      <span class="eq-cn">${a.name}</span>
-      <span class="eq-cm">修为×${a.mult.toFixed(2)}</span>
-      <span class="eq-bt">攻+${a.a||0} 防+${a.d||0} 血+${a.h||0}</span>
-      ${(a.fx||[]).length ? `<span class="eq-fx">${a.fx.map(f => `·${f.n}(+${f.pct}%)`).join(" ").replace(/^·/,"")}</span>` : ""}
+      <div class="eq-ql ${q.cls}">${q.name} · ${tn}</div>
+      <div class="eq-cn">${a.name}</div>
+      <div class="eq-bt">攻 <b>${a.a||0}</b> · 防 <b>${a.d||0}</b> · 血 <b>${a.h||0}</b></div>
+      ${fxLine}
     </div>`;
   }
+  const agg = eb.agg || {};
+  const aggKeys = [["crit","会心"],["critB","暴击"],["critD","爆伤"],["pen","破甲"],["dodge","闪避"],["life","吸血"],["atk","攻击%"],["hp","生命%"],["dfn","防御%"]];
+  const aggTxt = aggKeys.filter(([k]) => agg[k]).map(([k, n]) => `<span class="a ${fxCls[k] || ""}">${n} <b>+${agg[k]}%</b></span>`).join("");
   const rec = _eqRecycle.length ? `<div class="eq-rec">近记：${_eqRecycle.join(" · ")}</div>` : "";
   box.innerHTML = `
     <div class="eq-sum">
-      <span>修为加成 <b>×${artMult().toFixed(2)}</b></span>
-      <span>斗法 <b>攻+${eb.atk}</b> <b>防+${eb.def}</b> <b>血+${eb.hp}</b></span>
+      <div class="row1">修为加成 <b>×${artMult().toFixed(2)}</b> · 装备 <b>攻+${eb.atk}</b> <b>防+${eb.def}</b> <b>血+${eb.hp}</b></div>
+      <div class="row2">${aggTxt || "<span class='a dim'>暂无词条</span>"}</div>
     </div>
     <div class="eq-grid">${cells}</div>
-    <div class="eq-note">阿青出炉新宝会自动择优：胜过六件中最弱一件才换上，旧件熔回灵石；<br>不如身上所佩的，当场炼作灵石。全程无需你费心。</div>
+    <div class="eq-note">阿青出炉新宝会自动择优：胜过身上最弱一件才换上，旧件熔回灵石；<br>词条(会心/暴击/爆伤/破甲/闪避/吸血/攻防血%)已并入战斗结算，逐条见上。</div>
     ${rec}`;
 }
 
@@ -4514,12 +4536,11 @@ function renderEquip() {
    ② 装备基础量纲约缩小 1/5; ③ 怪物中位血约 450×lv(原 300×lv 中位);
    ④ 妖兽按大境界(12 档)系数强化, 配合境界装备解锁曲线;
    ⑤ 自动择优改为"同槽按斗法综合分比较, 同品质也可择优替换"(修复装备等级冻结)。
-   装备属性 = 随机基础 × 境界级 lv × 品质乘子 QM; 品质概率 50/20/15/9/5/1 */
-function eqMult(q) { return [1.15, 1.35, 1.6, 1.9, 2.25, 2.7][q] || 1.15; }  // q0..q5 属性乘子(平缓化)
+   装备属性 = 随机基础 × 境界级 lv × 品质乘子 QM; 品质概率 50/20/15/9/5/1 */function eqMult(q) { return [1.15, 1.35, 1.6, 1.9, 2.25, 2.7][q] || 1.15; }  // q0..q5 属性乘子(平缓化)
 /* 妖兽境界难度系数: 高境界妖兽攻按档强化(配合每境法宝档位, 使 12 境胜率同落 80~95%) */
 /* 凡人(第一项): 开局 1~2 分钟即入炼气 —— 只需保证"基本必过、打几场就有装备"。
  * 原 1.15 裸装胜率仅~48%(可能开局卡手); 0.8 → 裸装~82%、有一二件即 96%+, 受击中位~45 有痛感不劝退。 */
-const MON_ATK_SCALE = [0.8, 0.94, 1, 1.1127, 1.2216, 1.225, 1.2636, 1.23, 1.24, 1.1943, 1.25, 1.2413];
+const MON_ATK_SCALE = [0.85, 1.34, 1.52, 1.6727, 1.9816, 2.025, 2.0636, 2.07, 2.12, 2.0743, 2.05, 2.0413];  // v1.7.13 带装接力校准(70~90宽带, 凡人必过)
 const SLOT_TYPES = [                                        // 四部位(参考): 兵/护/佩/诀
   { n: "兵器", k: "w" }, { n: "护体", k: "a" },
   { n: "灵佩", k: "p" }, { n: "功法", k: "s" },
@@ -4534,47 +4555,95 @@ function artName(kind, q) {
   const P = kind === "a" ? ARMOR_POOL : kind === "p" ? PEND_POOL : SCROLL_POOL;
   return P[Math.floor(Math.random() * P.length)];
 }
-/* v1.7.12 法宝词条: 按品质出 1~2 条, 词条为主属性加百分比(已计入 a/h/d 数值), 面板逐条展示 */
-const ART_FX = {
-  w: ["锋锐", "破军", "流刃", "穿云"],
-  a: ["磐石", "归元", "镇岳", "灵犀"],
-  p: ["辟邪", "聚灵", "通明", "守心"],
-  s: ["凌虚", "抱一", "藏锋", "焚寂"],
+/* ============ v1.7.13 属性词条系统(市面通用命名, 装备为属性主力) ============
+ * 词条(整数 %):
+ *   攻击/生命/防御  —— 对玩家(或怪物)该项总属性乘区加百分比
+ *   会心(触发×1.5) 暴击(触发×2.0) 爆伤(会心/暴击乘区内增幅)
+ *   破甲(无视目标防御%) 闪避(被击闪避率) 吸血(造成伤害回复%)
+ * 品质决定词条条数与数值档位(高品 3~4 条、数值更高); 怪物复用同一属性库(词缀妖兽)。
+ * 主身裸身基础已收小, 输出面以"装备数值 + 词条乘区"为主 —— 跨境界由怪攻系数带校准。 */
+const FX_TXT = {
+  atk: "攻击", hp: "生命", dfn: "防御", crit: "会心", critB: "暴击",
+  critD: "爆伤", pen: "破甲", dodge: "闪避", life: "吸血",
 };
-const FX_MAIN = { w: "a", a: "h", p: "h", s: "a" };   // 词条加成主属性(攻/血 各归其位)
-function artFx(art, kind, q) {
-  const pool = ART_FX[kind] || ART_FX.w;
-  const n = (q >= 5 && Math.random() < 0.6) || (q < 5 && Math.random() < 0.18) ? 2 : 1;   // 双词条偏稀有
-  art.fx = [];
-  const used = [];
-  for (let i = 0; i < n; i++) {
-    let nm;
-    do { nm = pool[(Math.random() * pool.length) | 0]; } while (used.includes(nm) && used.length < pool.length);
-    used.push(nm);
-    const pct = 2 + Math.round(Math.random() * 2) + (q >= 3 ? 1 : 0);   // q0:2~4% … q5:3~6%(微调, 不动平衡)
-    const key = FX_MAIN[kind];
-    const base = art[key] || 0;
-    art[key] = Math.round(base + base * pct / 100);
-    art.fx.push({ n: nm, pct });
-  }
+const FX_POOL = {
+  w: ["atk", "crit", "critB", "critD", "pen", "life"],
+  s: ["atk", "crit", "critB", "critD", "pen", "life"],
+  a: ["hp", "dfn", "dodge", "crit", "critD", "life"],
+  p: ["hp", "dfn", "dodge", "crit", "critD", "life"],
+};
+const MON_FX_POOL = ["atk", "hp", "dfn", "crit", "critB", "critD", "pen", "dodge", "life"];
+function fxCount(q) { let n = ([1, 1, 2, 2, 3, 3][q] || 1); if (q >= 2 && Math.random() < 0.35) n++; return Math.min(4, n); }
+function fxValue(key, q) {
+  const t = q >= 3, r = Math.random;
+  if (key === "atk" || key === "hp" || key === "dfn") return 3 + ((r() * 3) | 0) + (t ? 2 : 0);  // 3~7%
+  if (key === "crit") return (t ? 2 : 1) + ((r() * 2) | 0);                                    // 1~3
+  if (key === "critB") return (t ? 5 : 3) + ((r() * 3) | 0);                                   // 3~7
+  if (key === "critD") return (t ? 10 : 6) + ((r() * 5) | 0);                                  // 6~14%
+  if (key === "pen") return (t ? 4 : 2) + ((r() * 3) | 0);                                     // 2~6%
+  if (key === "dodge") return (t ? 2 : 1) + ((r() * 2) | 0);                                   // 1~3
+  return (t ? 2 : 1) + (r() < 0.5 ? 1 : 0);                                                    // 1~2
 }
-function attrAssign(art, kind, q, lv) {          // 基础量纲 ≈ 旧版 1/5(旧: 兵攻10~50/护血100~400/佩血40~160/诀攻6~24 …)
+function rollFx(kind, q) {                          // 装备词条(同槽不重复)
+  const pool = (FX_POOL[kind] || FX_POOL.w).slice();
+  const n = fxCount(q);
+  const f = [];
+  for (let i = 0; i < n && pool.length; i++) {
+    const key = pool.splice((Math.random() * pool.length) | 0, 1)[0];
+    f.push({ k: key, v: fxValue(key, q) });
+  }
+  return f;
+}
+function rollMonFx(big) {                           // 词缀妖兽: ~12% 带 1~2 条(同前轴, 数值随境略抬)
+  if (Math.random() >= 0.12) return [];
+  const pool = MON_FX_POOL.slice();
+  const n = Math.random() < 0.4 ? 2 : 1;
+  const f = [];
+  for (let i = 0; i < n && pool.length; i++) {
+    const key = pool.splice((Math.random() * pool.length) | 0, 1)[0];
+    f.push({ k: key, v: fxValue(key, Math.min(5, big)) });
+  }
+  return f;
+}
+function fxAgg(fxs) {                               // 汇总多条装备(或怪物)词条为总属性增量
+  const o = { atk: 0, hp: 0, dfn: 0, crit: 0, critB: 0, critD: 0, pen: 0, dodge: 0, life: 0 };
+  for (const a of (fxs || [])) for (const f of (a.fx || [])) if (o[f.k] != null) o[f.k] += f.v;
+  return o;
+}
+function fmtFxTag(f) { return `${FX_TXT[f.k]}+${f.v}%`; }
+/* 属性乘区合并: baseBase=裸身线性值, flat=装备数值, agg=词条汇总 —— 输出最终面板战斗属性 */
+function finalStats(base, flat, agg) {
+  const pct = x => (1 + ((agg && agg[x]) || 0) / 100);
+  const cap = (x, c) => Math.min(c, Math.max(0, x));
+  return {
+    hp: Math.max(10, Math.round((base.hp + (flat.hp || 0)) * pct("hp"))),
+    atk: Math.max(1, Math.round((base.atk + (flat.atk || 0)) * pct("atk"))),
+    def: Math.max(0, Math.round((base.def + (flat.def || 0)) * pct("dfn"))),
+    crit: (agg && agg.crit) || 0, critB: (agg && agg.critB) || 0,
+    critD: (agg && agg.critD) || 0, pen: (agg && agg.pen) || 0,
+    dodge: cap((agg && agg.dodge) || 0, 45), life: (agg && agg.life) || 0,
+  };
+}
+function attrAssign(art, kind, q, lv) {          // 装备数值(随境界级×品质乘子) + 词条
   const M = eqMult(q);
   const r1 = Math.random(), r2 = Math.random(), r3 = Math.random();
-  if (kind === "w") { art.a = Math.max(1, Math.round((2 + r1 * 8) * lv * M)); art.h = 0; art.d = 0; }
-  else if (kind === "a") { art.h = Math.round((20 + r1 * 60) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 8) * lv * M)); art.a = 0; }
-  else if (kind === "p") { art.h = Math.round((8 + r1 * 24) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 3) * lv * M)); art.a = Math.round((0.8 + r3 * 2.4) * lv * M); }
-  else { art.a = Math.round((1.2 + r1 * 3.6) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 3) * lv * M)); art.h = 0; }
-  artFx(art, kind, q);
+  if (kind === "w") { art.a = Math.max(1, Math.round((4 + r1 * 15) * lv * M)); art.h = 0; art.d = 0; }
+  else if (kind === "a") { art.h = Math.round((38 + r1 * 114) * lv * M); art.d = Math.max(1, Math.round((2 + r2 * 15) * lv * M)); art.a = 0; }
+  else if (kind === "p") { art.h = Math.round((15 + r1 * 46) * lv * M); art.d = Math.max(1, Math.round((2 + r2 * 6) * lv * M)); art.a = Math.round((1.5 + r3 * 4.5) * lv * M); }
+  else { art.a = Math.round((2.3 + r1 * 6.7) * lv * M); art.d = Math.max(1, Math.round((2 + r2 * 5) * lv * M)); art.h = 0; }
+  art.fx = rollFx(kind, q);
 }
-function genMonster(big, lv) {                   // 怪物 = 参考线性公式(随玩家境界级); 中位血≈450×lv
+function genMonster(big, lv) {                   // 妖兽: 基础线性 + 词缀(属性乘区/判定词条)
   const names = MON_NAMES[big] || MON_NAMES[0];
   const k = MON_ATK_SCALE[big] || 1;
-  return {
+  const m = {
     n: names[Math.floor(Math.random() * names.length)],
     hp: Math.round((250 + Math.random() * 400) * lv),
     atk: Math.round((60 + Math.random() * 105) * lv * k),
     def: Math.max(1, Math.round((1 + Math.random() * 14) * lv)),
   };
+  const fx = rollMonFx(big);
+  if (fx.length) { m.fx = fx; }
+  return m;
 }
 function hashRand(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }

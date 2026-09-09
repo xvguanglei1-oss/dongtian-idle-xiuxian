@@ -659,3 +659,21 @@
     45%{box-shadow:inset 0 0 0 3px rgba(220,235,255,.8),inset 0 0 120px rgba(160,200,255,.6)}}
   #cult.trib-glow{animation:cultTrib 1s ease-in-out}
   @keyframes cultTrib{0%,100%{filter:none}30%,60%{filter:drop-shadow(0 0 26px rgba(150,190,255,.85)) brightness(1.12)}}
+
+/* ============ v1.7.13 词条/判定高亮 + 装备面板 ============ */
+.wl b.crit{color:#ffd76a;font-weight:700;text-shadow:0 0 10px rgba(255,190,80,.55)}
+.wl b.critb{color:#ff9d4d;font-weight:700;font-size:13.5px;text-shadow:0 0 10px rgba(255,140,60,.6)}
+.wl b.dodge{color:#9db4cc;font-style:normal}
+.wl b.w{color:#9fc4ff}
+.eq-sum .row1{font-size:11px;color:#cbd5ea;margin-bottom:3px}
+.eq-sum .row2{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:10.5px}
+.eq-fx{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:3px}
+.eq-fx .f,.eq-sum .a{white-space:nowrap;padding:0 2px}
+.eq-fx .f b,.eq-sum .a b{font-weight:600}
+.fx-crit,.fx-critb{color:#ffce6e}
+.fx-crit b{color:#ffd76a}.fx-critb b{color:#ffb066}
+.fx-critd{color:#ffa07a}.fx-critd b{color:#ffb185}
+.fx-pen,.fx-atk{color:#8fc1ff}.fx-pen b{color:#a9d2ff}.fx-atk b{color:#a9d2ff}
+.fx-dodge{color:#8fe3ff}.fx-dodge b{color:#a8ecff}
+.fx-life{color:#9ff0c8}.fx-life b{color:#b6ffd9}
+.fx-hp,.fx-dfn{color:#d8e2a8}.fx-hp b{color:#e6efbe}.fx-dfn b{color:#e6efbe}
