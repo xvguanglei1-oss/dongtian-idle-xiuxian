@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.21";
+const GAME_VER = "v1.7.22";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3596,47 +3596,62 @@ function travelBtnLbl() {
     b.title = l ? "化身正于 " + l.n : "化身在外游历";
   } else { lb.innerHTML = "云游"; b.classList.remove("traveling"); b.title = ""; }
 }
-function openTravel() {
-  const m = $("travelModal"); if (!m) return;
-  const box = $("travelBody"); if (!box) return;
-  // 行囊材料盘点（全部已知材料，0 则为暗色）
+function travelAvatarHTML() {
+  if (state.travel) {
+    const l = locById(state.travel.loc);
+    const z = zoneOfLoc(state.travel.loc);
+    const sinceMin = Math.floor((Date.now() - state.travel.since) / 60000);
+    return `<div style="text-align:center;padding:14px 4px">
+        <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${Math.max(0, sinceMin)}分钟</div>
+        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>化身在外会不时<b style="color:#c9b98a">寄回手札</b>，捎来的药草、灵石与丹方残页都进了丹房行囊。<br>真见了大世面才肯回来。</p>
+        <div style="font-size:10.5px;color:#6d7688;margin-top:8px">开炉炼丹与服丹，请去左上角 <b style="color:#a98a5a">丹</b> 房。</div></div>`;
+  }
+  const z = zoneOfBig(bigIdx());
+  const placeNames = z.locs.map(x => x.n).join("、");
+  return `<div style="padding:10px 4px 14px;text-align:center;border-bottom:1px dashed rgba(201,168,106,.16)">
+      <div style="font-family:var(--font-brush);font-size:16px;color:#d8b06a;letter-spacing:.06em">${z.name}</div>
+      <p style="color:#8b94a8;font-size:11.5px;margin-top:6px;line-height:1.9">化身会顺着自己的心意，在 ${placeNames} 一带游历。<br>归期大约 ${durTxt(z.dur[0])} 到 ${durTxt(z.dur[1])}，无需盘缠。</p>
+      <button class="btn" style="margin-top:10px" onclick="startTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">遣化身出门</span></button>
+    </div>
+    <div style="font-size:10.5px;color:#6d7688;text-align:center;padding:10px 4px;line-height:1.8">拾得的药草与丹方残页会进<b style="color:#a98a5a">丹房</b>行囊，随时可开炉炼丹。</div>`;
+}
+/* v1.7.22: 炼丹独立成【丹房】(原嵌在云游面板内) —— 材料/丹药/开炉集中于此 */
+function matBagHTML() {
   const matChips = Object.keys(MATS).map(k => {
     const has = (state.mats || {})[k] || 0;
     return `<span style="color:${has > 0 ? "#c9b98a" : "#4b5468"}">${MATS[k].n}${has > 0 ? "×" + has : ""}</span>`;
   }).join("　");
-  const bagHtml = `<div style="font-size:11px;color:#9aa5ba;margin:10px 0 2px">行囊</div>
+  return `<div style="font-size:11px;color:#9aa5ba;margin:4px 0 2px">行囊 · 药草灵石</div>
     <div style="font-size:11.5px;line-height:2">${matChips || ""}</div>`;
-  // 丹药匣
+}
+function pillCabinetHTML() {
   const pk = Object.keys(state.pills || {});
   const pillRow = (pk.length ? pk.map(id => {
     const rp = RECIPES[id];
     return `<span style="display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(201,168,106,.3);border-radius:4px;padding:3px 8px;margin:2px;font-size:11px;color:#e8d6a4" title="${rp.d}">${rp.n}×${state.pills[id]}<button class="cp-btn" style="color:#a88" onclick="consumePill('${id}')">服</button></span>`;
   }).join("") : `<span style="color:#6d7688;font-size:11px">尚无丹药</span>`);
-  if (state.travel) {
-    const l = locById(state.travel.loc);
-    const z = zoneOfLoc(state.travel.loc);
-    const sinceMin = Math.floor((Date.now() - state.travel.since) / 60000);
-    box.innerHTML = `<div style="font-size:11px;color:#9aa5ba;margin-bottom:6px">丹药匣</div>
-      <div style="margin-bottom:10px">${pillRow}</div>
-      ${bagHtml}
-      <div style="text-align:center;padding:14px 4px">
-        <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${Math.max(0, sinceMin)}分钟</div>
-        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>化身在外会不时<b style="color:#c9b98a">寄回手札</b>，捎来途中所得；真见了大世面才肯回来。<br>阿青守着洞天，等你哪一日归来。</p></div>`;
-  } else {
-    const z = zoneOfBig(bigIdx());
-    const placeNames = z.locs.map(x => x.n).join("、");
-    box.innerHTML = `<div style="padding:10px 4px 14px;text-align:center;border-bottom:1px dashed rgba(201,168,106,.16)">
-        <div style="font-family:var(--font-brush);font-size:16px;color:#d8b06a;letter-spacing:.06em">${z.name}</div>
-        <p style="color:#8b94a8;font-size:11.5px;margin-top:6px;line-height:1.9">化身会顺着自己的心意，在 ${placeNames} 一带游历。<br>归期大约 ${durTxt(z.dur[0])} 到 ${durTxt(z.dur[1])}，无需盘缠。</p>
-        <button class="btn" style="margin-top:10px" onclick="startTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">遣化身出门</span></button>
-      </div>
-      ${bagHtml}
-      <div style="font-size:11px;color:#9aa5ba;margin:12px 0 6px">丹药匣</div>
-      <div style="margin-bottom:10px">${pillRow}</div>
-      ${craftAreaHTML()}`;
-  }
+  return `<div style="font-size:11px;color:#9aa5ba;margin:12px 0 2px">丹药匣（点“服”即用）</div>
+    <div style="margin-bottom:6px">${pillRow}</div>`;
+}
+function openTravel() {
+  const m = $("travelModal"); if (!m) return;
+  const box = $("travelBody"); if (!box) return;
+  box.innerHTML = travelAvatarHTML();
   m.classList.add("show");
   travelBtnLbl();
+}
+function openAlchemy() {
+  const m = $("alchemyModal"); if (!m) return;
+  const box = $("alchemyBody"); if (!box) return;
+  box.innerHTML = matBagHTML() + craftAreaHTML() + pillCabinetHTML();
+  m.classList.add("show");
+}
+function closeAlchemy() { const m = $("alchemyModal"); if (m) m.classList.remove("show"); }
+/* consumePill/craftPill 后只刷新当前打开的面板 */
+function refreshOpenPanel() {
+  const am = $("alchemyModal"), tm = $("travelModal");
+  if (am && am.classList.contains("show")) openAlchemy();
+  else if (tm && tm.classList.contains("show")) openTravel();
 }
 function closeTravel() { const m = $("travelModal"); if (m) m.classList.remove("show"); }
 function startTravel() {
@@ -3659,7 +3674,7 @@ function consumePill(id) {
   else if (e.k === "inst") { const gg = rateNow() * e.sec; state.exp += gg; pushMsg("main", `药力化开，修为<span class="g">+${fmt(gg)}</span>`); }
   else if (e.k === "grand") { const gg = rateNow() * e.sec; state.exp += gg; state.buffs.push({ mult: e.mult, until: now + e.dur * 1000 }); pushMsg("main", `感悟天劫真意，修为<span class="g">+${fmt(gg)}</span>，道韵萦绕`); }
   else if (e.k === "offline") { state.offlineBoostUntil = Math.max(state.offlineBoostUntil || 0, now + e.dur * 1000); pushMsg("main", "洗髓伐脉，此后离线游历更有所得"); }
-  updateHUD(); save(); cloudSoon(); openTravel(); renderPillHints();
+  updateHUD(); save(); cloudSoon(); refreshOpenPanel(); renderPillHints();
 }
 function renderPillHints() {
   const now = Date.now();
@@ -3744,7 +3759,7 @@ function craftPill(id) {
   state.pills[id] = (state.pills[id] || 0) + 1;
   pushMsg("main", `丹炉开火，一炉<span class="r">${rp.n}</span>成了，药香满室。`);
   pushMsg("avatar", `阿青闻到药香，在丹炉边蹲成一团，尾巴尖轻轻晃`);
-  save(); cloudSoon(); updateHUD(); openTravel();
+  save(); cloudSoon(); updateHUD(); refreshOpenPanel();
 }
 
 
