@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.9";
+const GAME_VER = "v1.7.10";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -105,6 +105,15 @@ const SND = (function () {
       /* v1.7.7 BGM: 不再依赖 HEAD 探测 —— 直接建 Audio 立即试播(允许时刷新即响),
        * 被浏览器拦截则等首次点击/按键再播; 文件缺失/解码错误会触发 error 自动停手, 不产生噪音重试 */
       _armBgm();
+      /* v1.7.10 手势唤醒: AudioContext 需在用户手势中 resume 才会出声。
+       * 若第一场遭遇发生在玩家还没点过页面时, 音效会整场静音(之后又正常) —— 表现为"时有时无";
+       * 这里在任意点击/按键/触摸/回到前台时都尝试恢复上下文, 确保一旦开始交互, 后续战斗必有音。 */
+      try {
+        const wake = () => { ac(); };
+        ["pointerdown", "keydown", "touchstart"].forEach(ev =>
+          document.addEventListener(ev, wake, { passive: true }));
+        document.addEventListener("visibilitychange", () => { if (!document.hidden) wake(); });
+      } catch (e) {}
     },
   };
 })();
