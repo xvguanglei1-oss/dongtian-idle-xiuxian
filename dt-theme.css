@@ -315,7 +315,8 @@
   #btnTravel.traveling{color:#dce7f8}
   #btnTravel .ink{fill:rgba(86,148,128,.5);stroke:rgba(150,230,205,.75)}
   #btnTravel{color:#cdeeda}
-  #pillHints{min-height:15px;font-size:10px;color:#9aa5ba;text-align:right;line-height:1.4}
+  /* v1.5.0: 空态不再占位(min-height 15→0), 有丹力/洗髓 buff 时才撑开一行 */
+  #pillHints{min-height:0;font-size:10px;color:#9aa5ba;text-align:right;line-height:1.4}
   #travelModal .story-body{padding:4px 4px 8px}
 
 /* ============ v0.5.1 阿青 ============ */
@@ -359,10 +360,10 @@
 
 /* ============ v0.9.0 化身行迹 · 云游斗法 ============ */
   /* —— 行迹条: 屏中上部细长墨条, 无圆角矩形观感 —— */
-/* ============ v1.4.1 顶部纵向流容器: 行迹 / 自动斗法条 / 战斗横幅依次排布 ============
- * 行迹胶囊高度随文案折行浮动(窄屏可到 ~110px), 三者再用 fixed 定位必然互相挤压。
- * 收进同一个 flex column 容器, 谁显示谁占位, 永不重叠。 */
-  .top-stack{position:fixed;top:96px;left:0;right:0;z-index:9;
+/* ============ v1.5.0 顶部纵向流容器: 行迹 / 搜寻妖踪 / 战斗横幅依次排布 ============
+ * 自动战斗小开关已上移顶部资源栏, 这一层只管 行迹 → 搜寻提示 → 战斗横幅。
+ * 行迹胶囊高度随文案折行浮动(窄屏可到 ~110px), 用 flex column 依次排布, 谁显示谁占位, 永不重叠。 */
+  .top-stack{position:fixed;top:88px;left:0;right:0;z-index:9;
     display:flex;flex-direction:column;align-items:center;gap:7px;
     pointer-events:none}
   .top-stack > .trace{pointer-events:auto}
@@ -529,25 +530,10 @@
     border-radius:999px;cursor:pointer;font-family:inherit;transition:transform .12s,opacity .25s}
   .war-skip:active{transform:scale(.92)}
 
-/* ============ v1.4.0 自动斗法: 开关 + 搜寻妖踪动态提示 ============ */
+/* ============ v1.5.0 搜寻妖踪提示(自动战斗开启时, 行迹正下方; 开关在顶部资源栏) ============ */
   .hunt-bar{position:static;width:100%;z-index:auto;
     display:flex;align-items:center;justify-content:center;gap:10px;pointer-events:none}
-  .hunt-btn{position:relative;pointer-events:auto;cursor:pointer;
-    display:inline-flex;align-items:center;gap:6px;padding:0 16px;height:31px;
-    font-family:var(--font-brush);font-size:13px;letter-spacing:.16em;
-    color:var(--dt-ink-dim);background:none;border:0;outline:none;
-    transition:color .2s,transform .12s;-webkit-tap-highlight-color:transparent}
-  .hunt-btn .skin{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none}
-  .hunt-btn .skin .ink{fill:rgba(12,16,26,.82);stroke:rgba(201,168,106,.34);stroke-width:1;
-    transition:fill .25s,stroke .25s}
-  .hunt-btn .hb-ic,.hunt-btn .hb-tx{position:relative;z-index:1}
-  .hunt-btn .hb-ic{font-size:12px;line-height:1;opacity:.8}
-  .hunt-btn:active{transform:scale(.94)}
-  .hunt-btn.on{color:#ffd9a0}
-  .hunt-btn.on .skin .ink{fill:rgba(74,16,8,.86);stroke:rgba(255,140,110,.55);
-    animation:hbPulse 2.4s ease-in-out infinite}
-  .hunt-btn.on .hb-ic{opacity:1;text-shadow:0 0 9px rgba(255,150,110,.75)}
-  @keyframes hbPulse{0%,100%{stroke:rgba(255,140,110,.42)}50%{stroke:rgba(255,178,140,.95)}}
+  /* v1.5.0: 自动战斗开关已移入顶部资源栏(.atk-toggle, 见 index.html 内联样式), 此处不再有 .hunt-btn */
   /* 搜寻提示: 一颗跳动的朱点 + 行书短句 */
   .hunt-seek{display:none;align-items:center;gap:7px;pointer-events:none;
     font-family:var(--font-body);font-size:11.5px;letter-spacing:.08em;color:#8f9ab0;
@@ -617,3 +603,18 @@
   .eq-cn.dim{color:#4d5570;font-size:11px}
   .eq-cm{font-size:10px;color:#c9a86a}
   .eq-bt{font-size:9px;color:#7f92ad;letter-spacing:.02em}
+
+/* ============ v1.5.0 紧凑 HUD: 资源上移顶部栏, 境界徽章改横墨简 ============
+ * 起因: 旧 HUD 实测高 199px(境界徽章竖排 109 + 右侧竖列 177), 而行迹固定在 96px,
+ *       两者长期重叠 —— 就是用户说的"怎么改都占屏幕、布局不合理"。
+ * 解法: ① 灵石/修为/云存/自动战斗 收进顶部一行(24px)
+ *       ② 境界徽章由 三行竖排墨简 → 单行横墨简
+ *       ③ 宝/邮件 由竖排改横排(80px→40px)
+ *       ④ 剧情纲目 / 版本号 移出徽章, 与徽章同排
+ * 结果: HUD 199px → ~70px, 行迹上移, 屏幕中部(道体+日志)多出一截。 */
+  .hud .realm-badge{flex-direction:row;align-items:baseline;gap:8px;
+    padding:6px 14px 7px !important;min-width:0;max-width:min(46vw,205px);
+    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 60%22 preserveAspectRatio=%22none%22><path d=%22M8 11 C40 3 90 15 140 5 C170 0 190 9 196 17 C198 29 194 43 194 50 C192 56 170 58 140 55 C100 60 60 50 30 56 C14 58 4 52 4 44 C2 34 4 19 8 11 Z%22 fill=%22rgba(13,17,26,.94)%22 stroke=%22rgba(201,168,106,.34)%22 stroke-width=%221.3%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important}
+  .hud .realm-badge .big{font-size:15px;line-height:1.2;flex:none}
+  .hud .realm-badge .sub{font-size:9.5px;line-height:1.3;padding-right:30px;flex:1;min-width:0}
+  .hud .realm-badge::after{right:8px;bottom:1px;font-size:8px;opacity:.55}

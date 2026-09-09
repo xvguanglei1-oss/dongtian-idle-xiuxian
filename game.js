@@ -2175,7 +2175,7 @@ function applyOffline() {
       state.travel = null;
     } else state.travel = null;
   }
-  travelBtnLbl();            // 本地兜底化身归来 → 云游按钮立刻复位
+  travelBtnLbl(); traceRefresh();            // 本地兜底化身归来 → 云游按钮与行迹立刻复位
   // 离线面板正文(主身闭关 + 灵石 + 化身归来) —— 修复: 历史版本此段在重构中丢失
   const hh = Math.floor(dt / 3600), mm = Math.floor((dt % 3600) / 60);
   $("offlineText").innerHTML =
@@ -2439,7 +2439,7 @@ function startTravel() {
   _encNext = autoHuntOn() ? Date.now() + searchMs() : 0;   // 重置巡猎: 自动斗法开则重新起算搜寻
   pushMsg("main", `你为化身备好行囊。它往<span class="r">${l.n}</span>的方向去了，阿青蹲在门口目送，尾巴搭在你脚边。`);
   pushMsg("avatar", `阿青送化身到山门口，回来在你蒲团边卧下`);
-  travelBtnLbl(); updateHUD(); save(); cloudSoon();
+  travelBtnLbl(); traceRefresh(); updateHUD(); save(); cloudSoon();   // v1.5.0: 立刻刷行迹, 别再挂着"遣它下山?"
   closeTravel();
 }
 function consumePill(id) {
@@ -2868,18 +2868,16 @@ function toggleAutoHunt() {
   else { _encNext = 0; seekHide(); }
   renderAutoHunt();
   pushMsg("main", state.autoHunt
-    ? `<span class="b">自动斗法</span>已开 —— 你佩剑出府，主身自此巡山不止，遇妖即斩。`
-    : `<span class="b">自动斗法</span>已收 —— 你回洞天只打坐吐纳，妖兽暂不来扰。`);
+    ? `<span class="b">自动战斗</span>已开 —— 你佩剑出府，主身自此巡山不止，遇妖即斩。`
+    : `<span class="b">自动战斗</span>已收 —— 你回洞天只打坐吐纳，妖兽暂不来扰。`);
   save(); cloudSoon();
 }
 function renderAutoHunt() {
+  /* v1.5.0: 小开关 —— 文案恒为「⚔ 自动」, 开/关只切 .on 激活态(朱砂亮 / 熄墨灰) */
   const b = $("btnAuto"); if (!b) return;
   const on = autoHuntOn();
   b.classList.toggle("on", on);
-  /* 只换字, 不动 SVG 皮肤(整锅替换会把墨块皮剥掉) */
-  const ic = b.querySelector(".hb-ic"), tx = b.querySelector(".hb-tx");
-  if (ic) ic.textContent = on ? "⚔" : "☾";
-  if (tx) tx.textContent = `自动斗法 · ${on ? "开" : "关"}`;
+  b.title = on ? "自动战斗 · 开（点击关闭）" : "自动战斗 · 关（点击开启）";
   if (!on) seekHide();
 }
 function seekPick() { _seekLine = SEEK_TALE[Math.floor(Math.random() * SEEK_TALE.length)]; }
@@ -3139,6 +3137,15 @@ function traceTap() { if (!BTL && !MYST) openTravel(); }
 setInterval(traceBeat, 2500);
 traceRefresh();
 renderAutoHunt();                  // v1.4.0: 自动斗法按钮初态(跟存档里的 autoHunt 走)
+/* v1.5.0: 行迹起点跟随 HUD 实高 —— 窄屏顶部资源栏折行、HUD 变高时自动下移, 永不挤压 */
+(function () {
+  const ts = $("topStack"), hud = document.querySelector(".hud");
+  if (!ts || !hud) return;
+  const sync = () => { ts.style.top = Math.round(hud.getBoundingClientRect().bottom + 8) + "px"; };
+  if (window.ResizeObserver) new ResizeObserver(sync).observe(hud);
+  window.addEventListener("resize", sync);
+  sync();
+})();
 /* ============ 调试入口: 立即遇妖 —— v1.4.2 已撤下 UI, 需要时在控制台敲 debugEncounter() ============ */
 function debugEncounter() {
   if (BTL || MYST) { pushMsg("main", "正在斗法/探秘中，且待收场。"); return; }
