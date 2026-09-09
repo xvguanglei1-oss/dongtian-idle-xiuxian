@@ -960,3 +960,10 @@
 .glow-gold .ink{animation:glowGoldInk .9s ease-in-out infinite}
 @keyframes glowEmberInk{0%,100%{filter:drop-shadow(0 0 1px rgba(255,150,110,.2))}50%{filter:drop-shadow(0 0 6px rgba(255,150,110,.95)) drop-shadow(0 0 13px rgba(255,120,80,.5))}}
 .glow-ember{animation:glowEmberInk .75s ease-in-out infinite}
+
+
+/* ==================== v1.7.36 境界大字呼吸光(仅字形发光, 卡片不动) ==================== */
+@keyframes bigBreath{
+  0%,100%{filter:drop-shadow(0 0 1px rgba(232,197,107,.35))}
+  50%{filter:drop-shadow(0 0 5px rgba(255,222,150,.95)) drop-shadow(0 0 13px rgba(255,205,120,.55)) drop-shadow(0 0 22px rgba(232,197,107,.3))}}
+.realm-badge .big{animation:bigBreath 2.8s ease-in-out infinite}
