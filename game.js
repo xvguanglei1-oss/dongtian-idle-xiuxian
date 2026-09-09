@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.44";
+const GAME_VER = "v1.7.45";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -81,6 +81,12 @@ const SND = (function () {
         bgmEl = null;
         document.removeEventListener("pointerdown", _armOnce);
         document.removeEventListener("keydown", _armOnce);
+      });
+      /* v1.7.45 兜底: 个别安卓 WebView 对 HTMLAudio.loop 支持不严, 播完即停 →
+       * ended 时手动归零重播; loop 正常工作的浏览器不会触发 ended, 二者互不干扰 */
+      bgmEl.addEventListener("ended", () => {
+        if (!enabled || !bgmEl) return;
+        try { bgmEl.currentTime = 0; const p = bgmEl.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
       });
     } catch (e) { return; }
     const _armOnce = () => { ac(); _bgmPlay(); };
