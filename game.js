@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.26";
+const GAME_VER = "v1.7.27";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1238,8 +1238,10 @@ function pnLocal() { if (typeof state._pn !== "string" || !state._pn) state._pn 
 function nameShow() { return (state.name || "").trim() || pnLocal(); }
 function renderPName() {
   const el = $("pName"); if (!el) return;
-  el.textContent = nameShow();
-  el.title = state.name ? "道号 · " + state.name + "（点此改）" : "未定道号 · 点此改名，全服唯一";
+  const nm = (state.name || "").trim();
+  el.textContent = nm || "定道号";
+  el.classList.toggle("named", !!nm);
+  el.title = nm ? "道号 · " + nm + "（点此改）" : "尚未定道号 · 点此起名——全服唯一，定后可凭道号寻回存档";
 }
 function apiRoot() { try { return CLD_API.replace(/\/api\/save$/, ""); } catch (e) { return "https://save.devgo.cn"; } }
 function openRename() {
