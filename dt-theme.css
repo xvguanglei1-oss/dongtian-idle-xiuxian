@@ -955,12 +955,8 @@
 .hint-ember{animation:hintEmberPulse .8s ease-in-out infinite}
 
 
-/* ==================== v1.7.33 整按钮发光脉动(btn 自身 box-shadow 呼吸, 比纯文字更醒目) ==================== */
-@keyframes glowGoldBtn{
-  0%,100%{box-shadow:0 0 4px rgba(232,197,107,.15),0 0 10px rgba(232,197,107,.05)}
-  50%{box-shadow:0 0 10px rgba(255,215,130,.95),0 0 22px rgba(255,200,110,.55),0 0 34px rgba(255,190,90,.25)}}
-@keyframes glowEmberBtn{
-  0%,100%{box-shadow:0 0 4px rgba(255,150,110,.12)}
-  50%{box-shadow:0 0 10px rgba(255,150,110,.9),0 0 20px rgba(255,120,80,.5)}}
-.glow-gold{animation:glowGoldBtn .9s ease-in-out infinite}
-.glow-ember{animation:glowEmberBtn .75s ease-in-out infinite}
+/* ==================== v1.7.35 墨形轮廓光(drop-shadow 跟墨形路径/圆钮, 非直角盒光) ==================== */
+@keyframes glowGoldInk{0%,100%{filter:drop-shadow(0 0 1.5px rgba(232,197,107,.28))}50%{filter:drop-shadow(0 0 7px rgba(255,215,130,.95)) drop-shadow(0 0 16px rgba(255,200,110,.5))}}
+.glow-gold .ink{animation:glowGoldInk .9s ease-in-out infinite}
+@keyframes glowEmberInk{0%,100%{filter:drop-shadow(0 0 1px rgba(255,150,110,.2))}50%{filter:drop-shadow(0 0 6px rgba(255,150,110,.95)) drop-shadow(0 0 13px rgba(255,120,80,.5))}}
+.glow-ember{animation:glowEmberInk .75s ease-in-out infinite}
