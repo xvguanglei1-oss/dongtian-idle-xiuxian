@@ -967,3 +967,23 @@
   0%,100%{filter:drop-shadow(0 0 1px rgba(232,197,107,.35))}
   50%{filter:drop-shadow(0 0 5px rgba(255,222,150,.95)) drop-shadow(0 0 13px rgba(255,205,120,.55)) drop-shadow(0 0 22px rgba(232,197,107,.3))}}
 .realm-badge .big{animation:bigBreath 2.8s ease-in-out infinite}
+
+
+/* ==================== v1.7.41 装备面板: 整卡按品质档位轮廓辉光(呼吸) ==================== */
+@keyframes eqBoxGlow{
+  0%,100%{box-shadow:0 0 2px var(--qcglow),0 0 7px var(--qcglow)}
+  50%{box-shadow:0 0 7px var(--qcglow),0 0 19px var(--qcglow)}}
+.eq-card{animation:eqBoxGlow 4.2s ease-in-out infinite}
+.eq-card.qc1{animation-duration:3.9s}
+.eq-card.qc2{animation-duration:3.6s}
+.eq-card.qc3{animation-duration:3.1s}
+.eq-card.qc4{animation-duration:2.7s}
+.eq-card.qc5{animation-duration:2.1s}
+.eq-card.empty{animation:none}
+/* 辉光可见度按档位提亮 */
+.eq-card.qc0{--qcglow:rgba(170,178,192,.10)}
+.eq-card.qc1{--qcglow:rgba(107,157,245,.16)}
+.eq-card.qc2{--qcglow:rgba(63,201,162,.20)}
+.eq-card.qc3{--qcglow:rgba(224,180,90,.24)}
+.eq-card.qc4{--qcglow:rgba(192,138,240,.30)}
+.eq-card.qc5{--qcglow:rgba(255,90,95,.40)}
