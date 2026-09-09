@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>洞天 · 挂机修仙 · 墨线夜谈 v1.7.27</title>
+<title>洞天 · 挂机修仙 · 墨线夜谈 v1.7.28</title>
 <meta name="description" content="洞天挂机修仙：主身巡猎斗法、分身云游寻宝，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -32,9 +32,12 @@
   .res-bar .spirit{padding:3px 10px;font-size:12px}
   .res-bar .rate{padding:3px 9px;font-size:10.5px}
   .hud-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
-  .realm-left{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;column-gap:7px;row-gap:5px;align-items:stretch;min-width:0}
-  .realm-left .realm-badge{grid-column:1;grid-row:1/span 2}
-  .realm-left .story-btn{grid-column:2;grid-row:1;margin:0;align-self:flex-end}
+  /* hud-row 第二行: 境界卡(左) + 按钮组(中) + hud-icons(右), grid 三列; 段位允许换行不截断 */
+    .realm-left{display:flex;align-items:center;gap:7px;min-width:0}
+  .realm-left .realm-badge{flex:none}
+  .rl-btns{display:flex;flex-direction:column;gap:5px;align-items:flex-start;flex:none}
+  .rl-btns .story-btn{margin:0}
+  .rl-btns .pname-btn{margin:0;width:100%;box-sizing:border-box}
   /* v1.5.0: 宝/邮件 由竖排改横排, 第二行高度 80px→40px */
   .hud-icons{display:flex;flex-direction:row;align-items:center;gap:9px}
   .hud-row .story-btn{margin-top:0}
@@ -55,10 +58,16 @@
   .snd-btn:active{transform:scale(.9)}
   .snd-btn.muted{color:#5c667a;border-color:rgba(120,130,155,.22)}
   @keyframes atkGlow{0%,100%{box-shadow:0 0 6px rgba(217,88,63,.28)}50%{box-shadow:0 0 13px rgba(255,140,100,.6)}}
-  .realm-badge{background:rgba(12,18,34,.72);border:1px solid rgba(232,197,107,.35);backdrop-filter:blur(8px);
-    padding:6px 11px;border-radius:999px;display:flex;flex-direction:column;gap:1px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
-  .realm-badge .big{font-size:16px;font-weight:800;letter-spacing:.14em;color:var(--gold);line-height:1.2;text-shadow:0 0 12px rgba(232,197,107,.5)}
-  .realm-badge .sub{font-size:11px;color:#cfd8ea;letter-spacing:.06em;font-weight:500;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+    .realm-badge{background:rgba(12,18,34,.72);border:1px solid rgba(232,197,107,.35);backdrop-filter:blur(8px);
+    width:132px;box-sizing:border-box;padding:6px 8px;border-radius:13px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    box-shadow:0 4px 18px rgba(0,0,0,.35);text-align:center}
+  .realm-badge .big{font-size:16px;font-weight:800;letter-spacing:.14em;color:var(--gold);line-height:1.25;
+    text-shadow:0 0 12px rgba(232,197,107,.5);white-space:nowrap;width:100%}
+  .realm-badge .sub-a{font-size:11px;color:#e6cf9a;letter-spacing:.1em;font-weight:600;line-height:1.35;
+    white-space:nowrap;width:100%;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .realm-badge .sub-b{font-size:10px;color:#b9c3d8;letter-spacing:.04em;font-weight:400;line-height:1.4;
+    white-space:nowrap;width:100%;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.5)}
   /* 道号按钮: 与剧情纲目并排的独立按钮(不挤境界徽章); 未定名=虚线引导, 已定名=金边纯名 */
   .pname-btn{flex:none;display:inline-flex;align-items:center;justify-content:center;height:22px;
     padding:0 11px;font-family:var(--font-brush);font-size:12.5px;letter-spacing:.1em;cursor:pointer;
@@ -251,7 +260,7 @@
   #cloudPanel .cp-hint{font-size:10px;color:#6f87a5;line-height:1.5;margin-top:6px}
   .ver-tag{align-self:center;font-size:9px;color:rgba(233,226,208,.62);letter-spacing:.05em;font-family:ui-monospace,monospace;pointer-events:none;margin-left:7px}
 </style>
-<link rel="stylesheet" href="dt-theme.css?v=1.7.27">
+<link rel="stylesheet" href="dt-theme.css?v=1.7.28">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -275,9 +284,11 @@
   </div>
   <div class="hud-row">
     <div class="realm-left">
-      <div class="realm-badge"><span class="big" id="realmName">凡人</span><span class="sub" id="realmSub">练气初期 · 洞天福地</span></div>
-      <button class="story-btn" onclick="openStory()">📜 剧情纲目</button>
-      <button class="pname-btn" id="pName" onclick="openRename()" title="点此定道号"></button>
+      <div class="realm-badge"><span class="big" id="realmName">凡人</span><span class="sub-a" id="realmSubA"></span><span class="sub-b" id="realmSubB"></span></div>
+      <div class="rl-btns">
+        <button class="story-btn" onclick="openStory()">📜 剧情纲目</button>
+        <button class="pname-btn" id="pName" onclick="openRename()" title="点此定道号"></button>
+      </div>
     </div>
     <div class="hud-right">
       <div class="hud-icons">
@@ -329,7 +340,7 @@
 </div>
 
 <div class="exp-wrap">
-  <div class="exp-labels"><span>境界进度<span class="ver-tag" id="verTag">v1.7.27</span></span><span><b id="expText">0</b> / <b id="expNeed">1000</b></span></div>
+  <div class="exp-labels"><span>境界进度<span class="ver-tag" id="verTag">v1.7.28</span></span><span><b id="expText">0</b> / <b id="expNeed">1000</b></span></div>
   <div class="exp-track"><div class="exp-fill" id="expFill"></div></div>
 </div>
 
@@ -452,7 +463,7 @@
 </div>
 
 <script src="assets/lz-string.min.js"></script>
-<script src="game.js?v=1.7.27"></script>
+<script src="game.js?v=1.7.28"></script>
 
 </body>
 </html>

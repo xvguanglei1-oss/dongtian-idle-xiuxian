@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.27";
+const GAME_VER = "v1.7.28";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1611,17 +1611,22 @@ function makeArt() {          // 六槽部位: 槽0兵 1兵 2护 3护 4佩 5诀
 }
 
 /* ============ 界面 ============ */
+function setRealmSub(a, b) {            // v1.7.28: 小字段位/说明 分行(不挤压截断)
+  const A = $("realmSubA"), B = $("realmSubB");
+  if (A) A.textContent = a || "";
+  if (B) B.textContent = b || "";
+}
 function updateRealmUI() {
   const r = realm();
   if (r.big === "凡人") {
     $("realmName").textContent = "凡人";
-    $("realmSub").textContent = r.sub + (state.realmIdx >= TOTAL_SEGS - 1 ? " · 已臻圆满" : "");
+    setRealmSub("", r.sub);                          // 凡人无段位小字段, 只显示大境界+洞天福地句
   } else if (r.big === "炼气") {
     $("realmName").textContent = "炼气";
-    $("realmSub").textContent = `${cnNum(r.segNo)}层 · ${r.sub}`;
+    setRealmSub(`${cnNum(r.segNo)}层`, r.sub);       // 行1=层数; 行2=法门说明
   } else {
     $("realmName").textContent = r.big;
-    $("realmSub").textContent = `${r.label.split("·")[1]} · ${r.sub}`;
+    setRealmSub(r.label.split("·")[1], r.sub);       // 行1=前/中/后/圆满; 行2=说明
   }
   /* 灵力辉光按大境界切换(读 #cult data-big); 试光环预览期间保持所选境界 */
   const cult0 = document.getElementById("cult");

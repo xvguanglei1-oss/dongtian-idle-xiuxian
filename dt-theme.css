@@ -907,3 +907,38 @@
 .rk-big{font-size:10.5px;color:#9fb0a6;margin-top:2px}
 .rk-exp{flex:none;font-size:10.5px;color:#c9b98a;font-family:ui-monospace,monospace}
 .rk-foot{font-size:10px;color:#5f6070;margin-top:8px;text-align:right}
+
+
+/* ==================== v1.7.28 境界徽章终态: 深底金边胶囊 · 卡内居中三行(大境界/段位小字段/说明), 文字不截断 ==================== */
+.realm-badge{
+  background:rgba(12,18,34,.74) !important;
+  border:1px solid rgba(232,197,107,.4) !important;
+  border-radius:13px !important;
+  background-image:none !important;
+  box-shadow:0 4px 18px rgba(0,0,0,.4) !important;
+  width:134px !important; max-width:100% !important; min-width:0 !important;
+  box-sizing:border-box !important;
+  padding:7px 10px 6px !important;
+  display:flex !important; flex-direction:column !important;
+  align-items:center !important; justify-content:center !important;
+  gap:1px !important; text-align:center !important;
+}
+.realm-badge .big{
+  font-family:var(--font-brush) !important;
+  font-size:17px !important; font-weight:800 !important; letter-spacing:.16em !important;
+  color:#e9cd8a !important; line-height:1.3 !important;
+  text-shadow:0 0 12px rgba(232,197,107,.55) !important;
+  white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important;
+  width:100% !important; text-align:center !important;
+}
+.realm-badge .sub-a{
+  font-size:11px !important; color:#e2c98f !important; letter-spacing:.08em !important; font-weight:600 !important;
+  line-height:1.35 !important; white-space:nowrap !important; overflow:visible !important;
+  width:100% !important; text-align:center !important;
+}
+.realm-badge .sub-b{
+  font-size:9.5px !important; color:#aeb8cd !important; letter-spacing:.05em !important; font-weight:400 !important;
+  line-height:1.4 !important; white-space:nowrap !important; overflow:visible !important;
+  width:100% !important; text-align:center !important;
+}
+.realm-badge::after{display:none !important}
