@@ -1,74 +1,84 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.3";
+const GAME_VER = "v1.7.4";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
-/* ============ v1.7.3 声音系统(合成音效 + 可插拔 BGM/胜利素材) ============
- * 无素材也自带打击感: 命中/暴击/受击/遇敌/秘境/获胜号角/失败 全部 WebAudio 现场合成, 零文件零版权;
- * 若放入了素材文件(assets/music/bgm.mp3 主曲, assets/sound/victory.mp3 胜利曲)则自动优先使用。
- * 开关持久化在 localStorage(dt_snd): 0=静音 1=开启(默认开)。 */
+/* ============ v1.7.4 声音系统(免费素材 + 合成兜底) ============
+ * 音效素材(assets/sound/*.mp3, 来自 Mixkit 免费许可, 可商用无需署名):
+ *   hit 玩家命中/ crit 暴击/ hurt 受击/ alert 遇敌红警/ myst 秘境风铃/
+ *   win 获胜/ lose 落败/ bell 叠层钟声(遇敌第二层)。
+ * BGM: assets/music/bgm.mp3 存在即循环(低音量), 素材未就绪时自动回退为合成音。 */
 const SND = (function () {
   let ctx = null, enabled = localStorage.getItem("dt_snd") !== "0";
-  let bgmEl = null, bgmStarted = false, hasVictory = false, hasBgm = false;
-  const probe = src => { try { return fetch(src, { method: "HEAD", cache: "no-store" }).then(r => r.ok).catch(() => false); } catch (e) { return Promise.resolve(false); } };
-  function ac() { if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; } } return ctx; }
-  function tone(freq, dur, type, vol, when, slideTo) {
+  const files = { hit: 1, crit: 1, hurt: 1, alert: 1, bell: 1, myst: 1, win: 1, lose: 1 };
+  const vol = { hit: 0.5, crit: 0.55, hurt: 0.42, alert: 0.55, bell: 0.3, myst: 0.5, win: 0.6, lose: 0.5 };
+  const buf = {};            // name -> AudioBuffer | null(缺素材)
+  const ext = { alert: [["bell", 0.22]] };   // 遇敌: 主音 + 延迟钟声 → 层次感
+  let bgmEl = null, bgmStarted = false;
+  function ac() {
+    if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; } }
+    if (ctx && ctx.state === "suspended") { try { ctx.resume(); } catch (e) {} }
+    return ctx;
+  }
+  /* 合成兜底(素材缺失/未载好时应急, 不再是主通道) */
+  function tone(f, dur, type, v, when, slideTo) {
     const c = ac(); if (!c || !enabled) return;
-    const t0 = c.currentTime + (when || 0);
-    const o = c.createOscillator(), g = c.createGain();
-    o.type = type || "triangle"; o.frequency.setValueAtTime(freq, t0);
+    const t0 = c.currentTime + (when || 0), o = c.createOscillator(), g = c.createGain();
+    o.type = type || "triangle"; o.frequency.setValueAtTime(f, t0);
     if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), t0 + dur);
-    g.gain.setValueAtTime(0.0001, t0);
-    g.gain.exponentialRampToValueAtTime(vol || 0.5, t0 + 0.012);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v || 0.3, t0 + 0.01);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     o.connect(g); g.connect(c.destination); o.start(t0); o.stop(t0 + dur + 0.05);
   }
-  function noise(dur, vol, lpFreq, when) {
-    const c = ac(); if (!c || !enabled) return;
-    const t0 = c.currentTime + (when || 0), n = Math.floor(c.sampleRate * dur);
-    const buf = c.createBuffer(1, n, c.sampleRate), ch = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) ch[i] = Math.random() * 2 - 1;
-    const s = c.createBufferSource(); s.buffer = buf;
-    const g = c.createGain(); g.gain.setValueAtTime(vol || 0.3, t0);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    const f = c.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = lpFreq || 1200;
-    s.connect(f); f.connect(g); g.connect(c.destination); s.start(t0); s.stop(t0 + dur + 0.02);
+  const fallback = {
+    hit: () => { tone(200, 0.1, "sine", 0.3, 0, 80); }, crit: () => tone(880, 0.14, "square", 0.16, 0),
+    hurt: () => tone(110, 0.18, "sine", 0.3, 0, 50), alert: () => tone(660, 0.14, "square", 0.15, 0),
+    bell: () => tone(1318, 0.5, "sine", 0.18, 0), myst: () => tone(1175, 0.6, "sine", 0.2, 0),
+    win: () => { [[523,0],[659,.13],[784,.26],[1046,.4]].forEach(x => tone(x[0], .3, "triangle", .24, x[1])); },
+    lose: () => { tone(220, .6, "sine", .26, 0, 98); },
+  };
+  function play(name, at) {
+    if (!enabled) return;
+    const c = ac(); if (!c) return;
+    const t0 = c.currentTime + (at || 0);
+    if (buf[name] instanceof AudioBuffer) {
+      const src = c.createBufferSource(); src.buffer = buf[name];
+      const g = c.createGain(); g.gain.value = vol[name] || 0.5;
+      src.connect(g); g.connect(c.destination); src.start(t0);
+    } else if (fallback[name]) { fallback[name](); }
+  }
+  function playLayers(name) { play(name); const ex = ext[name]; if (ex) for (const [n, d] of ex) play(n, d); }
+  async function load(name) {
+    try {
+      const r = await fetch("assets/sound/" + name + ".mp3");
+      if (!r.ok) { buf[name] = null; return; }
+      const ab = await r.arrayBuffer();
+      const c = ac(); if (!c) { buf[name] = null; return; }
+      buf[name] = await c.decodeAudioData(ab).catch(() => null);
+    } catch (e) { buf[name] = null; }
   }
   return {
     get enabled() { return enabled; },
     setEnabled(v) { enabled = !!v; localStorage.setItem("dt_snd", enabled ? "1" : "0");
       const b = document.getElementById("btnSnd"); if (b) b.textContent = enabled ? "🔊" : "🔇";
-      if (!enabled) { try { if (bgmEl) bgmEl.pause(); } catch (e) {} }
-      else if (bgmStarted && bgmEl && bgmEl.paused) { try { bgmEl.play().catch(() => {}); } catch (e) {} } },
+      if (enabled) ac(); else if (bgmEl) { try { bgmEl.pause(); } catch (e) {} } },
     toggle() { this.setEnabled(!enabled); },
-    /* 命中/受击/暴击: 短瞬态, 不抢戏 */
-    hit() { noise(0.09, 0.34, 900); tone(220, 0.12, "sine", 0.22, 0, 90); },
-    hurt() { noise(0.12, 0.26, 500); tone(120, 0.18, "sine", 0.26, 0, 55); },
-    crit() { noise(0.07, 0.4, 2400); tone(880, 0.16, "square", 0.12, 0); tone(1320, 0.22, "triangle", 0.14, 0.03); },
-    /* 遇敌红警: 两记短促警音; 秘境: 风铃上行 */
-    alert() { tone(660, 0.16, "square", 0.14, 0); tone(660, 0.16, "square", 0.14, 0.22); },
-    chime() { tone(784, 0.5, "sine", 0.2, 0); tone(988, 0.5, "sine", 0.18, 0.12); tone(1175, 0.7, "sine", 0.15, 0.24); },
-    /* 获胜号角: 有素材 assets/sound/victory.mp3 优先播, 否则合成上行分解和弦收束 */
-    victory() {
-      if (hasVictory) {
-        try { const v = new Audio("assets/sound/victory.mp3"); v.volume = 0.55; const p = v.play(); if (p && p.catch) p.catch(() => {}); return; } catch (e) {}
-      }
-      const seq = [[523.3, 0], [659.3, 0.13], [784, 0.26], [1046.5, 0.4], [1046.5, 0.78]];
-      for (const [f, d] of seq) { tone(f, d > 0.6 ? 0.6 : 0.3, "triangle", 0.26, d); }
-      tone(523.3, 0.8, "triangle", 0.1, 0.42); tone(784, 0.8, "triangle", 0.1, 0.42);
+    hit() { playLayers("hit"); }, crit() { playLayers("crit"); }, hurt() { playLayers("hurt"); },
+    alert() { playLayers("alert"); }, chime() { playLayers("myst"); },
+    victory() { playLayers("win"); }, fail() { playLayers("lose"); },
+    initFiles() {
+      for (const k of Object.keys(files)) load(k);
+      /* BGM: 存在 assets/music/bgm.mp3 才播; 浏览器要求首次交互后出声 */
+      try {
+        fetch("assets/music/bgm.mp3", { method: "HEAD" }).then(r => {
+          if (!r.ok) return;
+          bgmEl = new Audio("assets/music/bgm.mp3"); bgmEl.loop = true; bgmEl.volume = 0.32;
+          const once = () => { bgmStarted = true; if (enabled) { ac(); const p = bgmEl.play(); if (p && p.catch) p.catch(() => {}); } document.removeEventListener("pointerdown", once); };
+          document.addEventListener("pointerdown", once);
+        }).catch(() => {});
+      } catch (e) {}
     },
-    fail() { tone(220, 0.7, "sine", 0.3, 0, 98); tone(110, 0.9, "sine", 0.26, 0.12, 55); },
-    /* BGM: 有 assets/music/bgm.mp3 才循环播放(低音量); 浏览器要求首次交互后才出声 */
-    bgm() {
-      if (!hasBgm || bgmStarted || !enabled) return;
-      try { bgmEl = new Audio("assets/music/bgm.mp3"); bgmEl.loop = true; bgmEl.volume = 0.3; } catch (e) { return; }
-      const tryPlay = () => { if (!enabled) return; const p = bgmEl.play(); if (p && p.catch) p.catch(() => {}); };
-      const once = () => { bgmStarted = true; tryPlay(); document.removeEventListener("pointerdown", once); };
-      document.addEventListener("pointerdown", once);
-    },
-    /* 探测素材文件是否存在(每次加载探测一次即可) */
-    initFiles() { Promise.all([probe("assets/sound/victory.mp3"), probe("assets/music/bgm.mp3")]).then(r => { hasVictory = r[0]; hasBgm = r[1]; this.bgm(); }); },
   };
 })();
 (function initSndUI() { const b = document.getElementById("btnSnd"); if (b) b.textContent = SND.enabled ? "🔊" : "🔇"; })();
