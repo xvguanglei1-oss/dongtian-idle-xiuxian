@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.4";
+const GAME_VER = "v1.7.5";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.4 声音系统(免费素材 + 合成兜底) ============
@@ -11,10 +11,10 @@ const GAME_VER = "v1.7.4";
  * BGM: assets/music/bgm.mp3 存在即循环(低音量), 素材未就绪时自动回退为合成音。 */
 const SND = (function () {
   let ctx = null, enabled = localStorage.getItem("dt_snd") !== "0";
-  const files = { hit: 1, crit: 1, hurt: 1, alert: 1, bell: 1, myst: 1, win: 1, lose: 1 };
-  const vol = { hit: 0.5, crit: 0.55, hurt: 0.42, alert: 0.55, bell: 0.3, myst: 0.5, win: 0.6, lose: 0.5 };
+  const files = { hit: 1, crit: 1, hurt: 1, alert: 1, swing: 1, boom: 1, myst: 1, win: 1, lose: 1 };
+  const vol = { hit: 0.5, crit: 0.55, hurt: 0.42, alert: 0.5, swing: 0.4, boom: 0.5, myst: 0.5, win: 0.6, lose: 0.5 };
   const buf = {};            // name -> AudioBuffer | null(缺素材)
-  const ext = { alert: [["bell", 0.22]] };   // 遇敌: 主音 + 延迟钟声 → 层次感
+  const ext = { alert: [["boom", 0.22]] };   // 遇敌: 呼啸主音 + 0.22s 重击收尾(无铃声)
   let bgmEl = null, bgmStarted = false;
   function ac() {
     if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; } }
@@ -34,7 +34,7 @@ const SND = (function () {
   const fallback = {
     hit: () => { tone(200, 0.1, "sine", 0.3, 0, 80); }, crit: () => tone(880, 0.14, "square", 0.16, 0),
     hurt: () => tone(110, 0.18, "sine", 0.3, 0, 50), alert: () => tone(660, 0.14, "square", 0.15, 0),
-    bell: () => tone(1318, 0.5, "sine", 0.18, 0), myst: () => tone(1175, 0.6, "sine", 0.2, 0),
+myst: () => tone(1175, 0.6, "sine", 0.2, 0),
     win: () => { [[523,0],[659,.13],[784,.26],[1046,.4]].forEach(x => tone(x[0], .3, "triangle", .24, x[1])); },
     lose: () => { tone(220, .6, "sine", .26, 0, 98); },
   };
@@ -65,6 +65,7 @@ const SND = (function () {
       if (enabled) ac(); else if (bgmEl) { try { bgmEl.pause(); } catch (e) {} } },
     toggle() { this.setEnabled(!enabled); },
     hit() { playLayers("hit"); }, crit() { playLayers("crit"); }, hurt() { playLayers("hurt"); },
+    swing() { playLayers("swing"); },
     alert() { playLayers("alert"); }, chime() { playLayers("myst"); },
     victory() { playLayers("win"); }, fail() { playLayers("lose"); },
     initFiles() {
@@ -4105,10 +4106,10 @@ async function btlRun() {
     if (!BTL || BTL.ended) break;
     BTL.round++;
     fieldLine();
-    btlHeroAct();
+    await btlHeroAct();
     if (!BTL || BTL.ended) break;
-    await slp(BTL.skip ? 40 : 1150);       // 怪物还手前略顿, 一来一回看得清
-    if (BTL && !BTL.ended) btlFoeAct();
+    await slp(BTL.skip ? 40 : 1050);       // 怪物还手前略顿, 一来一回看得清
+    if (BTL && !BTL.ended) await btlFoeAct();
   }
 }
 /* 速战: 懒人按钮 —— 不再逐合播报, 直接同步结算到分出胜负 */
@@ -4133,44 +4134,97 @@ function warSkip() {
   if (BTL && !BTL.ended) (BTL.mhp <= BTL.php ? btlWin() : btlLose());
 }
 window.warSkip = warSkip;
-function btlHeroAct() {
+async function btlHeroAct() {
   if (!BTL || BTL.ended) return;
   const si = (BTL.turn++ % 2), pool = SKILLS[BTL.big] || SKILLS[SKILLS.length - 1], name = pool[si];
   const m = BTL.mon;
   const miss = Math.random() < 0.05;
-  if (miss) { btlLog(`你祭出「${name}」攻向${m.n} —— 被它侧身闪开，未伤分毫。`); }
+  /* ① 出招瞬现 + 呼啸即刻起(不等文字), ② 稍顿 ③ 命中判定与音效/受创文字 */
+  btlNow(`⚡ 你使出「${name}」`); SND.swing();
+  if (!BTL.skip) await slp(300);
+  if (miss) { btlLog(`…… 却见${m.n} 侧身一闪，你这一式落空。`); }
   else {
     let dmg = Math.max(1, Math.round((BTL.patk - m.def) * (0.85 + Math.random() * 0.3)));
     const crit = Math.random() < 0.10;
-    if (crit) { dmg = Math.round(dmg * 1.6); SND.crit(); } else SND.hit();   // v1.7.3 打击反馈
+    if (crit) { dmg = Math.round(dmg * 1.6); SND.crit(); } else SND.hit();   // v1.7.3 打击反馈(瞬时)
     BTL.mhp = Math.max(0, BTL.mhp - dmg);
-    btlLog(`你使出「${name}」，${crit ? "正中要害、会心一击，" : "结结实实打中，"}<b class="r">${m.n}</b> 受创 ${dmg} 点，余 ${BTL.mhp}/${BTL.mhpMax} 气血。`);
+    fieldLine();
+    btlLog(`${crit ? "◇ 正中要害、会心一击！" : ""}—— <b class="r">${m.n}</b> 受创 ${dmg} 点，余 ${BTL.mhp}/${BTL.mhpMax} 气血。`);
   }
   fieldLine();
   if (BTL.mhp <= 0) { btlWin(); }
 }
-function btlFoeAct() {
+async function btlFoeAct() {
   if (!BTL || BTL.ended) return;
   const m = BTL.mon;
-  if (Math.random() < 0.07) { btlLog(`${m.n} 扑向你 —— 你侧身避开，溅起一地尘土。`); }
+  if (Math.random() < 0.07) { btlLog(`${m.n} 猛地扑来，你侧身避开，溅起一地尘土。`); }
   else {
     let d = Math.max(1, Math.round((m.atk - BTL.pdef) * (0.85 + Math.random() * 0.3)));
-    BTL.php = Math.max(0, BTL.php - d); SND.hurt();        // v1.7.3 受击反馈
-    btlLog(`${m.n} 反扑而至，你受创 ${d} 点，余 ${BTL.php}/${BTL.phpMax} 气血。`);
+    btlNow(`${m.n} 反扑而至！`); SND.swing();               // 敌袭也先有声有影
+    if (!BTL.skip) await slp(240);
+    BTL.php = Math.max(0, BTL.php - d); SND.hurt();         // v1.7.3 受击反馈(瞬时)
+    fieldLine();
+    btlLog(`　你受创 <b class="r">${d}</b> 点，余 ${BTL.php}/${BTL.phpMax} 气血。`);
   }
   fieldLine();
   if (BTL.php <= 0) { btlLose(); }
 }
-/* 战场日志: 逐条 append, 只留最近 9 行, 新行淡入 */
-function warAppend(s, cls) {
-  const el = $("warLog"); if (!el) return;
+/* v1.7.5 战场日志演出: 出招细节点即时整行, 描述句逐字滚动; 行上限 9, typing 串行不打架 */
+let _warQueue = [], _warTyping = false;
+function _mkWarLine(cls) {
+  const el = $("warLog"); if (!el) return null;
   const d = document.createElement("div");
   d.className = "wl" + (cls ? " " + cls : "");
-  d.innerHTML = s;
   el.appendChild(d);
   while (el.children.length > 9) el.removeChild(el.firstChild);
+  return d;
 }
-function btlLog(s, cls) { if (!BTL) return; BTL.logs.push(s); warAppend(s, cls); }
+/* 即时整行: 技能名/招式名瞬时出现(攻击特效随即跟上) */
+function warNow(s, cls) {
+  if (!BTL && !MYST) return;
+  _warQueue.length = 0; _warTyping = false;
+  const d = _mkWarLine(cls); if (d) d.innerHTML = s;
+}
+/* 逐字滚动: 把 <b>…</b> 还原成加粗节点, 其余逐字 append */
+function warType(s, cls) {
+  _warQueue.push({ s: s, cls: cls });
+  if (!_warTyping) _typeNext();
+}
+function warAppend(s, cls) { warType(s, cls); }
+function btlLog(s, cls) { if (!BTL) return; BTL.logs.push(s); warType(s, cls); }
+function btlNow(s, cls) { if (!BTL) return; BTL.logs.push(s); warNow(s, cls); }
+function _typeNext() {
+  const el = $("warLog");
+  if (!el || !_warQueue.length) { _warTyping = false; return; }
+  _warTyping = true;
+  const { s, cls } = _warQueue.shift();
+  const d = _mkWarLine(cls);
+  if (!d) { _warTyping = false; return; }
+  const toks = (s.match(/<[^>]+>|[^<]+/g) || []).filter(Boolean);
+  let ti = 0, openB = false, curB = null;
+  function pushChar(ch) {
+    if (openB) {
+      if (!curB) { curB = document.createElement("b"); d.appendChild(curB); }
+      curB.appendChild(document.createTextNode(ch));
+    } else { curB = null; d.appendChild(document.createTextNode(ch)); }
+  }
+  function tagDone(tag) {
+    if (/^<\/?b/i.test(tag)) { if (/^<b/i.test(tag)) openB = true; else openB = false; curB = null; }
+    if (/^<br/i.test(tag)) d.appendChild(document.createElement("br"));
+  }
+  function textStep(text) {
+    if (!d.isConnected) { _warTyping = false; _typeNext(); return; }
+    if (text.length) { pushChar(text.charAt(0)); setTimeout(() => textStep(text.slice(1)), 16); }
+    else nextToken();
+  }
+  function nextToken() {
+    if (ti >= toks.length) { _warTyping = false; _typeNext(); return; }
+    const t = toks[ti++];
+    if (t.charAt(0) === "<") { tagDone(t); nextToken(); } else textStep(t);
+  }
+  nextToken();
+}
+
 function fieldLine() {
   if (!BTL) return;
   const el = $("tfFoe"), el2 = $("tfHero"), el3 = $("tfTurn");
