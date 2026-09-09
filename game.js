@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.28";
+const GAME_VER = "v1.7.29";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1241,7 +1241,7 @@ function renderPName() {
   const nm = (state.name || "").trim();
   el.textContent = nm || "定道号";
   el.classList.toggle("named", !!nm);
-  el.title = nm ? "道号 · " + nm + "（点此改）" : "尚未定道号 · 点此起名——全服唯一，定后可凭道号寻回存档";
+  el.title = nm ? "道号 · " + nm + "（点此改）" : "尚未定道号 · 点此起名（全服唯一；换设备寻档仍用玩家码）";
 }
 function apiRoot() { try { return CLD_API.replace(/\/api\/save$/, ""); } catch (e) { return "https://save.devgo.cn"; } }
 function openRename() {
@@ -1249,8 +1249,8 @@ function openRename() {
   const inp = $("renameInput"); if (inp) inp.value = (state.name || "").trim() || "";
   const h = $("renameHint");
   if (h) h.textContent = state.name
-    ? "道号全服唯一：改名会立即与云端确认，被占用会提示换名。定名后，别处输入道号即可寻回本命存档。"
-    : "你的临时道号是 6 位数字，改个响亮的道号后即与存档码绑定：今后输入道号也能寻回存档。";
+    ? "道号全服唯一：改名会立即与云端确认，被占用会提示换名。道号仅作风云榜留名，寻档仍请使用玩家码。"
+    : "道号是你在洞天的名号（全服唯一），定名后会在风云榜留名。请务必保管好玩家码——寻档只认玩家码，道号不能反查存档。";
   m.classList.add("show");
   if (inp) setTimeout(() => { try { inp.focus(); inp.select(); } catch (e) {} }, 80);
 }
@@ -1268,9 +1268,7 @@ async function saveRename() {
       body: JSON.stringify({ id: cldId(), name: v }),
     });
     if (r.status === 409) {
-      const j = await r.json().catch(() => ({}));
-      const who = String(j.by || "").replace(/^dt-/, "").slice(-4);
-      if (h) h.textContent = "「" + v + "」已被道号 " + (who ? "·" + who : "他人") + " 占用，另起一个吧（全服唯一）。";
+      if (h) h.textContent = "「" + v + "」已被他人占用（全服唯一），另起一个吧。";
       return;
     }
     if (!r.ok) { if (h) h.textContent = "云端暂不可用（存档服务未连接），请稍后再试。"; return; }
@@ -1299,19 +1297,20 @@ async function loadRank(force) {
   if (!force && Date.now() - _rkAt < 60000) return;
   body.innerHTML = '<div class="al-empty">榜单刷新中……</div>';
   try {
-    const r = await fetch(apiRoot() + "/api/rank?top=10", { cache: "no-store" });
+    const self = cldId().replace(/^dt-/, "");       // v1.7.29: 传自己裸码换 me 标志(服务端不下发任何玩家码)
+    const r = await fetch(apiRoot() + "/api/rank?top=10&self=" + encodeURIComponent(self), { cache: "no-store" });
     if (!r.ok) throw new Error("http" + r.status);
     const j = await r.json(); _rkAt = Date.now();
-    const me = cldId().replace(/^dt-/, "");
     if (!j.list || !j.list.length) { body.innerHTML = '<div class="al-empty">仙途初开，尚无修士上榜。</div>'; return; }
     body.innerHTML = j.list.map(x => {
-      const isMe = String(x.code || "") === me;
+      const isMe = !!x.me;
+      const nm = x.name ? x.name : '<span style="color:#5f6778">未定道号</span>';
       return '<div class="rk-row ' + (isMe ? "me " : "") + "n" + x.rank + '">' +
         '<div class="rk-no">' + x.rank + "</div>" +
-        '<div class="rk-main"><div class="rk-nm">' + (x.name || x.code) + (isMe ? ' <span style="font-size:9px;color:#e8c56b">(我)</span>' : "") + "</div>" +
+        '<div class="rk-main"><div class="rk-nm">' + nm + (isMe ? ' <span style="font-size:9px;color:#e8c56b">(我)</span>' : "") + "</div>" +
         '<div class="rk-big">' + rkSegLabel(x.rid) + "</div></div>" +
         '<div class="rk-exp">' + fmt(x.exp || 0) + "</div></div>";
-    }).join("") + '<div class="rk-foot">共 ' + (j.total || j.list.length) + " 名修士在册 · 按云端结算滚动更新</div>";
+    }).join("") + '<div class="rk-foot">共 ' + (j.total || j.list.length) + " 名修士在册 · 只列道号，不露玩家码</div>";
   } catch (e) { body.innerHTML = '<div class="al-empty">云端未连接，榜单待命……</div>'; }
 }
 
@@ -1452,23 +1451,18 @@ async function cldPush() {
     return true;
   } catch (e) { cldFail(e); return false; }
 }
-async function cldPull() {
+async function cldPull(forceImport) {        // v1.7.29 forceImport: 用户主动绑定玩家码=导入云端档(以云为权威, 防新设备本地空档覆盖云端)
   if (!window.fetch) { cldUI("off"); return; }
   cldUI("sync");
   try {
     const r = await cldApi("GET", undefined, "fmt=z1");
     if (r && r.data) r.data = zUnpack(r.data);
     if (r.found && r.data) {
-      /* v1.7.26: 输入道号也按 id 返回 → 绑定真实玩家码, 与道号完成配对 */
-      if (r.id && r.id !== cld.id) {
-        cld.id = r.id;
-        try { localStorage.setItem(CLD_KEY, cld.id); } catch (e) {}
-        const idEl = $("cloudId"); if (idEl) idEl.textContent = cld.id;
-      }
+
       const cs = (r.ts || 0);               // 服务端存档时间(权威)
       const ls = (state._cloudTs || 0);
-      if (cs > ls) {
-        /* 云端比本地同步点新 → 采用云端档(冲突安全方向: 云新优先, 防旧档覆盖新云)。
+      if (forceImport || cs > ls) {
+        /* 云端比本地同步点新(或用户主动导入) → 采用云端档(冲突安全方向: 云新优先, 防旧档覆盖新云)。
          * 不在此立刻推送/调 save() —— 它们会把 lastTs 刷成"现在", 吞掉随后的离线结算;
          * 改为直写本地保留云端 lastTs, 离线收益由启动的 applyOffline 统一结算后再回写 */
         let hadLocal = false;
@@ -1477,14 +1471,17 @@ async function cldPull() {
         state._cloudTs = cs;
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
         cld.ready = true; cld.lastOkTs = Date.now();
-        if (adopted && hadLocal) {
+        if (forceImport) {
+          cldFlash("已导入云端存档");
+          pushMsg("main", `<span class="b">云存</span>已绑定玩家码并导入云端存档。`);
+        } else if (adopted && hadLocal) {
           pushMsg("main", `<span class="b">云存</span>检测到云端进度更新，已采用云端存档（请勿同一玩家码多设备同时游玩）。`);
         }
         cldUI("on");
         return;
       }
       if (cs < ls || cld.dirty) {       // 本地有未上传进度 → 上传
-        await cldPush();
+        if (!forceImport) await cldPush();
         cld.dirty = false;
         return;
       }
@@ -1534,12 +1531,14 @@ function fallbackCopy(text, done) {
   document.body.removeChild(ta);
 }
 function cloudBind() {
-  const v = (($("cloudInput") || {}).value || "").trim();
-  if (!/^[0-9A-Za-z\u4e00-\u9fa5_-]{1,24}$/.test(v)) { cldFlash("请输入玩家码或道号"); return; }
+  let v = (($("cloudInput") || {}).value || "").trim().toLowerCase();
+  if (v.indexOf("dt-") === 0) v = v.slice(3);
+  if (!/^[a-hjkmnpqrstuvwxyz2-9]{12}$/.test(v)) { cldFlash("请输入 12 位玩家码（道号不可寻档）"); return; }
+  v = "dt-" + v;
   try { localStorage.setItem(CLD_KEY, v); } catch (e) {}
   cld.id = v; cld.ready = false; cld.dirty = false;
   const idEl = $("cloudId"); if (idEl) idEl.textContent = v;
-  cldPull();
+  cldPull(true);                     // v1.7.29: 主动绑定=导入, 以云端为权威(防止新设备本地新档覆盖云端存档)
 }
 function cloudInit() {
   cldId();
