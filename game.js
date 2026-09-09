@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.16";
+const GAME_VER = "v1.7.17";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -4190,16 +4190,14 @@ async function btlHeroAct() {
     BTL.mhp = Math.max(0, BTL.mhp - st.dmg);
     SND.crit();   // 命中统一"扎实"音(区分度已由画面/文案承担)
     const lead = st.kind === "critB" ? `<b class="critb">暴击!</b>` : st.kind === "crit" ? `<b class="crit">会心!</b>` : st.pen ? `<b class="w">破甲</b>` : "";
-    fieldLine();
-    /* v1.7.15 主动视角: 你这一击打出多少伤害(暴击/会心/破甲前置高亮) */
-    btlLog(`${lead ? lead + " " : ""}命中 <b class="r">${monNm}</b>，打出 <b class="r">${st.dmg}</b> 伤害。`);
+    let suck = "";
     if (BTL.life > 0) {
       const heal = Math.round(st.dmg * BTL.life / 100);
-      if (heal > 0) {
-        BTL.php = Math.min(BTL.phpMax, BTL.php + heal); fieldLine();
-        btlLog(`　<b class="suck">噬灵 · 反哺 +${heal} 气血</b>`);   // v1.7.15 吸血演出
-      }
+      if (heal > 0) { BTL.php = Math.min(BTL.phpMax, BTL.php + heal); suck = ` <b class="suck">（吸血 +${heal}）</b>`; }
     }
+    fieldLine();
+    /* v1.7.17 吸血并进伤害行括号, 不再独占一行 */
+    btlLog(`${lead ? lead + " " : ""}命中 <b class="r">${monNm}</b>，打出 <b class="r">${st.dmg}</b> 伤害${suck}。`);
   }
   fieldLine();
   if (BTL.mhp <= 0) { btlWin(); }
@@ -4217,16 +4215,13 @@ async function btlFoeAct() {
     if (!BTL.skip) await slp(240);
     BTL.php = Math.max(0, BTL.php - st.dmg); SND.hurt();      // 受击反馈(瞬时)
     const lead = st.kind === "critB" ? `<b class="critb">暴击!</b>` : st.kind === "crit" ? `<b class="crit">会心!</b>` : st.pen ? `<b class="w">破甲</b>` : "";
-    fieldLine();
-    /* v1.7.15 主动视角: 主语沿用上行"${monNm} 反扑而至", 报它打出多少伤害 */
-    btlLog(`　${lead ? lead + " " : ""}打出 <b class="r">${st.dmg}</b> 伤害。`);
-    if (BTL.ms.life > 0) {                                   // v1.7.15 妖吸血词缀
+    let suck = "";
+    if (BTL.ms.life > 0) {                                   // 妖吸血词缀: 并进其伤害行
       const heal = Math.round(st.dmg * BTL.ms.life / 100);
-      if (heal > 0) {
-        BTL.mhp = Math.min(BTL.mhpMax, BTL.mhp + heal); fieldLine();
-        btlLog(`　<b class="suck">妖噬血回春 +${heal}</b>`);
-      }
+      if (heal > 0) { BTL.mhp = Math.min(BTL.mhpMax, BTL.mhp + heal); suck = ` <b class="suck">（吸血 +${heal}）</b>`; }
     }
+    fieldLine();
+    btlLog(`　${lead ? lead + " " : ""}打出 <b class="r">${st.dmg}</b> 伤害${suck}。`);
   }
   fieldLine();
   if (BTL.php <= 0) { btlLose(); }
@@ -4341,7 +4336,7 @@ function btlWin() {
   const ge = Math.round(rateNow() * FIGHT_EXP_W);
   state.spirit += g; state.exp += ge;
   // 参考"每战必掉装备": 掉落一件同级法宝(品质概率), 走自动择优穿戴, 并在结算战报展示
-  let dropInfo = "";
+  let dropInfo = "", dropCard = "", dropQ = -1;
   try {
     const dr = makeArt();
     const arts = state.arts || [];
@@ -4355,11 +4350,34 @@ function btlWin() {
     if (preLen < 4 && idx >= preLen || !before) dropInfo = `　拾获 <b class="r">「${dr.name}」</b>（${qn}·${slotN}）—— 阿青已替你收进藏宝阁。`;
     else if (now === dr) dropInfo = `　拾获 <b class="r">「${dr.name}」</b>（${qn}·${slotN}）胜过旧佩，自动换上。`;
     else dropInfo = `　拾获 <b class="r">「${dr.name}」</b>（${qn}·${slotN}）不及身上所佩，阿青熔作灵石。`;
+    /* v1.7.17 高品掉宝宝卡(古宝+/灵宝+/玄天+), 成就感强化 */
+    if (dr.q >= 3) {
+      dropQ = dr.q;
+      const chips = (dr.fx || []).map(f => `<span class="f k-${f.k}"><i class="dot"></i>${FX_TXT[f.k] || f.k}<b>+${f.v}%</b></span>`).join("");
+      const verdict = now === dr ? "胜过旧佩 · 已自动换上"
+        : (dropInfo.indexOf("熔") > -1 ? "不及所佩 · 阿青炼作灵石" : "阿青已替你收进藏宝阁");
+      dropCard = `<div class="drop-in qc${dr.q}">
+        <div class="dh"><span class="q">${qn} · ${slotN}</span><span class="n">「${dr.name}」</span></div>
+        <div class="ds">攻 <b>${dr.a || 0}</b> · 防 <b>${dr.d || 0}</b> · 血 <b>${dr.h || 0}</b></div>
+        ${chips ? `<div class="df">${chips}</div>` : ""}
+        <div class="dt">${verdict}</div></div>`;
+    }
   } catch (e) {}
   pushMsg("main", `你击退 <span class="r">${m.n}</span>，<span class="g">+${fmt(g)} 灵石</span>、修为+<span class="g">${fmt(ge)}</span>。`);
   addJournal({ key: "bt-" + Date.now(), big: realm().big, kind: "纪事", title: "斗法 · 退" + m.n,
     text: `你于${warZone().name}巡猎，遇 ${m.n} 拦路，施「${(SKILLS[BTL.big] || SKILLS[SKILLS.length - 1])[0]}」「${(SKILLS[BTL.big] || SKILLS[SKILLS.length - 1])[1]}」数合将其击退，捡得灵石 ${fmt(g)}。` });
   warEnd(`妖雾散尽 · 斗法得胜! 灵石 <b>+${fmt(g)}</b>，修为 +<b>${fmt(ge)}</b>`, "win", dropInfo);
+  if (dropCard) {                                            // 高品宝卡 + 品光一闪
+    const wl = $("warLog"); if (wl) { const d = document.createElement("div"); d.innerHTML = dropCard; wl.appendChild(d); }
+    const fl = $("flash");
+    if (fl && !BTL.skip) {
+      fl.style.transition = "none";
+      fl.style.opacity = dropQ >= 5 ? .55 : .32;
+      void fl.offsetWidth;
+      fl.style.transition = "opacity .9s ease";
+      fl.style.opacity = "0";
+    }
+  }
   traceSay(`你击退 ${m.n}，<b>+${fmt(g)} 灵石</b>`);
   const wait = (BTL && BTL.skip) ? 2400 : 3800;
   setTimeout(() => { if (BTL) { BTL = null; huntNext(); traceRefresh(); save(); cloudSoon(); } }, wait);
@@ -4461,7 +4479,37 @@ window.debugEncounter = debugEncounter;     // 仅控制台可用, 界面不再�
 /* ============ v0.9.4 法宝·装备: 自动择优穿戴 + 装备面板 ============ */
 /* 自动装: 阿青出炉新法宝 → 同槽按"斗法综合分"比较(攻/防/血加权), 胜过旧佩才自动顶替,
    被换旧件熔回灵石; 同品质只要综合分更高也允许替换 → 装备随境界刷新不再冻结 */
-function artScore(a) { return (a.a || 0) + 3 * (a.d || 0) + (a.h || 0) / 30; }   // 同槽排序用的综合分
+/* v1.7.17 同槽择优综合分 = 三维数值 + 词条乘区折算。
+ * 词条%作用于当前整体(境界线性基础+已穿装备), 用 atkRef/defRef/hpRef 作乘区基座;
+ * 同槽新旧比较时 ref 相同, 词条强的件才会胜出(此前只看裸数值, 词条被白扔)。 */
+function artCtx() {
+  const lv = (state.realmIdx || 0) + 1;
+  let fa = 0, fd = 0, fh = 0;
+  const _eb = typeof equipBonus === "function" ? equipBonus() : { atk: 0, def: 0, hp: 0 };
+  fa = _eb.atk || 0; fd = _eb.def || 0; fh = _eb.hp || 0;
+  return {
+    atkRef: Math.max(220, 10 + 46 * lv + fa),
+    defRef: Math.max(90, 5 + 26 * lv + fd),
+    hpRef: Math.max(320, 100 + 330 * lv + fh),
+  };
+}
+function artScore(a) {
+  let sc = (a.a || 0) + 3 * (a.d || 0) + (a.h || 0) / 30;
+  const c = artCtx();
+  for (const f of (a.fx || [])) {
+    const p = f.v / 100;
+    if (f.k === "atk") sc += p * c.atkRef;
+    else if (f.k === "hp") sc += p * c.hpRef / 30;
+    else if (f.k === "dfn") sc += p * c.defRef * 3;
+    else if (f.k === "crit") sc += p * c.atkRef * 0.55;
+    else if (f.k === "critB") sc += p * c.atkRef * 1.0;
+    else if (f.k === "critD") sc += p * c.atkRef * 0.15;
+    else if (f.k === "pen") sc += p * c.atkRef * 0.35;
+    else if (f.k === "dodge") sc += p * c.defRef * 1.4;
+    else if (f.k === "life") sc += p * c.atkRef * 0.5;
+  }
+  return sc;
+}
 let _eqRecycle = [];
 function equipBonus() {                 // 装备数值加总 + 词条聚合(v1.7.13)
   let atk = 0, def = 0, hp = 0;

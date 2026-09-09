@@ -734,3 +734,32 @@
 .eq-sum .row1 .spt{color:#556080}
 .eq-sum .row2{display:flex;flex-wrap:wrap;gap:3px 14px;font-size:10.5px;align-items:center}
 .eq-sum .row2 .nodim{color:#4d5670;font-size:10px;letter-spacing:.1em}
+
+/* ============ v1.7.17 高品掉宝宝卡(古宝+/灵宝+/玄天+ 结算弹卡) ============ */
+.drop-in{--qc:#e0b45a;--qcdim:rgba(224,180,90,.5);
+  position:relative;margin:9px 0 3px;padding:9px 13px 9px 15px;border-radius:8px;
+  background:linear-gradient(180deg,rgba(34,26,14,.88),rgba(15,11,6,.78));
+  border:1px solid var(--qcdim);border-left-width:4px;border-left-color:var(--qc);
+  box-shadow:0 0 14px rgba(255,200,110,.16),inset 0 0 24px rgba(255,200,120,.05);
+  animation:dropIn .5s cubic-bezier(.18,.9,.3,1.2)}
+.drop-in.qc3{--qc:#e0b45a;--qcdim:rgba(224,180,90,.55)}
+.drop-in.qc4{--qc:#c08af0;--qcdim:rgba(192,138,240,.6);box-shadow:0 0 18px rgba(160,100,235,.22)}
+.drop-in.qc5{--qc:#ff5257;--qcdim:rgba(255,90,95,.65);
+  background:linear-gradient(180deg,rgba(52,18,20,.92),rgba(22,8,10,.82));
+  box-shadow:0 0 22px rgba(255,60,66,.32),inset 0 0 30px rgba(255,80,90,.08);
+  animation:dropIn .55s cubic-bezier(.18,.9,.3,1.2),rarePulse 1.8s ease-in-out .6s infinite}
+@keyframes dropIn{0%{opacity:0;transform:translateY(10px) scale(.88)}100%{opacity:1;transform:none}}
+@keyframes rarePulse{0%,100%{box-shadow:0 0 22px rgba(255,60,66,.3)}50%{box-shadow:0 0 34px rgba(255,80,90,.5)}}
+.drop-in .dh{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.drop-in .dh .q{font-size:9px;letter-spacing:.26em;color:var(--qc);font-weight:700}
+.drop-in .dh .n{font-size:15px;color:#fff1da;letter-spacing:.08em;text-shadow:0 1px 8px rgba(0,0,0,.75)}
+.drop-in.qc5 .dh .n{color:#ffd9c8;text-shadow:0 0 14px rgba(255,95,100,.55)}
+.drop-in.qc4 .dh .n{color:#f3e8fc}
+.drop-in .ds{font-size:10.5px;color:#a9b2c6;margin:4px 0 1px}
+.drop-in .ds b{color:#ffd9a0;font-weight:600;margin:0 2px}
+.drop-in .df{display:flex;flex-wrap:wrap;gap:3px 14px;margin-top:5px;align-items:center}
+.drop-in .f{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:#d3d9e6;white-space:nowrap}
+.drop-in .f .dot{width:5px;height:5px;border-radius:50%}
+.drop-in .f b{font-weight:600}
+.drop-in .dt{margin-top:6px;padding-top:5px;border-top:1px dashed rgba(255,215,150,.16);
+  font-size:10px;color:var(--qc);letter-spacing:.14em;text-align:right}
