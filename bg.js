@@ -38,8 +38,8 @@ const NEB_CFG = [
 /* 银河: 对角微光丝带上的细小星尘 (确定性 mulberry32) */
 const GALAXY_N = 150;
 const GALAXY_A = 0.10;       // 单点峰值 alpha
-/* 纸月 */
-const MOON = { fx: -0.36, fy: 0.22, size: 0.155 };
+/* 纸月(右上角; fx/fy 为 0..1 屏幕分数坐标, 与 NEB_CFG 同规) */
+const MOON = { fx: 0.80, fy: 0.24, size: 0.125 };
 /* 流云(极淡横带, 缓慢漂移, 制造"墨气"层次) */
 const CLOUD_N = 2;
 const CLOUD_SPD = [7, 13];   // 横穿周期秒数(越长越慢)
@@ -312,10 +312,10 @@ function initDeepSpace(canvas) {
       }
     }
 
-    /* 4. 纸月 */
+    /* 4. 纸月(右上) */
     const ms = MOON.size * Math.max(W, H);
-    moon.x = (W * 0.5 + MOON.fx * W) + camX * 0.3;
-    moon.y = (H * 0.5 + MOON.fy * H) + camY * 0.3;
+    moon.x = (MOON.fx * W) + camX * 0.3;
+    moon.y = (MOON.fy * H) + camY * 0.3;
     const breathe = 0.96 + 0.04 * Math.sin(T * 0.16 + 1.2);
     ctx.globalAlpha = 0.92 * breathe;
     ctx.drawImage(moonCv, moon.x - ms, moon.y - ms, ms * 2, ms * 2);
