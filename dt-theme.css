@@ -683,3 +683,54 @@
 .fx-dodge{color:#8fe3ff}.fx-dodge b{color:#a8ecff}
 .fx-life{color:#9ff0c8}.fx-life b{color:#b6ffd9}
 .fx-hp,.fx-dfn{color:#d8e2a8}.fx-hp b{color:#e6efbe}.fx-dfn b{color:#e6efbe}
+
+/* ============ v1.7.16 法宝面板·暗黑品质卡重做 ============
+ * 品质色板(低→高): 粗制灰 → 法器蓝 → 灵器青玉 → 古宝陈金 → 灵宝紫霞 → 玄天赤红(顶级)
+ * 布局: 4 槽改竖排全宽卡(词条再多也只纵向增长, 面板 story-body 内滚动, 不撑爆格)
+ * 词条: 名称统一暖白(克制), 圆点+数值按类别着低饱和色(暗黑 mod 式) */
+.eq-list{display:flex;flex-direction:column;margin:6px 0 4px}
+.eq-row{--qc:#aab2c0;--qcdim:rgba(170,178,192,.22);
+  position:relative;display:block;padding:8px 12px 7px 14px;margin:0 0 9px;border-radius:6px;
+  background:linear-gradient(180deg,rgba(27,33,52,.74),rgba(12,16,26,.6));
+  border:1px solid var(--qcdim);border-left-width:3px;border-left-color:var(--qc)}
+.eq-row.qc0{--qc:#aab2c0;--qcdim:rgba(170,178,192,.2)}
+.eq-row.qc1{--qc:#6b9df5;--qcdim:rgba(107,157,245,.32)}
+.eq-row.qc2{--qc:#3fc9a2;--qcdim:rgba(63,201,162,.32)}
+.eq-row.qc3{--qc:#e0b45a;--qcdim:rgba(224,180,90,.38)}
+.eq-row.qc4{--qc:#c08af0;--qcdim:rgba(192,138,240,.4);box-shadow:0 0 12px rgba(150,90,220,.14)}
+.eq-row.qc5{--qc:#ff5257;--qcdim:rgba(255,90,95,.55);
+  background:linear-gradient(180deg,rgba(54,20,24,.8),rgba(26,10,14,.74));
+  box-shadow:0 0 18px rgba(255,60,66,.22),inset 0 0 30px rgba(255,70,80,.05)}
+.eq-row.empty{display:flex;align-items:center;justify-content:center;min-height:44px;
+  background:rgba(10,14,24,.38);border:1px dashed rgba(140,150,175,.2);border-left:3px solid rgba(140,150,175,.16)}
+.eq-row.empty .eq-slot{color:#525c78;font-size:11px;letter-spacing:.32em;text-indent:.32em}
+.eq-h{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.eq-ql{font-size:9px;letter-spacing:.24em;color:var(--qc);font-weight:600;opacity:.95}
+.eq-nm{font-size:14.5px;color:#f2ecdf;letter-spacing:.05em;text-shadow:0 1px 6px rgba(0,0,0,.7)}
+.qc5 .eq-nm{color:#ffdec9;text-shadow:0 0 12px rgba(255,95,100,.5)}
+.qc4 .eq-nm{color:#efe2fb}
+.eq-lv{margin-left:auto;font-size:9.5px;color:#6e7892;letter-spacing:.06em;white-space:nowrap}
+.eq-st{font-size:11px;color:#9aa6bd;margin:3px 0 1px;letter-spacing:.02em}
+.eq-st b{color:#ffd9a0;font-weight:600;margin:0 2px}
+.eq-fx{display:flex;flex-wrap:wrap;gap:3px 14px;margin-top:5px;align-items:center}
+.eq-fx .f,.eq-sum .row2 .f{display:inline-flex;align-items:center;gap:6px;
+  font-size:10.5px;color:#ccd3e4;letter-spacing:.02em;white-space:nowrap;line-height:1.75}
+.eq-fx .f .dot,.eq-sum .row2 .f .dot{width:5px;height:5px;border-radius:50%;flex:none;opacity:.95}
+.eq-fx .f b,.eq-sum .row2 .f b{font-weight:600}
+/* 词条类别色(暗黑式克制): 词名统一暖白, 圆点+数值承载类别色 */
+.k-atk .dot{background:#e0a24f}.k-atk b{color:#e9bd7d}
+.k-crit .dot{background:#e8c35a}.k-crit b{color:#efd48a}
+.k-critB .dot{background:#f0a75c}.k-critB b{color:#f6c68e}
+.k-critD .dot{background:#e89062}.k-critD b{color:#efb088}
+.k-pen .dot{background:#cf7f6a}.k-pen b{color:#dd9c85}
+.k-hp .dot{background:#d96a63}.k-hp b{color:#e78f87}
+.k-dfn .dot{background:#7fa8dd}.k-dfn b{color:#a3c3ec}
+.k-dodge .dot{background:#5fc4b6}.k-dodge b{color:#85ddd0}
+.k-life .dot{background:#63c98a}.k-life b{color:#8adfab}
+.eq-sum{display:flex;flex-direction:column;gap:6px;padding:0 0 9px;
+  border-bottom:1px solid rgba(140,155,190,.13);margin:0 0 10px}
+.eq-sum .row1{font-size:11px;color:#c9d2e4;display:flex;flex-wrap:wrap;gap:4px 6px;align-items:baseline;letter-spacing:.02em}
+.eq-sum .row1 b{color:#ffd9a0;font-weight:600}
+.eq-sum .row1 .spt{color:#556080}
+.eq-sum .row2{display:flex;flex-wrap:wrap;gap:3px 14px;font-size:10.5px;align-items:center}
+.eq-sum .row2 .nodim{color:#4d5670;font-size:10px;letter-spacing:.1em}

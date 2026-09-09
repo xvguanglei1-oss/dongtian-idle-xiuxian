@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.15";
+const GAME_VER = "v1.7.16";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -4505,41 +4505,37 @@ function openEquip() {
   m.classList.add("show");
 }
 function closeEquip() { const m = $("equipModal"); if (m) m.classList.remove("show"); }
-function renderEquip() {
+function renderEquip() {                 // v1.7.16 竖排品质卡 + 暗黑式词条
   const box = $("equipBody"); if (!box) return;
   const eb = equipBonus();
   const arr = (state.arts || []).slice(-6);
-  let cells = "";
-  const fxCls = { atk:"fx-atk", hp:"fx-hp", dfn:"fx-dfn", crit:"fx-crit", critB:"fx-critb", critD:"fx-critd", pen:"fx-pen", dodge:"fx-dodge", life:"fx-life" };
-  const fxNames = { atk:"攻击", hp:"生命", dfn:"防御", crit:"会心", critB:"暴击", critD:"爆伤", pen:"破甲", dodge:"闪避", life:"吸血" };
+  const SLOTN = SLOT_TYPES.map(t => t.n);
+  const chip = (f) => `<span class="f k-${f.k}"><i class="dot"></i>${FX_TXT[f.k] || f.k}<b>+${f.v}%</b></span>`;
+  let rows = "";
   for (let i = 0; i < 4; i++) {
     const a = arr[i];
-    if (!a) { cells += `<div class="eq-cell empty"><span class="eq-cn dim">空位</span></div>`; continue; }
-    const q = QUALITY[a.q] || QUALITY[0];
-    const tn = SLOT_TYPES[i].n;
-    const fxLine = (a.fx || []).length
-      ? `<div class="eq-fx">${a.fx.map(f => `<span class="f ${fxCls[f.k] || ""}">${fxNames[f.k]}<b>+${f.v}%</b></span>`).join("")}</div>` : "";
-    cells += `<div class="eq-cell qc${a.q}">
-      <div class="eq-ql ${q.cls}">${q.name} · ${tn}</div>
-      <div class="eq-cn">${a.name}</div>
-      <div class="eq-bt">攻 <b>${a.a||0}</b> · 防 <b>${a.d||0}</b> · 血 <b>${a.h||0}</b></div>
-      ${fxLine}
+    if (!a) { rows += `<div class="eq-row empty"><span class="eq-slot">${SLOTN[i]} · 空位</span></div>`; continue; }
+    const qn = (QUALITY[a.q] || QUALITY[0]).name;
+    rows += `<div class="eq-row qc${a.q}">
+      <div class="eq-h"><span class="eq-ql">${qn}</span><span class="eq-nm">${a.name}</span><span class="eq-lv">lv${a.lv || ""} · ${SLOTN[i]}</span></div>
+      <div class="eq-st">攻 <b>${a.a || 0}</b> · 防 <b>${a.d || 0}</b> · 血 <b>${a.h || 0}</b></div>
+      ${(a.fx && a.fx.length) ? `<div class="eq-fx">${a.fx.map(chip).join("")}</div>` : ""}
     </div>`;
   }
   const agg = eb.agg || {};
-  const aggKeys = [["crit","会心"],["critB","暴击"],["critD","爆伤"],["pen","破甲"],["dodge","闪避"],["life","吸血"],["atk","攻击%"],["hp","生命%"],["dfn","防御%"]];
-  const aggTxt = aggKeys.filter(([k]) => agg[k]).map(([k, n]) => `<span class="a ${fxCls[k] || ""}">${n} <b>+${agg[k]}%</b></span>`).join("");
+  const aggTxt = (["crit", "critB", "critD", "pen", "dodge", "life", "atk", "hp", "dfn"])
+    .filter(k => agg[k])
+    .map(k => `<span class="f k-${k}"><i class="dot"></i>${FX_TXT[k]}<b>+${agg[k]}%</b></span>`).join("");
   const rec = _eqRecycle.length ? `<div class="eq-rec">近记：${_eqRecycle.join(" · ")}</div>` : "";
   box.innerHTML = `
     <div class="eq-sum">
-      <div class="row1">修为加成 <b>×${artMult().toFixed(2)}</b> · 装备 <b>攻+${eb.atk}</b> <b>防+${eb.def}</b> <b>血+${eb.hp}</b></div>
-      <div class="row2">${aggTxt || "<span class='a dim'>暂无词条</span>"}</div>
+      <div class="row1">修为加成 <b>×${artMult().toFixed(2)}</b><span class="spt">·</span>装备　攻 <b>+${eb.atk}</b>　防 <b>+${eb.def}</b>　血 <b>+${eb.hp}</b></div>
+      <div class="row2">${aggTxt || `<span class="nodim">尚未获得任何词条加成</span>`}</div>
     </div>
-    <div class="eq-grid">${cells}</div>
-    <div class="eq-note">阿青出炉新宝会自动择优：胜过身上最弱一件才换上，旧件熔回灵石；<br>词条(会心/暴击/爆伤/破甲/闪避/吸血/攻防血%)已并入战斗结算，逐条见上。</div>
+    <div class="eq-list">${rows}</div>
+    <div class="eq-note">阿青出炉新宝会自动择优：胜过身上同部位旧宝才换上，旧件熔回灵石，全程无需你费心。<br>词条数值已并入战斗结算（会心/暴击/爆伤/破甲/闪避/吸血/攻防血%），逐条见上。</div>
     ${rec}`;
 }
-
 
 
 /* ============ v1.0.2 数值整体重做(同尺+加法) ============ */
