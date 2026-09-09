@@ -499,15 +499,19 @@
   @keyframes dmgUp{0%{opacity:0;transform:translateY(4px) scale(.8)}18%{opacity:1;transform:translateY(-2px) scale(1.15)}100%{opacity:0;transform:translateY(-26px) scale(1)}}
 
 /* ============ v0.9.3 情境行迹 + 文字斗法横幅 ============ */
-  .trace.fight{background:linear-gradient(90deg,rgba(208,80,60,.0),rgba(74,16,8,.88) 16%,rgba(74,16,8,.88) 84%,rgba(208,80,60,.0));
+  .trace.fight, #traceArea.enc{
+    background:linear-gradient(90deg,rgba(208,80,60,.0),rgba(74,16,8,.88) 16%,rgba(74,16,8,.88) 84%,rgba(208,80,60,.0));
     border-top:1px solid rgba(255,140,110,.28);border-bottom:1px solid rgba(255,140,110,.28);
-    animation:encPulse 1.6s ease-in-out infinite;padding:8px 4px}
+    animation:encPulse 1.6s ease-in-out infinite;padding:8px 4px;
+    position:relative;z-index:6;                                /* v1.7.0: 红色警示词浮于战报之上, 不被覆盖 */
+    margin-bottom:10px;                                         /* v1.7.0: 与战报拉开, 玩家看得见发生了什么 */
+    box-shadow:0 0 0 1px rgba(255,140,110,.22), 0 4px 14px rgba(208,80,60,.32)}
   .trace.fight .t-txt{color:#ffe4d8;font-size:14.5px;font-weight:600;line-height:1.45}
   .trace.fight .t-txt b{color:#ffb199}
   /* 文字斗法横幅: 行迹带正下方, 细墨纸横向条 */
   /* v1.4.1: 横幅入 .top-stack 纵向流(行迹之下), 不再 fixed 定位 */
-  .war-banner{position:static;width:100%;z-index:auto;display:none;
-    pointer-events:none}
+  .war-banner{position:relative;z-index:5;width:100%;display:none;   /* v1.7.0: z-index 5 让红条压住头部, 让出独立视觉 */
+    pointer-events:none;margin-top:4px}                              /* v1.7.0: 与红条再留呼吸间距 */
   .war-banner::before{content:"";position:absolute;inset:0;
     background:linear-gradient(90deg,rgba(10,14,24,.0),rgba(12,16,26,.96) 14%,rgba(12,16,26,.96) 86%,rgba(10,14,24,.0));
     border-top:1px solid rgba(201,168,106,.16);border-bottom:1px solid rgba(201,168,106,.16)}
