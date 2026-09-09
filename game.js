@@ -1,7 +1,7 @@
-/* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
+/* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.19";
+const GAME_VER = "v1.7.20";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3240,6 +3240,15 @@ function huntTxtOf(H) {                 // 离线巡猎纪要(云端 gains.hunt 
 }
 function applyOffline() {
   const now = Date.now();
+  /* v1.7.20 P0-1 时钟加固: 结算基准若明显落在"未来"(本地时钟被回拨过),
+     不做倒贴也不重结, 将基准校正回当前并计数取证; 每次离线收益仍受 OFFLINE_CAP 限制。
+     注意: 纯前端没有权威时间源, 无法根除"持续拨快时钟"预支收益 —— 彻底防护需后端时钟校准。 */
+  if ((state._settledTs || 0) > now + 60000 || (state._lastTs0 || 0) > now + 60000) {
+    state._warp = (Number(state._warp) || 0) + 1;
+    state._settledTs = now; state._lastTs0 = now;
+    save();
+    return;
+  }
   /* 结算基准 = 载入时的原始 lastTs(_lastTs0) 与上次结算推进点取大 → 多设备/换档不重不漏
      (不能用 state.lastTs —— 它已被启动瞬间的 save() 刷成现在, 见 load 处注释) */
   const base = Math.max(state._lastTs0 || state.lastTs || 0, state._settledTs || 0);
@@ -3343,7 +3352,7 @@ function applyOffline() {
 }
 function closeOffline() { $("offlineModal").classList.remove("show"); }
 
-/* ============ three.js 背景 ============ */
+/* ============ 背景与特效层 ============ */
 /* ===== 光环预览(调试工具): 只改 #cult data-big 让 fx2d 换境界, 不动修为 ===== */
 function toggleAuraTest() {
   const box = document.getElementById("auraTest");
@@ -3422,15 +3431,23 @@ function initFxDiag() {
 }
 
 async function initBg() {
-  try { await initBg3D(); }
-  catch (e) { console.warn("WebGL 不可用，降级星空", e); document.body.classList.add("no-webgl"); }
+  try { await initBg2D(); }
+  catch (e) { console.warn("背景初始化失败，CSS 兜底", e); document.body.classList.add("no-webgl"); }
 }
-async function initBg3D() {
+/* v1.7.20: bg.js 已重写为纯 Canvas 2D(无 WebGL/无 Three), 移动端低端机更稳 */
+async function initBg2D() {
   const canvas = $("bg");
-  const mod = await import("./bg.js?v=926b5d17");
+  const mod = await import("./bg.js?v=1.7.20");
   window.__bgCtrl = await mod.initDeepSpace(canvas);
 }
-/* v1.6.0-B 灵气道场叠加层: 随大境界变色调的流动云雾 + 上升灵气粒子(叠在深空背景之上, 不动 bg.js) */
+/* v1.7.20 PERF-2: 渲染 DPR 自适应 —— 触屏/小内存低端设备收敛到 1.5(帧缓冲像素约 -44%), 桌面保留 2 */
+function capDeviceDpr() {
+  let low = false;
+  try { low = matchMedia("(pointer: coarse)").matches; } catch (e) {}
+  try { if (navigator.deviceMemory && navigator.deviceMemory <= 4) low = true; } catch (e) {}
+  return Math.min(window.devicePixelRatio || 1, low ? 1.5 : 2);
+}
+/* v1.6.0-B 灵气道场叠加层: 随大境界变色调的流动云雾 + 上升灵气粒子(叠在背景之上) */
 const AURA_COLORS = [
   [103,201,171], [103,201,171], [91,143,214], [233,196,126],
   [180,138,214], [207,232,224], [207,232,224]
@@ -3441,7 +3458,7 @@ function initAura() {
   _auraCv = $("aura"); if (!_auraCv) return;
   _auraCtx = _auraCv.getContext("2d");
   const fit = () => {
-    const dpr = Math.min(2, devicePixelRatio || 1);
+    const dpr = capDeviceDpr();                    // v1.7.20 PERF-2: 低端收敛
     _auraCv.width = innerWidth * dpr; _auraCv.height = innerHeight * dpr;
     _auraCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
@@ -3483,6 +3500,7 @@ function mainMoment() {
 }
 
 /* ============ 主循环 ============ */
+let _hudAcc = 0;   // v1.7.20 PERF-1: HUD 刷新累计, ≥100ms 才刷一次; 事件触发仍即时刷新
 function loop(dt) {
   const r = realm();
   if (!breaking) {
@@ -3500,7 +3518,7 @@ function loop(dt) {
   }
   tickDsp(dt);
   tickAura(dt);
-  updateHUD();
+  _hudAcc += dt; if (_hudAcc >= 0.1) { _hudAcc = 0; updateHUD(); }   // PERF-1: HUD ~10FPS
   checkMilestones();
   if (Math.random() < dt * 0.35) adventure();
   if (Math.random() < dt * 0.06) mainMoment();

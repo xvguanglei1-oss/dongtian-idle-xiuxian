@@ -34,6 +34,13 @@ const LANE_HALF = 0.88;  // 臂"半宽"(rad): 加宽一倍后 3 臂覆盖大半�
 const GOLD = [255, 205, 120];   // 丹田金丹统一金色
 
 const TAU = Math.PI * 2;
+/* v1.7.20 PERF-2: 低端触屏设备 DPR 收敛到 1.5(帧缓冲像素约 -44%), 桌面/高性能保留 2 */
+function capFxDpr() {
+  let low = false;
+  try { low = matchMedia("(pointer: coarse)").matches; } catch (e) {}
+  try { if (navigator.deviceMemory && navigator.deviceMemory <= 4) low = true; } catch (e) {}
+  return Math.min(window.devicePixelRatio || 1, low ? 1.5 : 2);
+}
 let cv = null, ctx = null;
 let CW = 0, CH = 0, dpr = 1;
 let cfg = null, bigNow = null;
@@ -128,7 +135,7 @@ function fit() {
   if (!p) return;
   const w = p.clientWidth, h = p.clientHeight;
   if (!w || !h) return;
-  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  dpr = capFxDpr();   // v1.7.20 PERF-2: 低端收敛
   CW = w; CH = h;
   const bw = Math.round(w * dpr), bh = Math.round(h * dpr);
   if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }

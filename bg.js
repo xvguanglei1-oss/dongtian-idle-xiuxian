@@ -1,51 +1,50 @@
-/* 深空仙侠全屏背景 bg.js —— 可调参数集中在各常量/函数注释处。
- * (1) 粒子数量: SHELLS 每层 count、GALAXY_N、DUST_N；(2) 星云/仙月: NEB_CFG 里 fx/fy/scale/opacity/depth；
- * (3) 节奏: 星层 rot 速度、相机漂移幅度、呼吸 speed 等。总粒子 ≤1200，全部程序化生成，无外部贴图。 */
-import * as THREE from 'three';
+/* ============================================================
+ * 洞天·墨夜 全屏背景 bg.js —— 纯 Canvas 2D（无 WebGL / 无 Three.js）
+ *
+ * v1.7.20 重写：替代原 Three.js 深空背景。
+ *   · 移动端 WebGL 不可靠 / 低端机 GPU 压力 → 一律 Canvas 2D
+ *   · 视觉收敛到 DESIGN.md「墨线手札」语言：墨色夜空 + 低饱和
+ *     黛青/旧金点缀，去掉蓝紫霓虹星云；留白给 UI 墨块与 aura 层呼吸
+ *
+ * 可调参数集中在各常量/函数注释处：
+ *   (1) 星点: STAR_MAIN_MAX / STAR_DUST_MAX / 视差分组 pace
+ *   (2) 雾霭: NEB_CFG（位置/大小/色/透明度/漂移）
+ *   (3) 节奏: 月呼吸、云漂、银河微移的速率常量
+ * 全部程序化生成 + 离屏 sprite 缓存，无外部贴图。
+ * 自适应: DPR 低端收敛、prefers-reduced-motion 静止、后台停 RAF。
+ * ============================================================ */
 
-const FOV = 64;
-const TAN_HALF = Math.tan((FOV * Math.PI) / 360); // 视角竖直半角正切
-const DPR_CAP = 2;
+const C = {
+  paper: [233, 226, 208],   // 纸白 (DESIGN --ink)
+  gold:  [201, 168, 106],   // 旧金 (DESIGN --gold)
+  jade:  [134, 181, 162],   // 黛青 (DESIGN --jade)
+  ink:   [52, 74, 116],     // 墨蓝(暗, 仅雾霭用)
+};
 
-/* ---------- 顶点/片元着色器：柔和加性发光粒子（星场、星带、灵尘共用） ---------- */
-const VERT = /* glsl */ `
-  attribute float aSize;
-  attribute vec3 aColor;
-  attribute float aPhase;
-  attribute float aSpeed;
-  uniform float uTime;
-  uniform float uPixelRatio;
-  varying vec3 vColor;
-  void main() {
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    gl_Position = projectionMatrix * mv;
-    float tw = 0.70 + 0.30 * sin(uTime * aSpeed + aPhase);
-    float shimmer = 0.90 + 0.10 * sin(uTime * aSpeed * 0.61 + aPhase * 1.9);
-    vColor = aColor * tw;
-    gl_PointSize = aSize * uPixelRatio * 2.1 * shimmer;
-  }
-`;
-const FRAG = /* glsl */ `
-  varying vec3 vColor;
-  void main() {
-    float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
-    float a = pow(max(1.0 - d, 0.0), 2.0);
-    gl_FragColor = vec4(vColor, a);
-  }
-`;
+/* ---------- 星点密度/视差（按屏幕面积自适应） ---------- */
+const STAR_DUST_MAX = 300;   // 尘星上限(小、密、暗)
+const STAR_MAIN_MAX = 150;   // 主星上限(大、稀、亮)
+const STAR_DUST_PER = 11500; // 每多少 CSS px² 生成 1 尘星
+const STAR_MAIN_PER = 28000;
+const STAR_MINS = { dust: 64, main: 40 };   // 窄屏下限，避免空荡
 
-function makeParticleMat() {
-  return new THREE.ShaderMaterial({
-    uniforms: { uTime: { value: 0 }, uPixelRatio: { value: 1 } },
-    vertexShader: VERT,
-    fragmentShader: FRAG,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
-}
+/* ---------- 雾霭(替星云: 低饱和墨色, alpha 极低) ---------- */
+const NEB_CFG = [
+  { fx: -0.30, fy: 0.28, s: 0.72, c: [52, 74, 116],  a: 0.050, dft: [0.20, 0.14], ph: 0.0 },
+  { fx:  0.34, fy: 0.62, s: 0.85, c: [48, 96, 102],  a: 0.045, dft: [0.17, 0.22], ph: 2.1 },
+  { fx:  0.02, fy: 0.92, s: 0.95, c: [112, 96, 60],  a: 0.038, dft: [0.15, 0.26], ph: 4.0 },
+  { fx:  0.60, fy: 0.06, s: 0.50, c: [64, 84, 122],  a: 0.040, dft: [0.22, 0.18], ph: 5.4 },
+];
+/* 银河: 对角微光丝带上的细小星尘 (确定性 mulberry32) */
+const GALAXY_N = 150;
+const GALAXY_A = 0.10;       // 单点峰值 alpha
+/* 纸月 */
+const MOON = { fx: -0.36, fy: 0.22, size: 0.155 };
+/* 流云(极淡横带, 缓慢漂移, 制造"墨气"层次) */
+const CLOUD_N = 2;
+const CLOUD_SPD = [7, 13];   // 横穿周期秒数(越长越慢)
 
-/* ---------- 确定性伪随机（重建星带时保证形状/分布稳定） ---------- */
+/* ---------- 通用小工具 ---------- */
 function mulberry32(seed) {
   let a = seed >>> 0;
   return function () {
@@ -55,446 +54,331 @@ function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+const TAU = Math.PI * 2;
 
-/* ---------- 程序化纹理 ---------- */
-// 柔和径向光斑（星云）
-function makeBlobTexture() {
-  const s = 256, c = s / 2;
-  const cv = document.createElement('canvas'); cv.width = cv.height = s;
-  const g = cv.getContext('2d');
-  const gr = g.createRadialGradient(c, c, 0, c, c, c - 2);
-  gr.addColorStop(0.00, 'rgba(255,255,255,0.55)');
-  gr.addColorStop(0.25, 'rgba(255,255,255,0.42)');
-  gr.addColorStop(0.50, 'rgba(255,255,255,0.16)');
-  gr.addColorStop(0.75, 'rgba(255,255,255,0.05)');
-  gr.addColorStop(1.00, 'rgba(255,255,255,0)');
-  g.fillStyle = gr; g.fillRect(0, 0, s, s);
-  // 轻微不对称高光，避免“完美圆球”
-  g.globalCompositeOperation = 'lighter';
-  const g2 = g.createRadialGradient(c - 26, c - 20, 4, c - 26, c - 20, 42);
-  g2.addColorStop(0, 'rgba(255,255,255,0.10)');
-  g2.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = g2; g.fillRect(0, 0, s, s);
-  const g3 = g.createRadialGradient(c + 24, c + 22, 4, c + 24, c + 22, 40);
-  g3.addColorStop(0, 'rgba(255,255,255,0.06)');
-  g3.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = g3; g.fillRect(0, 0, s, s);
-  const t = new THREE.CanvasTexture(cv);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+/* ---------- 离屏 sprite 缓存 ---------- */
+const _sp = {};
+// 柔光圆点: col=[r,g,b], hot=偏白热核心. size=画布边长
+function softDot(col, hot) {
+  const key = col[0] + "," + col[1] + "," + col[2] + (hot ? "|h" : "");
+  if (_sp[key]) return _sp[key];
+  const S = 64, c = document.createElement("canvas");
+  c.width = c.height = S;
+  const g = c.getContext("2d");
+  const mix = hot ? 0.82 : 0;
+  const r0 = col[0] + (255 - col[0]) * mix;
+  const g0 = col[1] + (250 - col[1]) * mix;
+  const b0 = col[2] + (242 - col[2]) * mix;
+  const grd = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  grd.addColorStop(0, "rgba(" + r0 + "," + g0 + "," + b0 + ",1)");
+  grd.addColorStop(0.38, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",0.55)");
+  grd.addColorStop(0.72, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",0.14)");
+  grd.addColorStop(1, "rgba(" + col[0] + "," + col[1] + "," + col[2] + ",0)");
+  g.fillStyle = grd; g.fillRect(0, 0, S, S);
+  _sp[key] = c;
+  return c;
 }
-// 仙月：冷白月轮 + 内层微晕 + 宽阔淡晕
-function makeMoonTexture() {
-  const s = 256, c = s / 2, R = c - 2;
-  const cv = document.createElement('canvas'); cv.width = cv.height = s;
-  const g = cv.getContext('2d');
-  const C = (a) => 'rgba(232,240,255,' + a + ')';
-  // 最外层宽阔淡晕
-  let gr = g.createRadialGradient(c, c, 0, c, c, R);
-  gr.addColorStop(0.00, C(0.12));
-  gr.addColorStop(0.35, C(0.07));
-  gr.addColorStop(0.65, C(0.025));
-  gr.addColorStop(1.00, C(0));
-  g.fillStyle = gr; g.fillRect(0, 0, s, s);
-  // 内层月晕
-  gr = g.createRadialGradient(c, c, 0, c, c, R * 0.56);
-  gr.addColorStop(0.00, C(0.10));
-  gr.addColorStop(0.55, C(0.05));
-  gr.addColorStop(1.00, C(0));
-  g.fillStyle = gr; g.fillRect(0, 0, s, s);
-  // 月轮本体（柔和边界）
-  gr = g.createRadialGradient(c, c, 0, c, c, R * 0.30);
-  gr.addColorStop(0.00, C(1.0));
-  gr.addColorStop(0.55, C(0.95));
-  gr.addColorStop(0.78, C(0.55));
-  gr.addColorStop(0.92, C(0.22));
-  gr.addColorStop(1.00, C(0));
-  g.fillStyle = gr; g.fillRect(0, 0, s, s);
-  const t = new THREE.CanvasTexture(cv);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+// 大柔光团(雾霭): 多层 radial, 边缘更自然
+function softBlob(c) {
+  const key = "blob" + c[0] + "," + c[1] + "," + c[2];
+  if (_sp[key]) return _sp[key];
+  const S = 256, cv = document.createElement("canvas");
+  cv.width = cv.height = S;
+  const g = cv.getContext("2d");
+  const a0 = "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",0.5)";
+  const grd = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2 - 2);
+  grd.addColorStop(0, a0);
+  grd.addColorStop(0.3, a0);
+  grd.addColorStop(0.62, "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",0.22)");
+  grd.addColorStop(1, "rgba(" + c[0] + "," + c[1] + "," + c[2] + ",0)");
+  g.fillStyle = grd; g.fillRect(0, 0, S, S);
+  _sp[key] = cv;
+  return cv;
 }
-// 深邃蓝黑→紫黑竖直渐变背景（逐行微抖噪防色带）
-function makeSkyTexture() {
-  const H = 512, W = 4;
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const g = cv.getContext('2d');
-  const stops = [
-    [0.00, [6, 9, 26]],
-    [0.18, [13, 19, 54]],
-    [0.40, [28, 34, 90]],
-    [0.62, [52, 46, 124]],
-    [0.80, [76, 52, 140]],
-    [0.90, [44, 26, 96]],
-    [1.00, [18, 10, 40]],
-  ];
-  const img = g.createImageData(W, H);
-  const pick = (y) => {
-    for (let i = 0; i < stops.length - 1; i++) {
-      const a = stops[i], b = stops[i + 1];
-      if (y >= a[0] && y <= b[0]) {
-        const t = b[0] === a[0] ? 0 : (y - a[0]) / (b[0] - a[0]);
-        return [a[1][0] + (b[1][0] - a[1][0]) * t,
-                a[1][1] + (b[1][1] - a[1][1]) * t,
-                a[1][2] + (b[1][2] - a[1][2]) * t];
-      }
-    }
-    return stops[stops.length - 1][1];
-  };
-  for (let y = 0; y < H; y++) {
-    const p = pick(y / (H - 1));
-    for (let x = 0; x < W; x++) {
-      const o = (y * W + x) * 4;
-      const n = (Math.random() - 0.5) * 1.2;
-      img.data[o] = Math.max(0, Math.min(255, p[0] + n));
-      img.data[o + 1] = Math.max(0, Math.min(255, p[1] + n));
-      img.data[o + 2] = Math.max(0, Math.min(255, p[2] + n));
-      img.data[o + 3] = 255;
-    }
+// 流云长条: 左右渐隐的横带
+function cloudStrip() {
+  const key = "cloud";
+  if (_sp[key]) return _sp[key];
+  const W = 512, H = 128, cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const g = cv.getContext("2d");
+  const grd = g.createLinearGradient(0, 0, W, 0);
+  const a = [0, 1, 1, 0];
+  grd.addColorStop(0.00, "rgba(226,224,212,0)");
+  grd.addColorStop(0.18, "rgba(226,224,212," + a[1] * 0.5 + ")");
+  grd.addColorStop(0.55, "rgba(226,224,212,0.55)");
+  grd.addColorStop(0.85, "rgba(226,224,212,0.20)");
+  grd.addColorStop(1.00, "rgba(226,224,212,0)");
+  g.fillStyle = grd; g.fillRect(0, H / 2 - 6, W, 12);
+  // 上下轻微"墨迹"起伏(让云不是一条死直线)
+  g.fillStyle = "rgba(226,224,212,0.35)";
+  for (let i = 0; i < 26; i++) {
+    const x = ((i * 97) % W) / W * W;
+    const h = 5 + (i % 5) * 2.6;
+    const yy = H / 2 + Math.sin(i * 1.7) * 9;
+    g.beginPath();
+    g.ellipse(x, yy, 14 + (i % 4) * 6, h, 0, 0, TAU);
+    g.fill();
   }
-  g.putImageData(img, 0, 0);
-  const t = new THREE.CanvasTexture(cv);
-  t.colorSpace = THREE.SRGBColorSpace;
-  return t;
+  _sp[key] = cv;
+  return cv;
+}
+// 纸月: 暖白月轮 + 内晕 + 外晕(旧金/纸白)
+function moonSprite() {
+  const key = "moon";
+  if (_sp[key]) return _sp[key];
+  const S = 320, c = S / 2, cv = document.createElement("canvas");
+  cv.width = cv.height = S;
+  const g = cv.getContext("2d");
+  const moon = [242, 236, 218];
+  // 外晕(极淡金)
+  let grd = g.createRadialGradient(c, c, 0, c, c, c * 0.94);
+  grd.addColorStop(0, "rgba(231,206,150,0.20)");
+  grd.addColorStop(0.45, "rgba(231,206,150,0.10)");
+  grd.addColorStop(0.75, "rgba(233,226,208,0.035)");
+  grd.addColorStop(1, "rgba(233,226,208,0)");
+  g.fillStyle = grd; g.fillRect(0, 0, S, S);
+  // 内晕(纸白)
+  grd = g.createRadialGradient(c, c, 0, c, c, c * 0.55);
+  grd.addColorStop(0, "rgba(242,236,218,0.18)");
+  grd.addColorStop(1, "rgba(242,236,218,0)");
+  g.fillStyle = grd; g.fillRect(0, 0, S, S);
+  // 月轮(非纯圆: 左侧略"纸边"阴影, 见 DESIGN 的不完美)
+  const rr = c * 0.30;
+  grd = g.createRadialGradient(c - rr * 0.1, c - rr * 0.08, rr * 0.1, c, c, rr);
+  grd.addColorStop(0.00, "rgba(250,246,232,1)");
+  grd.addColorStop(0.62, "rgba(242,236,218,0.98)");
+  grd.addColorStop(0.88, "rgba(226,216,196,0.72)");
+  grd.addColorStop(1.00, "rgba(226,216,196,0)");
+  g.fillStyle = grd; g.beginPath(); g.arc(c, c, rr, 0, TAU); g.fill();
+  // 月面两三点淡影(砚渍意象, 极淡)
+  g.fillStyle = "rgba(190,178,150,0.16)";
+  g.beginPath(); g.arc(c + rr * 0.18, c - rr * 0.22, rr * 0.16, 0, TAU); g.fill();
+  g.fillStyle = "rgba(190,178,150,0.10)";
+  g.beginPath(); g.arc(c - rr * 0.30, c + rr * 0.10, rr * 0.22, 0, TAU); g.fill();
+  _sp[key] = cv;
+  return cv;
 }
 
 /* ---------- 主入口 ---------- */
-async function initDeepSpace(canvas) {
-  const renderer = new THREE.WebGLRenderer({
-    canvas, antialias: false, powerPreference: 'high-performance', alpha: true,
-  });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, DPR_CAP));
+function initDeepSpace(canvas) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return { destroy() {} };
 
-  const scene = new THREE.Scene();
-  scene.background = makeSkyTexture();
+  let W = 0, H = 0, dpr = 1;
+  let stars = [], neb = [], moon = null;
+  let t = 0, last = performance.now(), raf = 0, running = true;
 
-  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 4000);
-  camera.position.set(0, 0, 0);
-  camera.lookAt(0, 0, -640);
-
-  let aspect = 1;
-  const disposables = [];
-
-  /* ============ 1. 三层视差星场 ============ */
-  const SHELLS = [
-    { count: 170, R: 470,  size: [3.2, 6.6], bright: [0.55, 1.0], rot:  0.012, cool: [0.82, 0.90, 1.0], warm: [1.0, 0.90, 0.80] },
-    { count: 260, R: 720,  size: [2.2, 4.6], bright: [0.45, 0.9], rot: -0.008, cool: [0.88, 0.95, 1.0], warm: [1.0, 0.93, 0.85] },
-    { count: 340, R: 1010, size: [1.6, 3.4], bright: [0.36, 0.78], rot:  0.005, cool: [0.92, 0.97, 1.0], warm: [1.0, 0.96, 0.90] },
-  ];
-  const starPoints = [];
-  SHELLS.forEach((L, li) => {
-    const geo = new THREE.BufferGeometry();
-    const pos = new Float32Array(L.count * 3);
-    const col = new Float32Array(L.count * 3);
-    const siz = new Float32Array(L.count);
-    const ph = new Float32Array(L.count);
-    const sp = new Float32Array(L.count);
-    for (let i = 0; i < L.count; i++) {
-      // 单位球随机方向（均匀）
-      const u = Math.random() * 2 - 1;
-      const th = Math.random() * Math.PI * 2;
-      const s = Math.sqrt(1 - u * u);
-      const R = L.R * (1 + (Math.random() - 0.5) * 0.12);
-      pos[i * 3] = s * Math.cos(th) * R;
-      pos[i * 3 + 1] = u * R;
-      pos[i * 3 + 2] = s * Math.sin(th) * R;
-      const cool = Math.random();
-      const mix = Math.pow(Math.random(), 2.0);
-      const b = L.bright[0] + (L.bright[1] - L.bright[0]) * mix;
-      col[i * 3] = (L.cool[0] * (1 - cool) + L.warm[0] * cool) * b;
-      col[i * 3 + 1] = (L.cool[1] * (1 - cool) + L.warm[1] * cool) * b;
-      col[i * 3 + 2] = (L.cool[2] * (1 - cool) + L.warm[2] * cool) * b;
-      siz[i] = L.size[0] + (L.size[1] - L.size[0]) * Math.pow(Math.random(), 1.6);
-      ph[i] = Math.random() * Math.PI * 2;
-      sp[i] = 0.4 + Math.random() * 1.6;
-    }
-    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute('aColor', new THREE.BufferAttribute(col, 3));
-    geo.setAttribute('aSize', new THREE.BufferAttribute(siz, 1));
-    geo.setAttribute('aPhase', new THREE.BufferAttribute(ph, 1));
-    geo.setAttribute('aSpeed', new THREE.BufferAttribute(sp, 1));
-    const mat = makeParticleMat();
-    const pts = new THREE.Points(geo, mat);
-    scene.add(pts);
-    starPoints.push({ pts, rot: L.rot });
-    disposables.push(geo, mat);
-  });
-
-  /* ============ 2. 主星云（Sprite 云团，青金/蓝紫低饱和） ============ */
-  const blobTex = makeBlobTexture();
-  const NEB_CFG = [
-    { fx:  0.00, fy:  0.30, scale: 0.34, depth: 200, col: 0x39498f, op: 0.16, spd: 0.30, ph: 0.0 },
-    { fx: -0.24, fy:  0.42, scale: 0.25, depth: 185, col: 0x246b82, op: 0.15, spd: 0.24, ph: 1.1 },
-    { fx:  0.24, fy:  0.40, scale: 0.27, depth: 215, col: 0x2c4d7e, op: 0.15, spd: 0.27, ph: 2.2 },
-    { fx: -0.42, fy:  0.20, scale: 0.19, depth: 195, col: 0x4a3a76, op: 0.13, spd: 0.21, ph: 3.3 },
-    { fx:  0.44, fy:  0.18, scale: 0.17, depth: 225, col: 0x6e5c38, op: 0.10, spd: 0.23, ph: 4.4 },
-    { fx: -0.15, fy:  0.58, scale: 0.15, depth: 205, col: 0x3d7f93, op: 0.13, spd: 0.32, ph: 0.7 },
-    { fx:  0.17, fy:  0.56, scale: 0.13, depth: 190, col: 0x5a559e, op: 0.12, spd: 0.28, ph: 1.8 },
-    { fx:  0.00, fy:  0.40, scale: 0.13, depth: 235, col: 0x9fbcc4, op: 0.08, spd: 0.19, ph: 5.0 },
-  ];
-  const nebSprites = NEB_CFG.map((c) => {
-    const mat = new THREE.SpriteMaterial({
-      map: blobTex, color: c.col, transparent: true,
-      opacity: c.op, depthWrite: false, blending: THREE.AdditiveBlending,
-    });
-    mat.rotation = Math.random() * Math.PI;
-    const sp = new THREE.Sprite(mat);
-    sp.frustumCulled = false;
-    sp.scale.setScalar(c.scale); // 相对可见高度比例，layout 时换算成世界尺寸
-    sp.userData.cfg = c;
-    scene.add(sp);
-    disposables.push(mat);
-    return sp;
-  });
-
-  /* ============ 3. 银河/星带（对角微弧，横贯） ============ */
-  const GALAXY_N = 250;
-  const bandGeo = new THREE.BufferGeometry();
-  const bPos = new Float32Array(GALAXY_N * 3);
-  const bCol = new Float32Array(GALAXY_N * 3);
-  const bSiz = new Float32Array(GALAXY_N);
-  const bPh = new Float32Array(GALAXY_N);
-  const bSp = new Float32Array(GALAXY_N);
-  bandGeo.setAttribute('position', new THREE.BufferAttribute(bPos, 3));
-  bandGeo.setAttribute('aColor', new THREE.BufferAttribute(bCol, 3));
-  bandGeo.setAttribute('aSize', new THREE.BufferAttribute(bSiz, 1));
-  bandGeo.setAttribute('aPhase', new THREE.BufferAttribute(bPh, 1));
-  bandGeo.setAttribute('aSpeed', new THREE.BufferAttribute(bSp, 1));
-  const bandMat = makeParticleMat();
-  const bandPts = new THREE.Points(bandGeo, bandMat);
-  const bandGroup = new THREE.Group();
-  bandGroup.add(bandPts);
-  scene.add(bandGroup);
-  disposables.push(bandGeo, bandMat);
-
-  const BAND_DEPTH = 620;
-  function regenBand() {
-    const rng = mulberry32(20240907);
-    const halfY = halfAt(BAND_DEPTH);
-    const halfW = halfY * aspect;
-    for (let i = 0; i < GALAXY_N; i++) {
-      // λ: 沿对角方向 -1..1
-      const u = rng() * 2 - 1;
-      const x0 = u * halfW;
-      const y0 = u * halfY * 0.86 + (1 - u * u) * halfY * 0.22; // 中间略拱起
-      // 平面内法向宽度扰动
-      const v = (rng() - 0.5) * 2;
-      const width = v * halfY * 0.085;
-      const lx = halfW, ly = halfY * 0.86;
-      const nLen = Math.hypot(ly, lx);
-      const nx = ly / nLen, ny = -lx / nLen;
-      bPos[i * 3] = x0 + nx * width + (rng() - 0.5) * 6;
-      bPos[i * 3 + 1] = y0 + ny * width + (rng() - 0.5) * 6;
-      bPos[i * 3 + 2] = -BAND_DEPTH - (1 - u * u) * 130 + (rng() - 0.5) * 26;
-      // 亮度：边缘/两端渐隐，少量亮星点缀
-      const big = rng() < 0.10;
-      const fadeV = Math.max(0, 1 - Math.abs(v) * 1.15);
-      const fadeU = 1 - Math.pow(Math.max(0, Math.abs(u) - 0.86) / 0.14, 2);
-      const base = big ? 0.28 + rng() * 0.3 : 0.035 + rng() * 0.075;
-      const f = base * fadeV * fadeU * (0.85 + rng() * 0.3);
-      bCol[i * 3] = 0.92 * f;
-      bCol[i * 3 + 1] = 0.96 * f;
-      bCol[i * 3 + 2] = 1.0 * f;
-      bSiz[i] = (big ? 1.6 : 0.7 + rng() * 0.9) * (0.8 + rng() * 0.6);
-      bPh[i] = rng() * Math.PI * 2;
-      bSp[i] = 0.4 + rng() * 1.5;
-    }
-    bandGeo.attributes.position.needsUpdate = true;
-    bandGeo.attributes.aColor.needsUpdate = true;
-    bandGeo.attributes.aSize.needsUpdate = true;
-    bandGeo.attributes.aPhase.needsUpdate = true;
-    bandGeo.attributes.aSpeed.needsUpdate = true;
-    bandGeo.computeBoundingSphere();
-  }
-  regenBand();
-
-  /* ============ 4. 灵尘（≤60，青金微光自下而上升腾） ============ */
-  const DUST_N = 50;
-  const dustGeo = new THREE.BufferGeometry();
-  const dPos = new Float32Array(DUST_N * 3);
-  const dCol = new Float32Array(DUST_N * 3);
-  const dSiz = new Float32Array(DUST_N);
-  const dPh = new Float32Array(DUST_N);
-  const dSp = new Float32Array(DUST_N);
-  dustGeo.setAttribute('position', new THREE.BufferAttribute(dPos, 3));
-  dustGeo.setAttribute('aColor', new THREE.BufferAttribute(dCol, 3));
-  dustGeo.setAttribute('aSize', new THREE.BufferAttribute(dSiz, 1));
-  dustGeo.setAttribute('aPhase', new THREE.BufferAttribute(dPh, 1));
-  dustGeo.setAttribute('aSpeed', new THREE.BufferAttribute(dSp, 1));
-  dustGeo.attributes.position.setUsage(THREE.DynamicDrawUsage);
-  dustGeo.attributes.aColor.setUsage(THREE.DynamicDrawUsage);
-  const dustMat = makeParticleMat();
-  const dustPts = new THREE.Points(dustGeo, dustMat);
-  scene.add(dustPts);
-  disposables.push(dustGeo, dustMat);
-
-  const dust = [];
-  for (let i = 0; i < DUST_N; i++) {
-    const gold = Math.random() < 0.35;
-    const seed = {
-      fx: (Math.random() * 2 - 1) * 0.72,
-      depth: 165 + Math.random() * 95,
-      rise: 0.012 + Math.random() * 0.018,   // 周/秒（一程 ~35-80s）
-      phase: Math.random(),
-      driftPh: Math.random() * Math.PI * 2,
-      driftAmp: 3 + Math.random() * 5,
-      base: gold ? [1.0, 0.86, 0.60] : [0.55, 0.95, 0.95],
-    };
-    dust.push(seed);
-    dSiz[i] = 1.0 + Math.random() * 2.0;
-    dPh[i] = Math.random() * Math.PI * 2;
-    dSp[i] = 0.6 + Math.random() * 1.4;
-    dCol[i * 3] = dCol[i * 3 + 1] = dCol[i * 3 + 2] = 0;
-  }
-  function updateDust(t) {
-    for (let i = 0; i < DUST_N; i++) {
-      const s = dust[i];
-      const p = (t * s.rise + s.phase) % 1;
-      const fy = -1.25 + p * 1.80; // -1.25(屏下) → 0.55(中上部)
-      const halfY = halfAt(s.depth);
-      const x = s.fx * halfY * aspect + Math.sin(t * 0.25 + s.driftPh) * s.driftAmp;
-      const y = fy * halfY;
-      dPos[i * 3] = x;
-      dPos[i * 3 + 1] = y;
-      dPos[i * 3 + 2] = -s.depth;
-      // 顶部渐隐 + 细微闪烁
-      const fade = Math.min(1, Math.max(0, (0.55 - fy) / 0.18));
-      const tw = 0.78 + 0.22 * Math.sin(t * 2.0 + dPh[i]);
-      const f = Math.max(0, fade) * tw * 0.62;
-      dCol[i * 3] = s.base[0] * f;
-      dCol[i * 3 + 1] = s.base[1] * f;
-      dCol[i * 3 + 2] = s.base[2] * f;
-    }
-    dustGeo.attributes.position.needsUpdate = true;
-    dustGeo.attributes.aColor.needsUpdate = true;
+  /* 低端收敛: 粗指针(触屏)或内存小 → DPR ≤1.5; 桌面高分保留 2 */
+  function pickDPR() {
+    const raw = window.devicePixelRatio || 1;
+    let low = false;
+    try { low = matchMedia("(pointer:coarse)").matches; } catch (e) {}
+    try {
+      if (navigator.deviceMemory && navigator.deviceMemory <= 4) low = true;
+    } catch (e) {}
+    const cap = low ? 1.5 : 2;
+    return Math.min(raw, cap);
   }
 
-  /* ============ 5. 远方仙月（冷白月轮 + 环晕） ============ */
-  const moonTex = makeMoonTexture();
-  const moonMat = new THREE.SpriteMaterial({
-    map: moonTex, transparent: true, opacity: 0.85,
-    depthWrite: false, blending: THREE.NormalBlending,
-  });
-  const moon = new THREE.Sprite(moonMat);
-  moon.frustumCulled = false;
-  const MOON = { fx: 0.60, fy: 0.52, depth: 520, scale: 0.30 };
-  scene.add(moon);
-  disposables.push(blobTex, moonTex, moonMat);
-
-  /* ---------- 布局（随视口变化，把分数坐标换算到世界） ---------- */
-  function halfAt(d) { return d * TAN_HALF; }
-  function layout() {
-    for (const sp of nebSprites) {
-      const c = sp.userData.cfg;
-      const halfY = halfAt(c.depth);
-      const hw = halfY * aspect;
-      sp.position.set(c.fx * hw, c.fy * halfY, -c.depth);
-      sp.scale.setScalar(c.scale * halfY * 2);
-    }
-    const mh = halfAt(MOON.depth);
-    moon.position.set(MOON.fx * mh * aspect, MOON.fy * mh, -MOON.depth);
-    moon.scale.setScalar(MOON.scale * mh * 2);
-    regenBand();
-  }
-
-  /* ---------- 尺寸/DPR ---------- */
   function resize() {
     const rect = canvas.getBoundingClientRect();
-    const w = Math.max(1, rect.width || window.innerWidth || 1);
-    const h = Math.max(1, rect.height || window.innerHeight || 1);
-    const pr = Math.min(window.devicePixelRatio || 1, DPR_CAP);
-    renderer.setPixelRatio(pr);
-    renderer.setSize(w, h, false);
-    aspect = w / h;
-    camera.aspect = aspect;
-    camera.updateProjectionMatrix();
-    layout();
+    W = Math.max(1, rect.width || window.innerWidth || 1);
+    H = Math.max(1, rect.height || window.innerHeight || 1);
+    dpr = pickDPR();
+    const bw = Math.round(W * dpr), bh = Math.round(H * dpr);
+    if (canvas.width !== bw) canvas.width = bw;
+    if (canvas.height !== bh) canvas.height = bh;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    build();
   }
-  resize();
 
-  const ro = new ResizeObserver(resize);
-  ro.observe(canvas);
+  /* 重新铺点(尺寸/预算变化时) */
+  function build() {
+    const area = W * H;
+    const nDust = Math.max(STAR_MINS.dust, Math.min(STAR_DUST_MAX, Math.round(area / STAR_DUST_PER)));
+    const nMain = Math.max(STAR_MINS.main, Math.min(STAR_MAIN_MAX, Math.round(area / STAR_MAIN_PER)));
+    const rng = mulberry32(20260910);        // 每次 resize 形状稳定可复现
+    stars = [];
+    const push = (isMain) => {
+      const r = rng();
+      let col;
+      if (isMain) col = r < 0.62 ? C.paper : (r < 0.86 ? C.gold : C.jade);
+      else col = r < 0.70 ? C.paper : (r < 0.88 ? C.jade : C.gold);
+      stars.push({
+        x: rng() * W, y: rng() * H,
+        zf: 0.45 + rng() * 0.55,          // 视差层
+        r: isMain ? 1.1 + rng() * 1.5 : 0.55 + rng() * 0.85,
+        base: (isMain ? 0.30 : 0.16) + rng() * 0.30,
+        spd: 0.5 + rng() * 1.8,
+        ph: rng() * TAU,
+        col, hot: isMain && rng() < 0.30,
+        main: isMain,
+      });
+    };
+    for (let i = 0; i < nDust; i++) push(false);
+    for (let i = 0; i < nMain; i++) push(true);
+    // 雾霭(随屏宽缩放, 比例坐标存 fx/fy/s)
+    neb = NEB_CFG.map((c) => ({
+      cfg: c, sp: softBlob(c.c),
+      x: 0, y: 0, r: 0,          // build 后每帧由 layout 换算
+    }));
+    // 银河带点位(确定性, 对角 -1..1)
+    const gr = mulberry32(20240907);
+    const gPts = [];
+    for (let i = 0; i < GALAXY_N; i++) {
+      const u = gr() * 2 - 1;
+      const v = (gr() - 0.5) * 2;
+      const fade = Math.max(0, 1 - Math.abs(v) * 1.6) * Math.max(0, 1 - Math.pow(Math.max(0, Math.abs(u) - 0.80) / 0.20, 2));
+      gPts.push({
+        u, v, fade,
+        s: 0.5 + gr() * 1.4,
+        spd: 0.3 + gr() * 0.9,
+        ph: gr() * TAU,
+      });
+    }
+    galaxy = gPts;
+  }
+  let galaxy = [];
 
-  /* ---------- 主循环与可见性省电 ---------- */
-  let running = true, rafId = 0;
-  let last = performance.now();
-  let time = 0;
+  const moonCv = moonSprite();
+  const cloudCv = cloudStrip();
+
+  /* 每帧静态布局换算(雾/月位置随屏, 星云偏移由 tick 驱动) */
+  function layoutNeb(ox) {
+    for (const n of neb) {
+      const c = n.cfg;
+      n.x = (c.fx + Math.sin(t * c.dft[0] + c.ph) * 0.05) * W + ox * (1 - 0.2);
+      n.y = (c.fy + Math.cos(t * c.dft[1] + c.ph * 1.7) * 0.04) * H;
+      n.r = c.s * Math.max(W, H) * 0.62;
+    }
+  }
 
   function tick(now) {
     if (!running) return;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
-    time += dt;
-    const t = time;
+    t += dt;
+    const T = t;
+    ctx.clearRect(0, 0, W, H);
 
-    // 星层自转（视差）
-    for (let i = 0; i < starPoints.length; i++) {
-      starPoints[i].pts.rotation.y = t * starPoints[i].rot;
-    }
-    // 银河带缓慢偏转
-    bandGroup.rotation.y = t * 0.0032;
+    // 相机极缓漂移(视差): 两层反向微移
+    const camX = Math.sin(T * 0.021) * 14;
+    const camY = Math.sin(T * 0.013 + 1.3) * 9;
+    layoutNeb(camX);
 
-    // 相机缓慢漂移 → 近/远内容产生柔和视差
-    camera.position.x = Math.sin(t * 0.021) * 6.5;
-    camera.position.y = Math.sin(t * 0.013 + 1.3) * 4.5;
-    camera.position.z = Math.sin(t * 0.008 + 0.6) * 2.5;
-    camera.lookAt(0, Math.sin(t * 0.02) * 2.2, -640);
+    ctx.globalCompositeOperation = "lighter";
 
-    // 星云浮动 + 明暗呼吸
-    for (const sp of nebSprites) {
-      const c = sp.userData.cfg;
-      const bx = sp.position.x, by = sp.position.y;
-      sp.position.x = bx + Math.sin(t * c.spd + c.ph) * 1.8;
-      sp.position.y = by + Math.cos(t * c.spd * 0.7 + c.ph * 1.3) * 1.4;
-      sp.material.opacity = c.op * (0.78 + 0.22 * Math.sin(t * c.spd + c.ph * 2.7));
-    }
-    // 仙月轻呼吸
-    moonMat.opacity = 0.85 * (0.93 + 0.07 * Math.sin(t * 0.18 + 1.2));
-    const mBaseY = MOON.fy * halfAt(MOON.depth);
-    moon.position.y = mBaseY + Math.sin(t * 0.11 + 0.8) * 2.5;
-
-    // 灵尘
-    updateDust(t);
-
-    // 统一推送时间 uniform
-    const pr = renderer.getPixelRatio();
-    for (const m of [starPoints[0].pts.material, starPoints[1].pts.material, starPoints[2].pts.material, bandMat, dustMat]) {
-      m.uniforms.uTime.value = t;
-      m.uniforms.uPixelRatio.value = pr;
+    /* 1. 雾霭(墨色低饱和) */
+    for (const n of neb) {
+      const c = n.cfg;
+      const br = 0.82 + 0.18 * Math.sin(T * 0.11 + c.ph * 2.7);
+      ctx.globalAlpha = c.a * br;
+      ctx.drawImage(n.sp, n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
     }
 
-    renderer.render(scene, camera);
-    rafId = requestAnimationFrame(tick);
+    /* 2. 银河(对角微光带) */
+    const gx0 = W * 0.5 + camX * 0.7, gy0 = H * 0.44 + camY * 0.7;
+    const gSpan = Math.hypot(W, H) * 0.62;
+    const ang = -Math.PI / 4 + Math.sin(T * 0.006) * 0.02;
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    for (const p of galaxy) {
+      const tw = 0.6 + 0.4 * Math.sin(T * p.spd + p.ph);
+      const a = GALAXY_A * p.fade * tw;
+      if (a <= 0.004) continue;
+      const rr = p.s * 2.4;
+      const lx = p.u * gSpan, ly = p.v * gSpan * 0.30;
+      const x = gx0 + lx * ca - ly * sa;
+      const y = gy0 + lx * sa + ly * ca;
+      ctx.globalAlpha = a;
+      ctx.drawImage(softDot(C.paper, false), x - rr, y - rr, rr * 2, rr * 2);
+    }
+
+    /* 3. 星点(尘星 → 主星) */
+    for (let pass = 0; pass < 2; pass++) {
+      for (const s of stars) {
+        if (s.main !== (pass === 1)) continue;
+        const tw = 0.62 + 0.38 * Math.sin(T * s.spd + s.ph);
+        let a = s.base * tw * (s.main ? 1 : 0.62);
+        if (a <= 0.01) continue;
+        let x = s.x + camX * s.zf, y = s.y + camY * s.zf;
+        // wrap: 漂出屏幕的星星从对侧回来
+        const m = s.r * 4;
+        if (x < -m) x += W + m * 2; else if (x > W + m) x -= W + m * 2;
+        if (y < -m) y += H + m * 2; else if (y > H + m) y -= H + m * 2;
+        const rr = s.r * (s.main ? 2.0 : 1.25);
+        ctx.globalAlpha = Math.min(0.95, a);
+        ctx.drawImage(softDot(s.col, s.hot), x - rr, y - rr, rr * 2, rr * 2);
+      }
+    }
+
+    /* 4. 纸月 */
+    const ms = MOON.size * Math.max(W, H);
+    moon.x = (W * 0.5 + MOON.fx * W) + camX * 0.3;
+    moon.y = (H * 0.5 + MOON.fy * H) + camY * 0.3;
+    const breathe = 0.96 + 0.04 * Math.sin(T * 0.16 + 1.2);
+    ctx.globalAlpha = 0.92 * breathe;
+    ctx.drawImage(moonCv, moon.x - ms, moon.y - ms, ms * 2, ms * 2);
+
+    ctx.globalCompositeOperation = "source-over";
+
+    /* 5. 流云(极淡, 普通混合更"墨") */
+    for (let i = 0; i < CLOUD_N; i++) {
+      const period = CLOUD_SPD[i % CLOUD_SPD.length];
+      const prog = ((T / period) + i * 0.37) % 1;
+      const yBase = H * (0.16 + i * 0.34) + Math.sin(T * 0.05 + i * 2.4) * 12;
+      const cw = W * 1.6;
+      const x = -cw * 0.25 + prog * (cw * 1.4);
+      ctx.globalAlpha = 0.05;
+      ctx.drawImage(cloudCv, x, yBase - 26, cw, 52);
+    }
+    ctx.globalAlpha = 1;
+
+    raf = requestAnimationFrame(tick);
   }
-  rafId = requestAnimationFrame(tick);
 
   function onVis() {
     if (document.hidden) {
-      running = false;
-      cancelAnimationFrame(rafId);
+      running = false; cancelAnimationFrame(raf);
     } else if (!running) {
-      running = true;
-      last = performance.now();
-      rafId = requestAnimationFrame(tick);
+      running = true; last = performance.now();
+      raf = requestAnimationFrame(tick);
     }
   }
-  document.addEventListener('visibilitychange', onVis);
+  function onReduced(e) {
+    if (e.matches) { staticFrame(); }
+    else if (!running && !document.hidden) {          // 用户取消 reduced-motion → 恢复动画
+      running = true; last = performance.now();
+      raf = requestAnimationFrame(tick);
+    }
+  }
+  function staticFrame() {                    // prefers-reduced-motion: 只画一帧
+    running = false; cancelAnimationFrame(raf);
+    t = 3.1415; tick(performance.now());
+    running = false; cancelAnimationFrame(raf);
+  }
+
+  /* 布局对象(月) */
+  moon = { x: 0, y: 0 };
+
+  resize();
+  const ro = new ResizeObserver(resize);
+  ro.observe(canvas);
+  document.addEventListener("visibilitychange", onVis);
+  let rmq = null;
+  try {
+    rmq = matchMedia("(prefers-reduced-motion: reduce)");
+    rmq.addEventListener("change", onReduced);
+    if (rmq.matches) staticFrame(); else raf = requestAnimationFrame(tick);
+  } catch (e) { raf = requestAnimationFrame(tick); }
 
   return {
     destroy() {
       running = false;
-      cancelAnimationFrame(rafId);
-      document.removeEventListener('visibilitychange', onVis);
+      cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", onVis);
+      if (rmq) { try { rmq.removeEventListener("change", onReduced); } catch (e) {} }
       ro.disconnect();
-      disposables.forEach((d) => {
-        if (d.dispose) d.dispose();
-        if (d.geometry) d.geometry.dispose();
-        if (d.material) {
-          if (Array.isArray(d.material)) d.material.forEach((m) => m.dispose());
-          else d.material.dispose();
-        }
-      });
-      renderer.dispose();
     },
   };
 }
