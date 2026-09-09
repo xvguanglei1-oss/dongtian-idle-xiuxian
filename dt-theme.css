@@ -512,7 +512,11 @@
     border-radius:12px;box-shadow:0 8px 22px rgba(0,0,0,.34);
     backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
   /* v1.7.0: 战报柔灰罩, 长战斗也只一层半透明圆角浮层 */
-  .war-banner{display:none;flex-direction:column}
+  /* v1.7.14: 横幅固定宽度(不随日志文字长度伸缩, 杜绝忽宽忽窄);
+     父容器 align-items:center, 用 margin auto 双端居中 */
+  .war-banner{display:none;flex-direction:column;
+    width:min(94vw,540px);max-width:94vw;box-sizing:border-box;
+    margin-left:auto;margin-right:auto}
   .war-hd{display:flex;justify-content:space-between;align-items:center;
     padding:7px 14px 3px;position:relative;flex-wrap:nowrap}
   .war-t{font-family:var(--font-brush);font-size:14px;color:#e0b98a;letter-spacing:.2em;text-shadow:0 1px 6px rgba(0,0,0,.9),0 0 16px rgba(0,0,0,.6)}
