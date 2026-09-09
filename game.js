@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.6";
+const GAME_VER = "v1.7.7";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.4 声音系统(免费素材 + 合成兜底) ============
@@ -58,11 +58,31 @@ myst: () => tone(1175, 0.6, "sine", 0.2, 0),
       buf[name] = await c.decodeAudioData(ab).catch(() => null);
     } catch (e) { buf[name] = null; }
   }
+  function _bgmPlay() {
+    if (!enabled || !bgmEl) return;
+    const p = bgmEl.play(); if (p && p.catch) p.catch(() => {});
+  }
+  function _armBgm() {
+    try {
+      bgmEl = new Audio("assets/music/bgm.mp3");
+      bgmEl.loop = true; bgmEl.volume = 0.32; bgmEl.preload = "auto";
+      bgmEl.addEventListener("error", () => {          // 文件不存在/解码失败: 放弃, 不反复打扰
+        bgmEl = null;
+        document.removeEventListener("pointerdown", _armOnce);
+        document.removeEventListener("keydown", _armOnce);
+      });
+    } catch (e) { return; }
+    const _armOnce = () => { ac(); _bgmPlay(); };
+    document.addEventListener("pointerdown", _armOnce);
+    document.addEventListener("keydown", _armOnce);
+    _bgmPlay();                                        // 立即尝试; 浏览器允许则无需任何点击
+  }
   return {
     get enabled() { return enabled; },
     setEnabled(v) { enabled = !!v; localStorage.setItem("dt_snd", enabled ? "1" : "0");
       const b = document.getElementById("btnSnd"); if (b) b.textContent = enabled ? "🔊" : "🔇";
-      if (enabled) ac(); else if (bgmEl) { try { bgmEl.pause(); } catch (e) {} } },
+      if (enabled) { ac(); _bgmPlay(); }
+      else if (bgmEl) { try { bgmEl.pause(); } catch (e) {} } },
     toggle() { this.setEnabled(!enabled); },
     hit() { playLayers("hit"); }, crit() { playLayers("crit"); }, hurt() { playLayers("hurt"); },
     swing() { playLayers("swing"); },
@@ -70,15 +90,9 @@ myst: () => tone(1175, 0.6, "sine", 0.2, 0),
     victory() { playLayers("win"); }, fail() { playLayers("lose"); },
     initFiles() {
       for (const k of Object.keys(files)) load(k);
-      /* BGM: 存在 assets/music/bgm.mp3 才播; 浏览器要求首次交互后出声 */
-      try {
-        fetch("assets/music/bgm.mp3", { method: "HEAD" }).then(r => {
-          if (!r.ok) return;
-          bgmEl = new Audio("assets/music/bgm.mp3"); bgmEl.loop = true; bgmEl.volume = 0.32;
-          const once = () => { bgmStarted = true; if (enabled) { ac(); const p = bgmEl.play(); if (p && p.catch) p.catch(() => {}); } document.removeEventListener("pointerdown", once); };
-          document.addEventListener("pointerdown", once);
-        }).catch(() => {});
-      } catch (e) {}
+      /* v1.7.7 BGM: 不再依赖 HEAD 探测 —— 直接建 Audio 立即试播(允许时刷新即响),
+       * 被浏览器拦截则等首次点击/按键再播; 文件缺失/解码错误会触发 error 自动停手, 不产生噪音重试 */
+      _armBgm();
     },
   };
 })();
@@ -4140,7 +4154,7 @@ async function btlHeroAct() {
   const m = BTL.mon;
   const miss = Math.random() < 0.05;
   /* ① 出招瞬现 + 呼啸即刻起(不等文字), ② 稍顿 ③ 命中判定与音效/受创文字 */
-  btlNow(`⚡ 你使出「${name}」`); SND.swing();
+  btlNow(`⚡ 你使出「${name}」`, "cast"); SND.swing();   // cast: 技能行专属色
   if (!BTL.skip) await slp(300);
   if (miss) { btlLog(`…… 却见${m.n} 侧身一闪，你这一式落空。`); }
   else {
@@ -4250,7 +4264,7 @@ function warEnd(finalTxt, cls, extra) {
   if (finalTxt) warAppend(finalTxt, cls || "win");
   if (extra) { const es = Array.isArray(extra) ? extra : [extra]; for (const e of es) { if (e) warAppend(e, "drop"); } }
   const wb = $("warBanner");
-  /* v1.7.6: 战斗结算驻留更久留复盘(8s), 秘境维持; 轻触战报任意处可提前关闭 */
+  /* v1.7.7: 战斗结算驻留更久留复盘(8s), 秘境维持; 轻触战报任意处可提前关闭 */
   const wait = (BTL && BTL.skip) ? 2100 : (MYST ? 2600 : 8000);
   const close = () => { if (wb) { wb.style.display = "none"; wb.removeEventListener("click", close); } };
   if (wb) { wb.style.pointerEvents = "auto"; wb.addEventListener("click", close);
