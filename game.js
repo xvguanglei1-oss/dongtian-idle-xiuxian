@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.23";
+const GAME_VER = "v1.7.24";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -691,7 +691,7 @@ const SAVE_KEY = "dongtian_xiuxian_v2";
 const OFFLINE_CAP = 48 * 3600;   // 离线收益结算上限: 最多补 48 小时
 
 /* ==================== P0 分身云游 · 材料/地界/丹方 ==================== */
-const MATS = {   // 材料库: 9 种 —— 6 株主药按大境界分阶(1凡→6化神)，3 味辅料跨境通用
+const MATS = {   // 材料库 21 种 —— 12 株主药灵植按大境分阶(0凡→11天仙)，6 档兽材随境，3 味灵液/仙泉跨境辅助
   /* —— 主药(灵植)：只在本阶及更高境界的游历中产出 —— */
   huangjing: { n: "黄精草", t: "灵植", src: "青牛镇一带" },
   shexian:  { n: "蛇涎果", t: "灵植", src: "镜州坊市" },
@@ -699,14 +699,27 @@ const MATS = {   // 材料库: 9 种 —— 6 株主药按大境界分阶(1凡�
   xuancan:  { n: "玄冰参", t: "灵植", src: "极渊之海·寒涧" },
   jiuyou:   { n: "九幽芝", t: "灵植", src: "虚天殿·幽涧" },
   wenxin:   { n: "问心草", t: "灵植", src: "飞升台·天风崖" },
-  /* —— 辅料(灵液/兽材)：凡有坊市灵脉处皆可得，跨境通用 —— */
+  longxue:  { n: "龙血藤", t: "灵植", src: "蛮荒古陆·沉灵谷" },
+  qianyu:   { n: "千羽兰", t: "灵植", src: "飞灵圣域·千羽台" },
+  duen:     { n: "渡厄莲", t: "灵植", src: "镇魔渊·镇魔碑原" },
+  zilei:    { n: "紫霄雷芝", t: "灵植", src: "劫雷古域·焦雷原" },
+  hanpo:    { n: "寒魄仙莲", t: "灵植", src: "北寒仙域·玄冰原" },
+  hongmeng: { n: "鸿蒙道芽", t: "灵植", src: "万界天墟" },
+  /* —— 兽材/仙晶(随境六档: 0-1 凡妖 → 10-11 仙灵) —— */
+  yaodan:   { n: "妖丹·杂", t: "兽材", src: "低境游历奇遇" },
+  lingxue:  { n: "灵兽精血", t: "兽材", src: "筑基诸海·海兽" },
+  yaopo:    { n: "化形妖魄", t: "兽材", src: "天外诸域·大妖" },
+  jiaojiao: { n: "蛟龙角", t: "兽材", src: "蛮荒古陆·妖蛟" },
+  mogu:     { n: "古魔龙骨", t: "兽材", src: "镇魔渊·封镇古兽" },
+  qiongjing:{ n: "琼玉仙晶", t: "仙晶", src: "北寒仙域·仙脉" },
+  /* —— 灵液/仙泉(跨境通用；越往高处越常见) —— */
   lingru:   { n: "千年灵乳", t: "灵液", src: "灵脉石乳" },
   dihuo:    { n: "地火灵液", t: "灵液", src: "地火洞窟" },
-  yaodan:   { n: "妖丹·杂", t: "兽材", src: "游历奇遇" },
+  taiqing:  { n: "太清仙泉", t: "仙泉", src: "劫雷古域·雷池" },
 };
 const ZONES = [
   { big: 0, name: "青牛镇一带", dur: [120, 3600],
-    mats: [ { id: "huangjing", c: 1, a: 2, b: 4 }, { id: "yaodan", c: .12, a: 1, b: 1 } ],
+    mats: [ { id: "huangjing", c: 1.0, a: 1, b: 2 }, { id: "yaodan", c: .16, a: 1, b: 1 } ],
     locs: [
       { id: "b0qnt", n: "青牛镇", d: "山脚市集 · 烟火人间",
         tale: [ "在茶棚歇脚，听卖卦老翁讲镇外山神庙的旧事", "替走货的镖头捎了封家书，得了一小篓山果", "市集角落有人兜售仙家药草，你认出是寻常黄精", "蹲在桥头看了一下午流水，什么也没做，却觉心静" ] },
@@ -716,9 +729,9 @@ const ZONES = [
         tale: [ "村童追着你喊仙人，你从行囊摸出几颗糖丸分他们", "溪边浣衣妇人指了条进山的捷径", "村后灵枫下埋着半坛陈酿，你替主人守了一夜", "帮猎户修好塌了半边的篱笆，他送你一块熏肉" ] },
     ] },
   { big: 1, name: "镜州地界", dur: [1800, 43200],
-    mats: [ { id: "shexian", c: .9, a: 1, b: 2 }, { id: "huangjing", c: .55, a: 1, b: 2 },
-            { id: "lingru", c: .12, a: 1, b: 1 }, { id: "dihuo", c: .07, a: 1, b: 1 },
-            { id: "yaodan", c: .18, a: 1, b: 1 } ],
+    mats: [ { id: "shexian", c: .92, a: 1, b: 2 }, { id: "huangjing", c: .5, a: 1, b: 2 },
+            { id: "lingru", c: .24, a: 1, b: 1 }, { id: "dihuo", c: .14, a: 1, b: 1 },
+            { id: "yaodan", c: .22, a: 1, b: 1 } ],
     locs: [
       { id: "b1qxm", n: "七玄门", d: "山门之外 · 外门气象",
         tale: [ "混在外门弟子堆里听了一堂吐纳课，讲的都是入门货", "守山石阶上坐着一个白发杂役，看你的眼神像是看穿了什么", "后山演武场刀光剑影，你在崖边看了一夜", "下山时被巡山弟子盘问，你报了个假名，他竟信了" ] },
@@ -734,9 +747,9 @@ const ZONES = [
         tale: [ "山民以兽骨换盐，你看中一块磨得发亮的骨片", "坊口有个摆摊的盲眼道人，只跟有缘人搭话", "你拿一株路上采的黄精换到半张泛黄药方", "暮色里集市散场，山道上亮起一串灯笼" ] },
     ] },
   { big: 2, name: "筑基诸海", dur: [7200, 172800],
-    mats: [ { id: "zihou", c: .9, a: 1, b: 3 }, { id: "shexian", c: .45, a: 1, b: 2 },
-            { id: "lingru", c: .3, a: 1, b: 2 }, { id: "dihuo", c: .22, a: 1, b: 1 },
-            { id: "yaodan", c: .4, a: 1, b: 1 } ],
+    mats: [ { id: "zihou", c: .92, a: 1, b: 3 }, { id: "shexian", c: .42, a: 1, b: 2 },
+            { id: "lingxue", c: .4, a: 1, b: 2 }, { id: "lingru", c: .42, a: 1, b: 2 },
+            { id: "dihuo", c: .3, a: 1, b: 1 }, { id: "yaodan", c: .3, a: 1, b: 1 } ],
     locs: [
       { id: "b2hfg", n: "黄枫谷", d: "宗门坊市 · 灵植灵药",
         tale: [ "坊市药铺掌柜眼毒，仍卖了你一株好药", "后山枫林下捡到一枚玉简残片，字迹已漶漫", "守山弟子的灵兽朝你嗅了嗅，竟没示警", "夜里坊市打烊，你在檐下听两个外门弟子聊宗门秘辛" ] },
@@ -748,9 +761,9 @@ const ZONES = [
         tale: [ "堡门前立着两尊吞海兽像，眼珠是打磨过的妖丹", "堡内不许私斗，伤了人要按岛规断一指", "你替堡中账房誊了一夜海贸册子，得了些酬劳", "离堡那日，海风里飘来堡主千金练剑的破空声" ] },
     ] },
   { big: 3, name: "极渊之海", dur: [28800, 518400],
-    mats: [ { id: "xuancan", c: .9, a: 1, b: 3 }, { id: "zihou", c: .3, a: 1, b: 2 },
-            { id: "lingru", c: .5, a: 1, b: 2 }, { id: "dihuo", c: .42, a: 1, b: 2 },
-            { id: "yaodan", c: .6, a: 1, b: 2 } ],
+    mats: [ { id: "xuancan", c: .92, a: 1, b: 3 }, { id: "zihou", c: .3, a: 1, b: 2 },
+            { id: "lingxue", c: .5, a: 1, b: 2 }, { id: "lingru", c: .55, a: 1, b: 2 },
+            { id: "dihuo", c: .45, a: 1, b: 2 }, { id: "yaodan", c: .45, a: 1, b: 1 } ],
     locs: [
       { id: "b3xtw", n: "虚天殿外", d: "古迹重门 · 云海之上",
         tale: [ "殿门前的石阶共九千九百级，走上去像是踩在云端", "云海里偶有修士御剑而过，谁也没看谁", "门楣古篆年深日久，你逐字揣摩，识得三成", "殿前空地上有座无字碑，有人用剑刻了半行诗" ] },
@@ -762,9 +775,9 @@ const ZONES = [
         tale: [ "越往深处，水中灵光越密，像坠入一条光的河", "压力大得连法器都微微变形，你不敢再深", "沟底有东西在缓慢翻动，你当机立断返身", "上浮时遇见一群灯笼鱼，为你照了一路" ] },
     ] },
   { big: 4, name: "天外诸域", dur: [86400, 1209600],
-    mats: [ { id: "jiuyou", c: .9, a: 1, b: 3 }, { id: "xuancan", c: .32, a: 1, b: 2 },
-            { id: "lingru", c: .7, a: 1, b: 2 }, { id: "dihuo", c: .6, a: 1, b: 2 },
-            { id: "yaodan", c: .8, a: 1, b: 2 } ],
+    mats: [ { id: "jiuyou", c: .92, a: 1, b: 3 }, { id: "xuancan", c: .32, a: 1, b: 2 },
+            { id: "yaopo", c: .5, a: 1, b: 2 }, { id: "lingru", c: .7, a: 1, b: 2 },
+            { id: "dihuo", c: .62, a: 1, b: 2 }, { id: "yaodan", c: .35, a: 1, b: 1 } ],
     locs: [
       { id: "b4xt", n: "虚天殿", d: "古迹重重 · 一步一禁",
         tale: [ "殿中长廊悬着历任闯殿者的名字，越深处越少", "你在偏殿找到一副残棋，棋局似乎还未下完", "墙上壁画画的是一场你没见过的战争", "殿深处传来钟声，这里早已没有活人" ] },
@@ -774,9 +787,9 @@ const ZONES = [
         tale: [ "裂隙中涌出的灵气浓得像酒，吸一口都醉人", "你看见对面有座比山还高的城，只露出一角", "罡风里裹着异界的沙尘，落在掌心竟自行聚成小塔", "裂隙边缘立着块碑，碑文用的是你从未见过的文字" ] },
     ] },
   { big: 5, name: "人界之巅", dur: [172800, 2592000],
-    mats: [ { id: "wenxin", c: .9, a: 1, b: 3 }, { id: "jiuyou", c: .35, a: 1, b: 2 },
-            { id: "lingru", c: .85, a: 1, b: 2 }, { id: "dihuo", c: .75, a: 1, b: 2 },
-            { id: "yaodan", c: .85, a: 1, b: 2 } ],
+    mats: [ { id: "wenxin", c: .92, a: 1, b: 3 }, { id: "jiuyou", c: .35, a: 1, b: 2 },
+            { id: "yaopo", c: .55, a: 1, b: 2 }, { id: "lingru", c: .8, a: 1, b: 2 },
+            { id: "dihuo", c: .72, a: 1, b: 2 } ],
     locs: [
       { id: "b5fst", n: "飞升台", d: "人界之巅 · 天劫留痕",
         tale: [ "台面焦黑，是历次飞升天劫留下的痕迹", "你在台边坐了一夜，看云海在脚下翻涌", "据说从这里望出去，能隐约看见灵界", "台基上刻满了历代飞升者的道号" ] },
@@ -787,12 +800,9 @@ const ZONES = [
   { "big": 6,
     "name": "蛮荒古陆一带",
     "dur": [259200, 4320000],
-    mats: [
-      { id: "wenxin", c: 0.9, a: 1, b: 3 },
-      { id: "lingru", c: 0.78, a: 1, b: 2 },
-      { id: "dihuo", c: 0.75, a: 1, b: 3 },
-      { id: "yaodan", c: 0.68, a: 1, b: 2 }
-    ],
+    mats: [ { id: "longxue", c: .92, a: 1, b: 3 }, { id: "wenxin", c: .32, a: 1, b: 2 },
+            { id: "jiaojiao", c: .5, a: 1, b: 2 }, { id: "lingru", c: .82, a: 1, b: 2 },
+            { id: "dihuo", c: .75, a: 1, b: 2 }, { id: "yaodan", c: .3, a: 1, b: 1 } ],
     locs: [
       { id: "b6gua",
         n: "坠骨崖",
@@ -829,13 +839,9 @@ const ZONES = [
   { "big": 7,
     "name": "飞灵圣域一带",
     "dur": [432000, 8640000],
-    mats: [
-      { id: "wenxin", c: 0.91, a: 1, b: 3 },
-      { id: "lingru", c: 0.8, a: 1, b: 2 },
-      { id: "dihuo", c: 0.76, a: 1, b: 3 },
-      { id: "yaodan", c: 0.7, a: 1, b: 2 },
-      { id: "jiuyou", c: 0.62, a: 1, b: 3 }
-    ],
+    mats: [ { id: "qianyu", c: .92, a: 1, b: 3 }, { id: "longxue", c: .32, a: 1, b: 2 },
+            { id: "jiaojiao", c: .55, a: 1, b: 2 }, { id: "lingru", c: .85, a: 1, b: 2 },
+            { id: "dihuo", c: .78, a: 1, b: 2 } ],
     locs: [
       { id: "b7wxp",
         n: "万相坪",
@@ -872,13 +878,9 @@ const ZONES = [
   { "big": 8,
     "name": "镇魔渊一带",
     "dur": [691200, 17280000],
-    mats: [
-      { id: "wenxin", c: 0.89, a: 1, b: 3 },
-      { id: "lingru", c: 0.77, a: 1, b: 2 },
-      { id: "dihuo", c: 0.8, a: 1, b: 3 },
-      { id: "yaodan", c: 0.69, a: 1, b: 2 },
-      { id: "shexian", c: 0.61, a: 1, b: 2 }
-    ],
+    mats: [ { id: "duen", c: .92, a: 1, b: 3 }, { id: "qianyu", c: .32, a: 1, b: 2 },
+            { id: "mogu", c: .5, a: 1, b: 2 }, { id: "taiqing", c: .42, a: 1, b: 2 },
+            { id: "lingru", c: .85, a: 1, b: 2 }, { id: "dihuo", c: .72, a: 1, b: 2 } ],
     locs: [
       { id: "b8djx",
         n: "断界峡",
@@ -915,13 +917,9 @@ const ZONES = [
   { "big": 9,
     "name": "劫雷古域一带",
     "dur": [1209600, 25920000],
-    mats: [
-      { id: "wenxin", c: 0.88, a: 1, b: 3 },
-      { id: "lingru", c: 0.76, a: 1, b: 2 },
-      { id: "dihuo", c: 0.79, a: 1, b: 3 },
-      { id: "yaodan", c: 0.72, a: 1, b: 2 },
-      { id: "zihou", c: 0.62, a: 1, b: 3 }
-    ],
+    mats: [ { id: "zilei", c: .92, a: 1, b: 3 }, { id: "duen", c: .35, a: 1, b: 2 },
+            { id: "mogu", c: .55, a: 1, b: 2 }, { id: "taiqing", c: .55, a: 1, b: 2 },
+            { id: "lingru", c: .85, a: 1, b: 2 }, { id: "dihuo", c: .75, a: 1, b: 2 } ],
     locs: [
       { id: "b9dxt",
         n: "登仙台",
@@ -958,13 +956,9 @@ const ZONES = [
   { "big": 10,
     "name": "北寒仙域一带",
     "dur": [1728000, 43200000],
-    mats: [
-      { id: "wenxin", c: 0.87, a: 1, b: 3 },
-      { id: "lingru", c: 0.79, a: 1, b: 2 },
-      { id: "dihuo", c: 0.74, a: 1, b: 3 },
-      { id: "yaodan", c: 0.7, a: 1, b: 2 },
-      { id: "xuancan", c: 0.64, a: 1, b: 2 }
-    ],
+    mats: [ { id: "hanpo", c: .92, a: 1, b: 3 }, { id: "zilei", c: .32, a: 1, b: 2 },
+            { id: "qiongjing", c: .5, a: 1, b: 2 }, { id: "taiqing", c: .78, a: 1, b: 2 },
+            { id: "lingru", c: .88, a: 1, b: 2 } ],
     locs: [
       { id: "b10xyf",
         n: "悬玉坊",
@@ -1011,13 +1005,9 @@ const ZONES = [
   { "big": 11,
     "name": "万界天墟一带",
     "dur": [2592000, 69120000],
-    mats: [
-      { id: "wenxin", c: 0.86, a: 1, b: 3 },
-      { id: "lingru", c: 0.78, a: 1, b: 2 },
-      { id: "dihuo", c: 0.77, a: 1, b: 3 },
-      { id: "yaodan", c: 0.73, a: 1, b: 2 },
-      { id: "huangjing", c: 0.6, a: 1, b: 3 }
-    ],
+    mats: [ { id: "hongmeng", c: .92, a: 1, b: 3 }, { id: "hanpo", c: .35, a: 1, b: 2 },
+            { id: "qiongjing", c: .6, a: 1, b: 2 }, { id: "taiqing", c: .92, a: 1, b: 2 },
+            { id: "lingru", c: .9, a: 1, b: 2 } ],
     locs: [
       { id: "b11gyd",
         n: "光阴渡",
@@ -1062,8 +1052,8 @@ const ZONES = [
     ]
   }
 ];
-const RECIPES = {   // 丹方 v2 —— 每方带 big(所属大境0~5)，材料只用本境可集齐之物
-  /* ---- 隐藏丹(丹方残页解锁, h:1; 纵向毕业向: 强力buff, 只取最强一道故须超越公开buff) ---- */
+const RECIPES = {   // 丹方 v3 —— 覆盖 12 大境(0凡→11天仙)；材料只用本境可集齐之物；配方 2~4 味、主药+辅材并用
+  /* ==================== 残页古方(隐藏丹, h:1; 云游拾残页解锁; 纵向毕业向强力 buff) ==================== */
   xuanwu: { big: 0, h: 1, n: "玄牝丸", d: "上古残方：一个时辰内修为 +60%",
             need: { huangjing: 5, yaodan: 1 }, eff: { k: "buff", mult: 1.6, dur: 3600 } },
   tianyuan: { big: 1, h: 1, n: "天元聚气丹", d: "镜州古丹残篇：两个时辰内修为 +200%",
@@ -1074,49 +1064,103 @@ const RECIPES = {   // 丹方 v2 —— 每方带 big(所属大境0~5)，材料�
             need: { xuancan: 5, lingru: 3, yaodan: 3 }, eff: { k: "buff", mult: 5, dur: 10800 } },
   jiutian: { big: 4, h: 1, n: "九天婴华丹", d: "灵界裂隙飘来的丹道：四个时辰内修为 +500%",
             need: { jiuyou: 5, lingru: 4, dihuo: 3 }, eff: { k: "buff", mult: 6, dur: 14400 } },
-  hunyuan: { big: 5, h: 1, n: "混元无极丹", d: "飞升台前人界第一丹：六个时辰内修为 +700%",
+  hunwu: { big: 5, h: 1, n: "混元无极丹", d: "飞升台前人界第一丹：六个时辰内修为 +700%",
             need: { wenxin: 5, lingru: 4, dihuo: 3, yaodan: 4 }, eff: { k: "buff", mult: 8, dur: 21600 } },
+  guixu: { big: 6, h: 1, n: "归墟炼神丹", d: "沉灵谷残方：五时辰内修为 +600%",
+            need: { longxue: 5, wenxin: 2, jiaojiao: 2, lingru: 2 }, eff: { k: "buff", mult: 7, dur: 18000 } },
+  feiling: { big: 7, h: 1, n: "飞灵圣丹", d: "千羽台遗刻古方：六时辰内修为 +700%",
+            need: { qianyu: 5, longxue: 2, jiaojiao: 2, lingru: 2, dihuo: 1 }, eff: { k: "buff", mult: 8, dur: 21600 } },
+  zhenyuan: { big: 8, h: 1, n: "镇元渡厄丹", d: "镇魔碑下镇压的古方：六时辰内修为 +800%",
+            need: { duen: 5, qianyu: 2, mogu: 2, taiqing: 2 }, eff: { k: "buff", mult: 9, dur: 21600 } },
+  jiulei: { big: 9, h: 1, n: "九转雷纹丹", d: "焦雷原雷击石中藏方：六时辰内修为 +900%",
+            need: { zilei: 5, duen: 2, mogu: 2, taiqing: 2 }, eff: { k: "buff", mult: 10, dur: 21600 } },
+  xiansui: { big: 10, h: 1, n: "太清仙髓丹", d: "北寒仙宫旧档丹方：八时辰内修为 +1100%",
+            need: { hanpo: 5, zilei: 2, qiongjing: 2, taiqing: 2 }, eff: { k: "buff", mult: 12, dur: 28800 } },
+  wanji: { big: 11, h: 1, n: "万界归元丹", d: "万界天墟尽头的终极丹方：十二时辰内修为 +1400%",
+            need: { hongmeng: 5, hanpo: 2, qiongjing: 2, taiqing: 2 }, eff: { k: "buff", mult: 15, dur: 43200 } },
 
   /* ---- 凡人(凡草单方，未入丹道) ---- */
   hjing: { big: 0, n: "黄精膏", d: "凡草慢熬，聊胜于无：立时回复约一刻钟修为",
             need: { huangjing: 3 }, eff: { k: "inst", sec: 900 } },
   /* ---- 炼气(镜州丹道) ---- */
   buqi:  { big: 1, n: "补气丹", d: "炼气常备：立时回复约半个时辰修为",
-            need: { shexian: 2, lingru: 1 }, eff: { k: "inst", sec: 1800 } },
+            need: { shexian: 2, huangjing: 1 }, eff: { k: "inst", sec: 1800 } },
   hlong: { big: 1, n: "黄龙丹", d: "药力绵长：一时辰内修为 +50%",
-            need: { shexian: 3, lingru: 1 }, eff: { k: "buff", mult: 1.5, dur: 3600 } },
+            need: { shexian: 2, huangjing: 2 }, eff: { k: "buff", mult: 1.5, dur: 3600 } },
   jinzui:{ big: 1, n: "金髓丸", d: "冲境烈药：一时辰内修为 +120%",
-            need: { shexian: 2, dihuo: 1 }, eff: { k: "buff", mult: 2.2, dur: 3600 } },
+            need: { shexian: 2, huangjing: 1, dihuo: 1 }, eff: { k: "buff", mult: 2.2, dur: 3600 } },
   zhuji: { big: 1, n: "筑基丹", d: "炼气圆满的叩门砖：立获约三时辰修为，此后两时辰修为翻倍",
             need: { shexian: 4, lingru: 2, yaodan: 2 }, eff: { k: "grand", sec: 10800, mult: 2, dur: 7200 } },
   /* ---- 筑基(海外丹道) ---- */
   xisui: { big: 2, n: "洗髓丹", d: "洗髓伐脉：十二时辰内离线收益 +30%",
-            need: { zihou: 2, lingru: 1 }, eff: { k: "offline", dur: 43200, boost: .3 } },
+            need: { zihou: 2, shexian: 1 }, eff: { k: "offline", dur: 43200, boost: .3 } },
   yuqing:{ big: 2, n: "玉清丹", d: "筑基培元：立时回复约两时辰修为",
-            need: { zihou: 3, lingru: 1 }, eff: { k: "inst", sec: 7200 } },
+            need: { zihou: 2, shexian: 1, lingru: 1 }, eff: { k: "inst", sec: 7200 } },
   jiangchen: { big: 2, n: "降尘丹", d: "筑基圆满感结丹机缘：立获约六时辰修为，此后三时辰修为 +120%",
             need: { zihou: 4, lingru: 2, dihuo: 1, yaodan: 2 }, eff: { k: "grand", sec: 21600, mult: 2.2, dur: 10800 } },
   /* ---- 结丹(寒域丹道) ---- */
   guyuan:{ big: 3, n: "固元丹", d: "金丹固本：立时回复约两时辰修为",
-            need: { xuancan: 2, dihuo: 1 }, eff: { k: "inst", sec: 7200 } },
+            need: { xuancan: 2, zihou: 1, dihuo: 1 }, eff: { k: "inst", sec: 7200 } },
   ningyuan: { big: 3, n: "凝元丹", d: "三时辰内修为 +200%，冲击金丹后期",
             need: { xuancan: 3, lingru: 2, yaodan: 2 }, eff: { k: "buff", mult: 3, dur: 10800 } },
   yingbian: { big: 3, n: "婴变丹", d: "结丹圆满窥元婴大道：立获约六时辰修为，此后四时辰修为 +150%",
             need: { xuancan: 4, dihuo: 2, lingru: 2, yaodan: 3 }, eff: { k: "grand", sec: 21600, mult: 2.5, dur: 14400 } },
   /* ---- 元婴(幽域丹道) ---- */
   yuying:{ big: 4, n: "育婴丹", d: "滋养元婴：立时回复约四时辰修为",
-            need: { jiuyou: 2, lingru: 2 }, eff: { k: "inst", sec: 14400 } },
+            need: { jiuyou: 2, xuancan: 1, lingru: 1 }, eff: { k: "inst", sec: 14400 } },
   yinghua: { big: 4, n: "婴华丹", d: "四时辰内修为 +250%，元婴期冲关利器",
-            need: { jiuyou: 3, lingru: 2, dihuo: 1 }, eff: { k: "buff", mult: 3.5, dur: 14400 } },
+            need: { jiuyou: 2, xuancan: 2, dihuo: 1 }, eff: { k: "buff", mult: 3.5, dur: 14400 } },
   tongshen: { big: 4, n: "通神丹", d: "元婴圆满感化神天劫：立获约八时辰修为，此后六时辰修为 +200%",
             need: { jiuyou: 4, dihuo: 2, lingru: 2, yaodan: 3 }, eff: { k: "grand", sec: 28800, mult: 3, dur: 21600 } },
   /* ---- 化神(巅峰丹道，静候飞升) ---- */
   wendao:{ big: 5, n: "问道丹", d: "化神问道：立时回复约四时辰修为",
-            need: { wenxin: 2, lingru: 2 }, eff: { k: "inst", sec: 14400 } },
+            need: { wenxin: 2, jiuyou: 1, lingru: 1 }, eff: { k: "inst", sec: 14400 } },
   hunyuan: { big: 5, n: "混元一气丹", d: "六时辰内修为 +300%，人界绝巅的一口气",
             need: { wenxin: 3, dihuo: 2, yaodan: 3 }, eff: { k: "buff", mult: 4, dur: 21600 } },
   taiyi: { big: 5, n: "太一虚元丹", d: "化神圆满静候飞升的底蕴：立获约十二时辰修为，此后六时辰修为 +250%",
             need: { wenxin: 4, lingru: 3, dihuo: 2, yaodan: 4 }, eff: { k: "grand", sec: 43200, mult: 3.5, dur: 21600 } },
+  /* ---- 炼虚(蛮荒丹道) ---- */
+  yuxu: { big: 6, n: "元虚丹", d: "炼虚固本：立时回复约五时辰修为",
+            need: { longxue: 2, wenxin: 1, yaodan: 1 }, eff: { k: "inst", sec: 18000 } },
+  xuling: { big: 6, n: "虚灵丹", d: "三时辰内修为 +200%，稳固虚境",
+            need: { longxue: 3, wenxin: 1, dihuo: 2 }, eff: { k: "buff", mult: 3, dur: 10800 } },
+  polv: { big: 6, n: "破虚丹", d: "炼虚圆满窥合体：立获约六时辰修为，此后四时辰修为 +150%",
+            need: { longxue: 4, wenxin: 2, jiaojiao: 1, dihuo: 2 }, eff: { k: "grand", sec: 21600, mult: 2.5, dur: 14400 } },
+  /* ---- 合体(飞灵丹道) ---- */
+  linghe: { big: 7, n: "灵合丹", d: "灵肉相合：立时回复约五时辰修为",
+            need: { qianyu: 2, longxue: 1, lingru: 1 }, eff: { k: "inst", sec: 18000 } },
+  shengyu: { big: 7, n: "圣羽丹", d: "三时辰内修为 +300%，圣域真灵之气",
+            need: { qianyu: 3, longxue: 1, jiaojiao: 1, dihuo: 1 }, eff: { k: "buff", mult: 4, dur: 10800 } },
+  hedao: { big: 7, n: "合道丹", d: "合体圆满感大乘道韵：立获约六时辰修为，此后四时辰修为 +200%",
+            need: { qianyu: 4, longxue: 2, jiaojiao: 1, lingru: 2 }, eff: { k: "grand", sec: 21600, mult: 3, dur: 14400 } },
+  /* ---- 大乘(镇魔丹道) ---- */
+  jingmo: { big: 8, n: "净魔丹", d: "涤荡心魔：立时回复约六时辰修为",
+            need: { duen: 2, qianyu: 1, taiqing: 1 }, eff: { k: "inst", sec: 21600 } },
+  duemo: { big: 8, n: "渡厄丹", d: "三时辰内修为 +350%，厄难不侵",
+            need: { duen: 3, qianyu: 1, mogu: 1, lingru: 1 }, eff: { k: "buff", mult: 4.5, dur: 10800 } },
+  zhenmo: { big: 8, n: "镇魔丹", d: "大乘圆满镇压魔渊：立获约八时辰修为，此后五时辰修为 +250%",
+            need: { duen: 4, qianyu: 2, mogu: 1, taiqing: 1, dihuo: 1 }, eff: { k: "grand", sec: 28800, mult: 3.5, dur: 18000 } },
+  /* ---- 渡劫(劫雷丹道) ---- */
+  yinlei: { big: 9, n: "引雷丹", d: "引雷淬体：立时回复约六时辰修为",
+            need: { zilei: 2, duen: 1, taiqing: 1 }, eff: { k: "inst", sec: 21600 } },
+  cuilei: { big: 9, n: "淬雷丹", d: "三时辰内修为 +400%，紫霄淬体",
+            need: { zilei: 3, duen: 1, mogu: 1, lingru: 1 }, eff: { k: "buff", mult: 5, dur: 10800 } },
+  yingjie: { big: 9, n: "应劫丹", d: "渡劫圆满直面天威：立获约十时辰修为，此后五时辰修为 +300%",
+            need: { zilei: 4, duen: 2, mogu: 1, taiqing: 1, dihuo: 1 }, eff: { k: "grand", sec: 36000, mult: 4, dur: 18000 } },
+  /* ---- 真仙(北寒丹道) ---- */
+  ningxian: { big: 10, n: "凝仙丹", d: "凝聚仙元：立时回复约八时辰修为",
+            need: { hanpo: 2, zilei: 1, qiongjing: 1 }, eff: { k: "inst", sec: 28800 } },
+  xianpo: { big: 10, n: "寒魄仙丹", d: "四时辰内修为 +500%，北寒仙气",
+            need: { hanpo: 3, zilei: 1, qiongjing: 1, lingru: 1 }, eff: { k: "buff", mult: 6, dur: 14400 } },
+  yinxian: { big: 10, n: "引仙丹", d: "真仙圆满叩问天仙：立获约十二时辰修为，此后六时辰修为 +400%",
+            need: { hanpo: 4, zilei: 2, qiongjing: 1, taiqing: 1 }, eff: { k: "grand", sec: 43200, mult: 5, dur: 21600 } },
+  /* ---- 天仙(天墟丹道；终境无破境，重离线与长时) ---- */
+  guiyuan: { big: 11, n: "归元丹", d: "万法归一：立时回复约十二时辰修为",
+            need: { hongmeng: 2, hanpo: 1, qiongjing: 1 }, eff: { k: "inst", sec: 43200 } },
+  taichu: { big: 11, n: "太初丹", d: "六时辰内修为 +700%，一点太初之气",
+            need: { hongmeng: 3, hanpo: 1, qiongjing: 1, taiqing: 1 }, eff: { k: "buff", mult: 8, dur: 21600 } },
+  bianhua: { big: 11, n: "天仙蜕变丹", d: "脱胎换骨：三十六时辰内离线收益 +50%",
+            need: { hongmeng: 4, hanpo: 2, qiongjing: 2, taiqing: 1 }, eff: { k: "offline", dur: 129600, boost: .5 } },
 };
 
 
@@ -3694,10 +3738,10 @@ mailDot();
 /* ==================== P1 炼丹炉（v2 丹方体系） ==================== */
 /* ==================== v0.8.0 丹方残页 ==================== */
 const PAGE_RATE = 0.15;      // 每趟云游带回残页概率(前后端一致)
-const PAGES_NEED = [2, 3, 3, 3, 3, 3];   // 各境需集齐页数解锁隐藏丹
+const PAGES_NEED = [2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];   // 各境需集齐页数解锁隐藏丹
 function pagesOf(bi) { return (state.pages && state.pages["b" + bi]) || 0; }
 function hiddenUnlocked(bi) { return pagesOf(bi) >= PAGES_NEED[bi]; }
-const DAN_ZONE = ["凡尘", "炼气", "筑基", "结丹", "元婴", "化神"];
+const DAN_ZONE = ["凡尘", "炼气", "筑基", "结丹", "元婴", "化神", "炼虚", "合体", "大乘", "渡劫", "真仙", "天仙"];
 function craftAreaHTML() {
   const bi = bigIdx();
   const groups = {};
@@ -3728,7 +3772,7 @@ function craftAreaHTML() {
       html += recipeCardHTML(id);
     }
   }
-  if (bi < 5) html += `<div style="font-size:10.5px;color:#545d6f;margin-top:9px;font-style:italic">更高一境的丹方，待你亲临其境，自有丹师相授。</div>`;
+  if (bi < 11) html += `<div style="font-size:10.5px;color:#545d6f;margin-top:9px;font-style:italic">更高一境的丹方，待你亲临其境，自有丹师相授。</div>`;
   return html;
 }
 function recipeCardHTML(id) {
