@@ -372,26 +372,23 @@
   .trace > span{pointer-events:none}
   /* v1.2.1: 行迹居中胶囊容器, 避免文本横向撞右上元素, 又能让文字飘在立绘上不显突兀 */
   .trace > .t-row{pointer-events:auto;display:inline-block;text-align:center;
-    padding:6px 14px;border-radius:14px;background:rgba(10,14,24,.62);backdrop-filter:blur(6px);
-    border:1px solid rgba(201,168,106,.16);max-width:100%;
-    box-shadow:0 6px 18px rgba(0,0,0,.42)}
+    padding:6px 10px;border-radius:12px;background:transparent;border:0;max-width:100%}
   .trace > .t-row > .t-ic{display:inline-flex;width:18px;height:18px;align-items:center;justify-content:center;
     margin-right:8px;vertical-align:middle}
   .trace > .t-row > .t-txt{display:inline;vertical-align:middle;line-height:1.45}
   .trace > .t-row > .trace-go{display:inline-block;vertical-align:middle;margin-left:10px}
-  .trace.fight > .t-row{background:linear-gradient(90deg,rgba(74,16,8,.92),rgba(74,16,8,.92));
-    border-color:rgba(255,140,110,.3);animation:encPulse 1.6s ease-in-out infinite}
+  .trace.fight > .t-row{background:transparent;border:0;
+    animation:encPulse 1.6s ease-in-out infinite}
   .trace.fight > .t-row > .t-txt{font-size:14.5px;line-height:1.45;color:#ffe4d8;font-weight:600}
   .trace.fight > .t-row > .t-txt b{color:#ffb199}
-  .trace .t-txt{font-size:14.5px;line-height:1.55;color:#e6eaf3;letter-spacing:.04em}
+  .trace .t-txt{font-size:14.5px;line-height:1.55;color:#e6eaf3;letter-spacing:.04em;text-shadow:0 1px 6px rgba(0,0,0,.95),0 0 16px rgba(0,0,0,.6)}
   .trace.travel .t-txt b,.trace.idle .t-txt b{color:#d8b06a}
   .trace.enc .t-txt{color:#ffe4d8}
   .trace.enc .t-txt b{color:#ffb199}
   .trace.enc .t-txt i{font-style:normal;color:#ff8a70;font-weight:700}
   /* 行迹墨形底: 细长手绘墨条(纯css渐变+描边无角框); travel淡金 / enc朱砂 */
-  #traceArea{background:linear-gradient(90deg,rgba(201,168,106,.0),rgba(20,26,44,.72) 18%,rgba(20,26,44,.72) 82%,rgba(201,168,106,.0));
-    border-top:1px solid rgba(201,168,106,.16);border-bottom:1px solid rgba(201,168,106,.16);
-    padding:7px 4px;max-width:min(92vw,520px);width:auto;margin:0 auto;text-align:center}
+  #traceArea{background:transparent;border:0;
+    padding:0 4px;max-width:min(92vw,520px);width:auto;margin:0 auto;text-align:center}
   #traceArea.enc{background:linear-gradient(90deg,rgba(208,80,60,.0),rgba(88,20,10,.8) 20%,rgba(88,20,10,.8) 80%,rgba(208,80,60,.0));
     border-top:1px solid rgba(255,140,110,.3);border-bottom:1px solid rgba(255,140,110,.3);
     animation:encPulse 1.3s ease-in-out infinite}
@@ -508,20 +505,21 @@
     box-shadow:0 0 0 1px rgba(255,140,110,.22), 0 4px 14px rgba(208,80,60,.32)}
   .trace.fight .t-txt{color:#ffe4d8;font-size:14.5px;font-weight:600;line-height:1.45}
   .trace.fight .t-txt b{color:#ffb199}
-  /* 文字斗法横幅: 行迹带正下方, 细墨纸横向条 */
+  /* 文字斗法横幅: 行迹带正下方, 柔灰罩面板(半透明圆角罩, 不与背景图打架; 不再全宽黑底/直边) */
   /* v1.4.1: 横幅入 .top-stack 纵向流(行迹之下), 不再 fixed 定位 */
-  .war-banner{position:relative;z-index:5;width:100%;display:none;   /* v1.7.0: z-index 5 让红条压住头部, 让出独立视觉 */
-    pointer-events:none;margin-top:4px;                               /* v1.7.0: 与红条再留呼吸间距 */
-    border-top:1px solid rgba(201,168,106,.10);border-bottom:1px solid rgba(201,168,106,.10)}
-  /* v1.7.0: 战报不再带全宽深墨底(战斗变长后黑块长时间挡画面), 改为透明细字+文字阴影浮于背景之上 */
+  .war-banner{position:relative;z-index:5;width:auto;display:none;pointer-events:none;
+    margin:2px 10px 8px;background:rgba(15,21,34,.6);border:1px solid rgba(150,170,210,.16);
+    border-radius:12px;box-shadow:0 8px 22px rgba(0,0,0,.34);
+    backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+  /* v1.7.0: 战报柔灰罩, 长战斗也只一层半透明圆角浮层 */
   .war-banner{display:none;flex-direction:column}
   .war-hd{display:flex;justify-content:space-between;align-items:center;
-    padding:7px 26px 3px;position:relative;flex-wrap:nowrap}
+    padding:7px 14px 3px;position:relative;flex-wrap:nowrap}
   .war-t{font-family:var(--font-brush);font-size:14px;color:#e0b98a;letter-spacing:.2em;text-shadow:0 1px 6px rgba(0,0,0,.9),0 0 16px rgba(0,0,0,.6)}
   .war-hp{font-size:9.5px;color:#c2cbe0;letter-spacing:.01em;white-space:nowrap;flex:0 0 auto;text-align:right;line-height:1.4;text-shadow:0 1px 5px rgba(0,0,0,.9)}
   .war-hp i{font-style:normal;color:#f0c9a8;margin:0 2px}
   .war-skip{margin-left:8px;padding:1px 7px}
-  .war-bd{padding:3px 26px 9px;position:relative}
+  .war-bd{padding:3px 14px 9px;position:relative}
   .wl{font-size:13.5px;line-height:1.85;color:#d2daea;letter-spacing:.02em;animation:wlIn .3s ease;text-shadow:0 1px 5px rgba(0,0,0,.92),0 0 14px rgba(0,0,0,.55)}
   .wl .r{color:#ff8a70;font-weight:700}
   .wl.lead{color:#c9a86a;font-size:11.5px;letter-spacing:.06em}
