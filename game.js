@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.32";
+const GAME_VER = "v1.7.33";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1684,13 +1684,13 @@ function updateHUD() {
   _floatPrev.exp = state.exp;
   refreshGlow(can);                       // v1.7.31: 可行动入口文字闪烁提醒(突破/聚灵阵/云游/丹房)
 }
-/* v1.7.31 行动提示闪烁: 按钮文字可达即亮(金色呼吸), 丹房有可炼之丹则丹字朱砂呼吸 */
+/* v1.7.33 行动提示闪烁: 整颗按钮发光脉动(文字亮度 + 按钮光晕双重), 丹房整圆发朱砂光 */
 function refreshGlow(canBreak) {
-  const g = (sel, on) => { const el = document.querySelector(sel); if (el) el.classList.toggle("hint-gold", !!on); };
-  const em = (sel, on) => { const el = document.querySelector(sel); if (el) el.classList.toggle("hint-ember", !!on); };
-  g("#btnBreak .label", canBreak);                              // 渡劫可突破
-  g("#btnArray .label", state.spirit >= arrayCostNow());        // 聚灵阵可升级
-  g("#btnTravel .label", !state.travel);                        // 化身在府可遣出
+  const gb = (sel, on) => { const el = document.querySelector(sel); if (el) el.classList.toggle("glow-gold", !!on); };
+  const eb = (sel, on) => { const el = document.querySelector(sel); if (el) el.classList.toggle("glow-ember", !!on); };
+  gb("#btnBreak", canBreak);                                    // 渡劫可突破
+  gb("#btnArray", state.spirit >= arrayCostNow());              // 聚灵阵可升级
+  gb("#btnTravel", !state.travel);                              // 化身在府可遣出
   let craftAny = false;                                         // 丹房: 存在一则可炼(已通晓且材料足)
   const bi = bigIdx(), mats = state.mats || {};
   for (const id in RECIPES) {
@@ -1701,7 +1701,12 @@ function refreshGlow(canBreak) {
     for (const k in rp.need) { if ((mats[k] || 0) < rp.need[k]) { ok = false; break; } }
     if (ok) { craftAny = true; break; }
   }
-  em("#alchemyChip .lg", craftAny);
+  eb("#alchemyChip", craftAny);
+  /* 文字同步提亮(双保险: 按钮光晕 + 内部文字亮度跳动) */
+  const lg = (sel, on) => { const el = document.querySelector(sel); if (el) el.classList.toggle("hint-gold", !!on); };
+  lg("#btnBreak .label", canBreak); lg("#btnArray .label", state.spirit >= arrayCostNow());
+  lg("#btnTravel .label", !state.travel);
+  const le = document.querySelector("#alchemyChip .lg"); if (le) le.classList.toggle("hint-ember", craftAny);
 }
 function 段名(r) {
   if (r.big === "凡人") return "";

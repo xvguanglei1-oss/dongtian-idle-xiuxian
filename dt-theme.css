@@ -953,3 +953,14 @@
   50%{filter:brightness(2);color:#ffe9d8;text-shadow:0 0 12px rgba(255,150,110,1),0 0 26px rgba(255,120,80,.75),0 0 4px #ffd0b8}}
 .hint-gold{animation:hintGoldPulse .95s ease-in-out infinite}
 .hint-ember{animation:hintEmberPulse .8s ease-in-out infinite}
+
+
+/* ==================== v1.7.33 整按钮发光脉动(btn 自身 box-shadow 呼吸, 比纯文字更醒目) ==================== */
+@keyframes glowGoldBtn{
+  0%,100%{box-shadow:0 0 4px rgba(232,197,107,.15),0 0 10px rgba(232,197,107,.05)}
+  50%{box-shadow:0 0 10px rgba(255,215,130,.95),0 0 22px rgba(255,200,110,.55),0 0 34px rgba(255,190,90,.25)}}
+@keyframes glowEmberBtn{
+  0%,100%{box-shadow:0 0 4px rgba(255,150,110,.12)}
+  50%{box-shadow:0 0 10px rgba(255,150,110,.9),0 0 20px rgba(255,120,80,.5)}}
+.glow-gold{animation:glowGoldBtn .9s ease-in-out infinite}
+.glow-ember{animation:glowEmberBtn .75s ease-in-out infinite}
