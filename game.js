@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.17";
+const GAME_VER = "v1.7.18";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -4553,28 +4553,65 @@ function openEquip() {
   m.classList.add("show");
 }
 function closeEquip() { const m = $("equipModal"); if (m) m.classList.remove("show"); }
-function renderEquip() {                 // v1.7.16 竖排品质卡 + 暗黑式词条
+function renderEquip() {                 // v1.7.18 装备面板·玄天金辉(徽章+战力+药丸)
   const box = $("equipBody"); if (!box) return;
   const eb = equipBonus();
   const arr = (state.arts || []).slice(-6);
   const SLOTN = SLOT_TYPES.map(t => t.n);
-  const chip = (f) => `<span class="f k-${f.k}"><i class="dot"></i>${FX_TXT[f.k] || f.k}<b>+${f.v}%</b></span>`;
+  // 武器/护体/灵佩/功法 四形 inline svg(玄天会随品质发光)
+  const ICON = {
+    w: '<svg viewBox="0 0 32 32"><path d="M21 3 L25 7 L8.5 23.5 L5 27 L3 25 L6.5 21.5 Z" fill="currentColor"/><path d="M21 3 L25 7 L27 5 L23 1 Z" fill="currentColor" opacity=".85"/></svg>',
+    a: '<svg viewBox="0 0 32 32"><path d="M16 3 L27 8 V17 C27 23.5 22.5 28.5 16 30 C9.5 28.5 5 23.5 5 17 V8 Z" fill="currentColor"/><path d="M16 9 L22 12 V17 C22 20.5 19.5 23.5 16 24.5 C12.5 23.5 10 20.5 10 17 V12 Z" fill="rgba(0,0,0,.4)"/></svg>',
+    p: '<svg viewBox="0 0 32 32"><path d="M16 3 L26 11 V21 L16 30 L6 21 V11 Z" fill="currentColor"/><circle cx="16" cy="16" r="4" fill="rgba(255,255,255,.5)"/></svg>',
+    s: '<svg viewBox="0 0 32 32"><path d="M7 4 H25 C26 12 26 12 25 12 C24 14 18 15 16 14 C14 15 8 14 7 12 C6 12 6 12 7 4 Z" fill="currentColor"/><rect x="13" y="14" width="6" height="14" rx="1" fill="currentColor" opacity=".7"/></svg>',
+  };
+  const SLOTI = ["w", "a", "p", "s"];
+  const starOf = (q) => {                              // q 颗实心 + 余下空心; q>5 不溢出
+    const n = Math.max(0, Math.min(5, q | 0));
+    return "★".repeat(n) + "☆".repeat(Math.max(0, 5 - n));
+  };
+  const pill = (f) => `<span class="pill k-${f.k}"><i class="bg"></i><span class="nm">${FX_TXT[f.k] || f.k}</span><b>+${f.v}%</b></span>`;
+  const sc = (a) => Math.round(artScore(a));
   let rows = "";
   for (let i = 0; i < 4; i++) {
     const a = arr[i];
-    if (!a) { rows += `<div class="eq-row empty"><span class="eq-slot">${SLOTN[i]} · 空位</span></div>`; continue; }
-    const qn = (QUALITY[a.q] || QUALITY[0]).name;
-    rows += `<div class="eq-row qc${a.q}">
-      <div class="eq-h"><span class="eq-ql">${qn}</span><span class="eq-nm">${a.name}</span><span class="eq-lv">lv${a.lv || ""} · ${SLOTN[i]}</span></div>
-      <div class="eq-st">攻 <b>${a.a || 0}</b> · 防 <b>${a.d || 0}</b> · 血 <b>${a.h || 0}</b></div>
-      ${(a.fx && a.fx.length) ? `<div class="eq-fx">${a.fx.map(chip).join("")}</div>` : ""}
+    if (!a) {
+      rows += `<div class="eq-card empty">
+        <div class="eq-emblem dim">${ICON[SLOTI[i]]}</div>
+        <div class="eq-info">
+          <div class="eq-name dim">${SLOTN[i]} · 空位</div>
+          <div class="eq-sub dim">待小青出炉新宝填此槽</div>
+        </div>
+        <div class="eq-power dim"><span class="p-l">战力</span><span class="p-v">—</span></div>
+      </div>`; continue;
+    }
+    const q = a.q;
+    const qn = (QUALITY[q] || QUALITY[0]).name;
+    const slotI = SLOTI[(typeof a.slot === "number" && a.slot < 4) ? a.slot : i] || SLOTI[i];
+    const fx = (a.fx && a.fx.length) ? `<div class="eq-fx">${a.fx.map(pill).join("")}</div>` : "";
+    rows += `<div class="eq-card qc${q}">
+      <div class="eq-glow"></div>
+      <div class="eq-emblem"><span class="star">${starOf(q + 1)}</span>${ICON[slotI]}</div>
+      <div class="eq-info">
+        <div class="eq-name">${a.name}</div>
+        <div class="eq-sub"><span class="eq-quality">${qn}</span> · <span>lv${a.lv || 1}</span> · <span>${SLOTN[i]}</span></div>
+        <div class="eq-stats">
+          <span class="st st-a"><i>攻</i><b>${a.a || 0}</b></span>
+          <span class="st st-d"><i>防</i><b>${a.d || 0}</b></span>
+          <span class="st st-h"><i>血</i><b>${a.h || 0}</b></span>
+        </div>
+      </div>
+      <div class="eq-power"><span class="p-l">战力</span><span class="p-v">${sc(a)}</span><span class="p-q">${qn}</span></div>
+      ${fx}
     </div>`;
   }
   const agg = eb.agg || {};
   const aggTxt = (["crit", "critB", "critD", "pen", "dodge", "life", "atk", "hp", "dfn"])
     .filter(k => agg[k])
-    .map(k => `<span class="f k-${k}"><i class="dot"></i>${FX_TXT[k]}<b>+${agg[k]}%</b></span>`).join("");
-  const rec = _eqRecycle.length ? `<div class="eq-rec">近记：${_eqRecycle.join(" · ")}</div>` : "";
+    .map(k => `<span class="pill k-${k}"><i class="bg"></i><span class="nm">${FX_TXT[k]}</span><b>+${agg[k]}%</b></span>`).join("");
+  const rec = _eqRecycle.length
+    ? `<div class="eq-rec"><span class="rh">近记熔炼</span>${_eqRecycle.map(r => `<span class="rl">${r}</span>`).join("")}</div>`
+    : "";
   box.innerHTML = `
     <div class="eq-sum">
       <div class="row1">修为加成 <b>×${artMult().toFixed(2)}</b><span class="spt">·</span>装备　攻 <b>+${eb.atk}</b>　防 <b>+${eb.def}</b>　血 <b>+${eb.hp}</b></div>
