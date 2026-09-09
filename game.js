@@ -776,6 +776,9 @@ function cldAdoptCloud(s) {
   state = c;
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
   updateRealmUI(); updateHUD(); updateArts(); realmPlot();
+  /* v1.5.0: 云端档可能没有 autoHunt / travel 字段(老档), 采纳后按钮与行迹要跟着重绘,
+     否则会出现"state 已变、开关还停在旧态"的错看 */
+  renderAutoHunt(); travelBtnLbl(); traceRefresh();
   return true;
 }
 async function cldPush() {
