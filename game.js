@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.25";
+const GAME_VER = "v1.7.26";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1227,8 +1227,92 @@ function adopt(s) {
     });
   }
   if (!s.pages || typeof s.pages !== "object") s.pages = {};
+  if (typeof s.name !== "string" || s.name.length > 20) s.name = "";
+  s._pn = typeof s._pn === "string" ? s._pn : "";
   return s;
 }
+/* ==================== v1.7.26 道号 & 洞天风云榜 ==================== */
+/* 道号: 本地默认 6 位数字(_pn), 改名成功才进 state.name 并上传(服务器唯一) */
+function pnGen() { let n = ""; for (let i = 0; i < 6; i++) n += (Math.random() * 10) | 0; return n; }
+function pnLocal() { if (typeof state._pn !== "string" || !state._pn) state._pn = pnGen(); return state._pn; }
+function nameShow() { return (state.name || "").trim() || pnLocal(); }
+function renderPName() {
+  const el = $("pName"); if (!el) return;
+  el.textContent = nameShow();
+  el.title = state.name ? "道号 · " + state.name + "（点此改）" : "未定道号 · 点此改名，全服唯一";
+}
+function apiRoot() { try { return CLD_API.replace(/\/api\/save$/, ""); } catch (e) { return "https://save.devgo.cn"; } }
+function openRename() {
+  const m = $("renameModal"); if (!m) return;
+  const inp = $("renameInput"); if (inp) inp.value = (state.name || "").trim() || "";
+  const h = $("renameHint");
+  if (h) h.textContent = state.name
+    ? "道号全服唯一：改名会立即与云端确认，被占用会提示换名。定名后，别处输入道号即可寻回本命存档。"
+    : "你的临时道号是 6 位数字，改个响亮的道号后即与存档码绑定：今后输入道号也能寻回存档。";
+  m.classList.add("show");
+  if (inp) setTimeout(() => { try { inp.focus(); inp.select(); } catch (e) {} }, 80);
+}
+function closeRename() { const m = $("renameModal"); if (m) m.classList.remove("show"); }
+function rnOk(v) { return /^[0-9A-Za-z\u4e00-\u9fa5_-]{1,12}$/.test(v); }
+async function saveRename() {
+  const inp = $("renameInput"); if (!inp) return;
+  const v = inp.value.trim(), h = $("renameHint");
+  if (!rnOk(v)) { if (h) h.textContent = "道号需 1~12 位中文/字母/数字/_/-，且不含空格。"; return; }
+  if (v === state.name) { closeRename(); return; }
+  if (h) h.textContent = "正在与云端确认……";
+  try {
+    const r = await fetch(apiRoot() + "/api/name", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: cldId(), name: v }),
+    });
+    if (r.status === 409) {
+      const j = await r.json().catch(() => ({}));
+      const who = String(j.by || "").replace(/^dt-/, "").slice(-4);
+      if (h) h.textContent = "「" + v + "」已被道号 " + (who ? "·" + who : "他人") + " 占用，另起一个吧（全服唯一）。";
+      return;
+    }
+    if (!r.ok) { if (h) h.textContent = "云端暂不可用（存档服务未连接），请稍后再试。"; return; }
+    state.name = v; state._named = 1;
+    save(); cloudSoon(); renderPName(); closeRename();
+    pushMsg("main", "道号已定：从今往后你以 <span class=\"g\">" + v + "</span> 行走洞天，风云榜上留名。");
+  } catch (e) { if (h) h.textContent = "云端暂不可用，请检查网络后重试。"; }
+}
+/* 排行(云端 Top10) */
+const RK_SEGS = [1, 13, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4];
+const RK_NAMES = ["凡人", "炼气", "筑基", "结丹", "元婴", "化神", "炼虚", "合体", "大乘", "渡劫", "真仙", "天仙"];
+function rkSegLabel(rid) {
+  let r = Math.max(0, Math.floor(rid || 0)), bi = 0;
+  while (bi < 11 && r >= RK_SEGS[bi]) { r -= RK_SEGS[bi]; bi++; }
+  if (bi === 0) return "凡人";
+  const base = RK_SEGS.slice(0, bi).reduce((a, b) => a + b, 0);
+  const pos = Math.max(0, Math.floor(rid || 0)) - base;
+  if (bi === 1) return "炼气 " + (pos + 1) + " 层";
+  return RK_NAMES[bi] + "·" + ["前期", "中期", "后期", "圆满"][Math.min(3, pos)];
+}
+let _rkAt = 0;
+function openRank() { const m = $("rankModal"); if (!m) return; m.classList.add("show"); loadRank(true); }
+function closeRank() { const m = $("rankModal"); if (m) m.classList.remove("show"); }
+async function loadRank(force) {
+  const body = $("rankBody"); if (!body) return;
+  if (!force && Date.now() - _rkAt < 60000) return;
+  body.innerHTML = '<div class="al-empty">榜单刷新中……</div>';
+  try {
+    const r = await fetch(apiRoot() + "/api/rank?top=10", { cache: "no-store" });
+    if (!r.ok) throw new Error("http" + r.status);
+    const j = await r.json(); _rkAt = Date.now();
+    const me = cldId().replace(/^dt-/, "");
+    if (!j.list || !j.list.length) { body.innerHTML = '<div class="al-empty">仙途初开，尚无修士上榜。</div>'; return; }
+    body.innerHTML = j.list.map(x => {
+      const isMe = String(x.code || "") === me;
+      return '<div class="rk-row ' + (isMe ? "me " : "") + "n" + x.rank + '">' +
+        '<div class="rk-no">' + x.rank + "</div>" +
+        '<div class="rk-main"><div class="rk-nm">' + (x.name || x.code) + (isMe ? ' <span style="font-size:9px;color:#e8c56b">(我)</span>' : "") + "</div>" +
+        '<div class="rk-big">' + rkSegLabel(x.rid) + "</div></div>" +
+        '<div class="rk-exp">' + fmt(x.exp || 0) + "</div></div>";
+    }).join("") + '<div class="rk-foot">共 ' + (j.total || j.list.length) + " 名修士在册 · 按云端结算滚动更新</div>";
+  } catch (e) { body.innerHTML = '<div class="al-empty">云端未连接，榜单待命……</div>'; }
+}
+
 /* 短档存取: 全链路(LZString)压缩, 不裸存汉字正文; 旧档(未压缩 JSON)自动兼容 */
 function zPack(o) { return "z1:" + LZString.compressToBase64(JSON.stringify(o)); }
 function zUnpack(s) {
@@ -1348,6 +1432,7 @@ function cldAdoptCloud(s) {
   /* v1.5.0: 云端档可能没有 autoHunt / travel 字段(老档), 采纳后按钮与行迹要跟着重绘,
      否则会出现"state 已变、开关还停在旧态"的错看 */
   renderAutoHunt(); travelBtnLbl(); traceRefresh();
+  renderPName();                // v1.7.26: 云端档自带道号 → 界面同步
   return true;
 }
 async function cldPush() {
@@ -1372,6 +1457,12 @@ async function cldPull() {
     const r = await cldApi("GET", undefined, "fmt=z1");
     if (r && r.data) r.data = zUnpack(r.data);
     if (r.found && r.data) {
+      /* v1.7.26: 输入道号也按 id 返回 → 绑定真实玩家码, 与道号完成配对 */
+      if (r.id && r.id !== cld.id) {
+        cld.id = r.id;
+        try { localStorage.setItem(CLD_KEY, cld.id); } catch (e) {}
+        const idEl = $("cloudId"); if (idEl) idEl.textContent = cld.id;
+      }
       const cs = (r.ts || 0);               // 服务端存档时间(权威)
       const ls = (state._cloudTs || 0);
       if (cs > ls) {
@@ -1441,8 +1532,8 @@ function fallbackCopy(text, done) {
   document.body.removeChild(ta);
 }
 function cloudBind() {
-  const v = (($("cloudInput") || {}).value || "").trim().toLowerCase();
-  if (!/^[a-z0-9][a-z0-9_-]{3,23}$/.test(v)) { cldFlash("玩家码格式不对"); return; }
+  const v = (($("cloudInput") || {}).value || "").trim();
+  if (!/^[0-9A-Za-z\u4e00-\u9fa5_-]{1,24}$/.test(v)) { cldFlash("请输入玩家码或道号"); return; }
   try { localStorage.setItem(CLD_KEY, v); } catch (e) {}
   cld.id = v; cld.ready = false; cld.dirty = false;
   const idEl = $("cloudId"); if (idEl) idEl.textContent = v;
@@ -3572,6 +3663,7 @@ function loop(dt) {
 /* ============ 启动 ============ */
 load();                       // 先本地存档
 updateRealmUI();
+renderPName();                // v1.7.26 道号显示(默认 6 位数字)
 _dsp.spirit = state.spirit; _dsp.exp = state.exp;
 _floatPrev.spirit = state.spirit; _floatPrev.exp = state.exp;
 updateHUD();
@@ -3810,6 +3902,8 @@ function cloudSnap(src) {
   const s = src || state;
   const out = Object.assign({}, s);
   out.journal = (s.journal || []).filter(j => !(j && !j.sid && j.kind === "游历"));
+  /* v1.7.26: 未定道号(_named=0)不上传名字与本地临时名 → 服务器/风云榜只见定名者 */
+  if (!out._named) { delete out.name; delete out._pn; }
   return out;
 }
 /* ==================== v0.8.1 在线寄包: 化身不归, 周期寄回手札 ==================== */

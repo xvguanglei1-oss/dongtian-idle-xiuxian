@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>洞天 · 挂机修仙 · 墨线夜谈 v1.7.25</title>
+<title>洞天 · 挂机修仙 · 墨线夜谈 v1.7.26</title>
 <meta name="description" content="洞天挂机修仙：主身巡猎斗法、分身云游寻宝，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -57,6 +57,10 @@
     padding:7px 13px;border-radius:999px;display:flex;flex-direction:column;gap:1px;box-shadow:0 4px 18px rgba(0,0,0,.35)}
   .realm-badge .big{font-size:15px;font-weight:800;letter-spacing:.12em;color:var(--gold);line-height:1.2;text-shadow:0 0 12px rgba(232,197,107,.45)}
   .realm-badge .sub{font-size:10px;color:var(--dim);letter-spacing:.04em}
+  .realm-badge .pname{font-size:10.5px;color:#e6cf9a;letter-spacing:.12em;font-family:var(--font-brush);line-height:1.3;cursor:pointer;border-bottom:1px dashed rgba(232,197,107,.3);padding:0 4px 1px;margin-top:1px}
+  .realm-badge .pname::after{content:"\270E";font-size:8px;color:#8a7a55;margin-left:4px}
+  .rank-open{flex:none;font-family:var(--font-brush);font-size:13px;width:26px;height:24px;border-radius:999px;color:#e6cf9a;background:rgba(232,197,107,.10);border:1px solid rgba(232,197,107,.35);cursor:pointer;letter-spacing:.05em;line-height:1;display:flex;align-items:center;justify-content:center}
+  .rank-open:active{transform:scale(.92)}
   .story-btn{margin-top:6px;align-self:flex-start;pointer-events:auto;font-size:10px;padding:3px 10px;border-radius:999px;
     border:1px solid rgba(232,197,107,.32);background:rgba(232,197,107,.12);color:var(--gold);letter-spacing:.08em;
     cursor:pointer;backdrop-filter:blur(4px);transition:transform .12s}
@@ -235,7 +239,7 @@
   #cloudPanel .cp-hint{font-size:10px;color:#6f87a5;line-height:1.5;margin-top:6px}
   .ver-tag{align-self:center;font-size:9px;color:rgba(233,226,208,.62);letter-spacing:.05em;font-family:ui-monospace,monospace;pointer-events:none;margin-left:7px}
 </style>
-<link rel="stylesheet" href="dt-theme.css?v=1.7.25">
+<link rel="stylesheet" href="dt-theme.css?v=1.7.26">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -255,10 +259,11 @@
     <div id="cloudChip" class="cloud-mini res-chip" onclick="cloudTogglePanel(event)" title="云存档"><span class="dot"></span><span id="cloudTxt">云存</span></div>
     <button class="atk-toggle on" id="btnAuto" onclick="toggleAutoHunt()"><span class="at-ic">⚔</span><span class="at-tx">自动</span></button>
     <button class="snd-btn" id="btnSnd" onclick="SND.toggle()" title="声音开关">🔊</button>
+    <button class="rank-open" id="btnRank" onclick="openRank()" title="洞天风云榜 · 前十">榜</button>
   </div>
   <div class="hud-row">
     <div class="realm-left">
-      <div class="realm-badge"><span class="big" id="realmName">凡人</span><span class="sub" id="realmSub">练气初期 · 洞天福地</span></div>
+      <div class="realm-badge"><span class="big" id="realmName">凡人</span><span class="sub" id="realmSub">练气初期 · 洞天福地</span><span class="pname" id="pName" onclick="openRename()" title="点此改道号">· · ·</span></div>
       <button class="story-btn" onclick="openStory()">📜 剧情纲目</button>
     </div>
     <div class="hud-right">
@@ -311,7 +316,7 @@
 </div>
 
 <div class="exp-wrap">
-  <div class="exp-labels"><span>境界进度<span class="ver-tag" id="verTag">v1.7.25</span></span><span><b id="expText">0</b> / <b id="expNeed">1000</b></span></div>
+  <div class="exp-labels"><span>境界进度<span class="ver-tag" id="verTag">v1.7.26</span></span><span><b id="expText">0</b> / <b id="expNeed">1000</b></span></div>
   <div class="exp-track"><div class="exp-fill" id="expFill"></div></div>
 </div>
 
@@ -357,6 +362,32 @@
     <p class="story-tip" style="color:#8b94a8">化身替你下山跑腿 —— 遣它出门，关了页它也在走。<br>拾到的药草、灵石与丹方残页都收进<b style="color:#c9b98a">丹房行囊</b>，随时可去开炉炼丹。</p>
     <div class="story-body" id="travelBody"></div>
     <button class="btn primary story-close" onclick="closeTravel()">合 上</button>
+  </div>
+</div>
+
+<div class="modal" id="rankModal">
+  <div class="card story-card">
+    <h3>🏆 洞天风云榜</h3>
+    <p class="story-tip" style="color:#8b94a8">主身已见锋芒的十位修士 —— 按当前境界与修为排定，每刻刷新。</p>
+    <div class="story-body" id="rankBody"><div class="al-empty" style="color:#6d7688">云端未连接，稍后再看……</div></div>
+    <button class="btn primary story-close" onclick="closeRank()">合 上</button>
+  </div>
+</div>
+
+<div class="modal" id="renameModal">
+  <div class="card story-card">
+    <h3>改道号</h3>
+    <p class="story-tip" style="color:#8b94a8">道号<b style="color:#e6cf9a">全服唯一</b>（1~12 位中文/字母/数字/_-）。改名即与你的存档码绑定——今后在别处输入道号，一样能寻回本命存档。</p>
+    <div class="story-body">
+      <div style="display:flex;gap:8px;margin:4px 0 6px">
+        <input id="renameInput" placeholder="输入新道号" maxlength="12" style="flex:1;min-width:0;background:#0a0f15;border:1px solid #2a3a52;color:#cfe3fb;border-radius:6px;padding:6px 10px;font-size:13px;outline:none">
+      </div>
+      <div id="renameHint" style="font-size:10.5px;color:#7e8798;line-height:1.6">初始道号为一串 6 位数字；改一次道号后即可用作存档寻回凭证。</div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="cp-btn" onclick="closeRename()">取消</button>
+      <button class="btn primary" style="padding:6px 16px;font-size:12px" onclick="saveRename()">定 名</button>
+    </div>
   </div>
 </div>
 
@@ -408,7 +439,7 @@
 </div>
 
 <script src="assets/lz-string.min.js"></script>
-<script src="game.js?v=1.7.25"></script>
+<script src="game.js?v=1.7.26"></script>
 
 </body>
 </html>

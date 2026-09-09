@@ -894,3 +894,16 @@
 .al-sec{font-size:11px;color:#9aa5ba;margin:12px 0 4px;display:flex;align-items:baseline;gap:8px;letter-spacing:.06em}
 .al-sec i{font-style:normal;font-size:9px;color:#6d7688}
 .al-empty{font-size:11px;color:#5f6778;padding:6px 2px;line-height:1.7}
+
+/* ==================== v1.7.26 风云榜 & 道号 ==================== */
+.rk-row{display:flex;align-items:center;gap:10px;padding:8px 6px;margin:4px 0;border-radius:8px;
+  background:rgba(20,28,48,.45);border:1px solid rgba(130,145,180,.14)}
+.rk-row.me{background:rgba(232,197,107,.08);border-color:rgba(232,197,107,.4)}
+.rk-no{flex:none;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-brush);font-size:13px;color:#e6cf9a;background:rgba(232,197,107,.10);border:1px solid rgba(232,197,107,.3)}
+.rk-row.n1 .rk-no,.rk-row.n2 .rk-no,.rk-row.n3 .rk-no{background:rgba(232,197,107,.28);color:#0e1520;border-color:#e6cf9a}
+.rk-main{flex:1;min-width:0}
+.rk-nm{font-size:13px;color:#f0e3bb;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rk-big{font-size:10.5px;color:#9fb0a6;margin-top:2px}
+.rk-exp{flex:none;font-size:10.5px;color:#c9b98a;font-family:ui-monospace,monospace}
+.rk-foot{font-size:10px;color:#5f6070;margin-top:8px;text-align:right}
