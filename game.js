@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.1";
+const GAME_VER = "v1.7.2";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ 境界体系(凡人修仙传风) ============
@@ -4019,13 +4019,14 @@ function fireFight() {                // 主身斗法: 不再借化身行迹, �
 }
 async function btlRun() {
   while (BTL && !BTL.ended) {
-    await slp(BTL.skip ? 40 : 1250);      // 每合玩家出手前; 首合更长(留出读开场白的空)
+    // v1.7.2 播报节奏: 开场首合多留白读警示语, 每合出手/受击各自停顿, 玩家看得清来龙去脉; ⚡速战不受影响
+    await slp(BTL.skip ? 40 : (BTL.round === 0 ? 2500 : 1500));
     if (!BTL || BTL.ended) break;
     BTL.round++;
     fieldLine();
     btlHeroAct();
     if (!BTL || BTL.ended) break;
-    await slp(BTL.skip ? 40 : 900);       // 怪物还手前略顿, 一来一回看得清
+    await slp(BTL.skip ? 40 : 1150);       // 怪物还手前略顿, 一来一回看得清
     if (BTL && !BTL.ended) btlFoeAct();
   }
 }
@@ -4113,7 +4114,7 @@ function warStart(title, lead) {
 function warEnd(finalTxt, cls) {
   if (finalTxt) warAppend(finalTxt, cls || "win");
   const wb = $("warBanner");
-  const wait = (BTL && BTL.skip) ? 2100 : (MYST ? 2400 : 2700);   // 速战后短留即可
+  const wait = (BTL && BTL.skip) ? 2100 : (MYST ? 2600 : 3500);   // v1.7.2: 战报结尾多停一会; 速战短留即可
   setTimeout(() => { if (wb) wb.style.display = "none"; }, wait);
 }
 function btlWin() {
