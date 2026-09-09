@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.24";
+const GAME_VER = "v1.7.25";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3661,21 +3661,19 @@ function travelAvatarHTML() {
 }
 /* v1.7.22: 炼丹独立成【丹房】(原嵌在云游面板内) —— 材料/丹药/开炉集中于此 */
 function matBagHTML() {
-  const matChips = Object.keys(MATS).map(k => {
-    const has = (state.mats || {})[k] || 0;
-    return `<span style="color:${has > 0 ? "#c9b98a" : "#4b5468"}">${MATS[k].n}${has > 0 ? "×" + has : ""}</span>`;
-  }).join("　");
-  return `<div style="font-size:11px;color:#9aa5ba;margin:4px 0 2px">行囊 · 药草灵石</div>
-    <div style="font-size:11.5px;line-height:2">${matChips || ""}</div>`;
+  const own = Object.keys(MATS).filter(k => ((state.mats || {})[k] || 0) > 0);
+  if (!own.length) return `<div class="al-sec">行囊 · 手头材料</div><div class="al-empty">行囊空空——遣化身出门云游，可捎回药草灵石。</div>`;
+  const chips = own.map(k => `<span class="al-bagchip" title="${MATS[k].n} · ${MATS[k].src}">${MATS[k].n}<b>×${state.mats[k]}</b><i class="t">${MATS[k].t}</i></span>`).join("");
+  return `<div class="al-sec">行囊 · 手头材料 <i>尚未采到的不在此列</i></div><div class="al-bag">${chips}</div>`;
 }
 function pillCabinetHTML() {
-  const pk = Object.keys(state.pills || {});
-  const pillRow = (pk.length ? pk.map(id => {
+  const pk = Object.keys(state.pills || {}).filter(id => RECIPES[id]);
+  if (!pk.length) return `<div class="al-sec">丹药匣</div><div class="al-empty">尚无丹药——材料齐了即可开炉。</div>`;
+  const row = pk.map(id => {
     const rp = RECIPES[id];
-    return `<span style="display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(201,168,106,.3);border-radius:4px;padding:3px 8px;margin:2px;font-size:11px;color:#e8d6a4" title="${rp.d}">${rp.n}×${state.pills[id]}<button class="cp-btn" style="color:#a88" onclick="consumePill('${id}')">服</button></span>`;
-  }).join("") : `<span style="color:#6d7688;font-size:11px">尚无丹药</span>`);
-  return `<div style="font-size:11px;color:#9aa5ba;margin:12px 0 2px">丹药匣（点“服”即用）</div>
-    <div style="margin-bottom:6px">${pillRow}</div>`;
+    return `<span class="al-pill" title="${rp.d}">${rp.n}<b>×${state.pills[id]}</b><button class="take" onclick="consumePill('${id}')">服</button></span>`;
+  }).join("");
+  return `<div class="al-sec">丹药匣 <i>点“服”即用</i></div><div>${row}</div>`;
 }
 function openTravel() {
   const m = $("travelModal"); if (!m) return;
@@ -3749,46 +3747,44 @@ function craftAreaHTML() {
     const big = RECIPES[id].big;
     (groups[big] = groups[big] || []).push(id);
   }
-  let html = `<div style="font-size:11px;color:#8a7a55;margin:12px 0 2px;letter-spacing:.1em">【 开炉炼丹 】</div>`;
+  let html = `<div class="al-sec">开炉炼丹 <i>已通晓「${DAN_ZONE[Math.min(bi, 11)] || "?"}」及以下丹道</i></div>`;
   for (let big = 0; big <= bi; big++) {
     const list = groups[big];
     if (!list || !list.length) continue;
-    html += `<div style="font-size:10.5px;color:#a98a5a;margin:8px 0 3px">· ${DAN_ZONE[big] || big} · 丹道</div>`;
+    html += `<div class="al-zone">${DAN_ZONE[big] || big} · 丹道</div>`;
     for (const id of list) {
       const rp = RECIPES[id];
+      if (!rp) continue;
       if (rp.h) {
         if (hiddenUnlocked(big)) html += recipeCardHTML(id);
         else {
           const got = pagesOf(big);
-          html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;margin:5px 0;background:rgba(120,120,160,.06);border-left:2px dashed rgba(150,140,200,.35)">
-            <div style="flex:1;min-width:0">
-              <div style="font-size:12.5px;color:#8d84b8">???.${DAN_ZONE[big]}古方残卷<span style="font-size:10px;color:#6d6677">　残页 ${got}/${PAGES_NEED[big]}</span></div>
-              <div style="font-size:10px;color:#6d7688;margin-top:2px">云游${DAN_ZONE[big]}一带有机会拾得残页，凑齐自见丹方真容。</div>
-            </div>
-          </div>`;
+          html += `<div class="al-secret"><div style="flex:1;min-width:0">
+            <div class="qn">???.${DAN_ZONE[big]}古方残卷 <span class="pg">残页 ${got}/${PAGES_NEED[big]}</span></div>
+            <div class="tip">云游${DAN_ZONE[big]}一带有机会拾得残页，凑齐自见丹方真容。</div></div></div>`;
         }
         continue;
       }
       html += recipeCardHTML(id);
     }
   }
-  if (bi < 11) html += `<div style="font-size:10.5px;color:#545d6f;margin-top:9px;font-style:italic">更高一境的丹方，待你亲临其境，自有丹师相授。</div>`;
+  if (bi < 11) html += `<div class="al-empty" style="font-style:italic">更高一境的丹方，待你亲临其境，自有丹师相授。</div>`;
   return html;
 }
 function recipeCardHTML(id) {
   const rp = RECIPES[id];
   const needTxt = Object.keys(rp.need).map(mid => {
     const have = (state.mats || {})[mid] || 0, nd = rp.need[mid];
-    const ok = have >= nd;
-    return `<span style="color:${ok ? "#9fd0a8" : "#cf8a7a"}">${MATS[mid].n} ${have}/${nd}</span>`;
-  }).join("　");
+    return `<span class="al-chip ${have >= nd ? "ok" : "no"}">${MATS[mid].n} ${have}/${nd}</span>`;
+  }).join("");
   const can = Object.keys(rp.need).every(mid => ((state.mats || {})[mid] || 0) >= rp.need[mid]);
-  return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;margin:5px 0;background:rgba(255,255,255,.035);border-left:2px solid ${can ? "rgba(159,208,168,.7)" : "rgba(130,130,160,.3)"}">
+  return `<div class="al-card${can ? " can" : ""}">
     <div style="flex:1;min-width:0">
-      <div style="font-size:12.5px;color:${can ? "#e8d6a4" : "#9099ae"}">${rp.n}<span style="font-size:10px;color:#6d7688">　需 ${needTxt}</span></div>
-      <div style="font-size:10px;color:#8b94a8;margin-top:2px;line-height:1.5">${rp.d}</div>
+      <div class="nm">${rp.n}</div>
+      <div class="ds">${rp.d}</div>
+      <div class="nd">${needTxt}</div>
     </div>
-    <button class="cp-btn" style="flex:none;font-size:12px;padding:4px 12px;color:${can ? "#a9d8ae" : "#5d6677"}" ${can ? `onclick="craftPill('${id}')"` : "disabled"}>开炉</button>
+    <button class="al-craft ${can ? "on" : "off"}" ${can ? `onclick="craftPill('${id}')"` : "disabled"}>开炉</button>
   </div>`;
 }
 function craftPill(id) {
