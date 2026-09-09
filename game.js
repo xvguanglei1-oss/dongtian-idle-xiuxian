@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.18";
+const GAME_VER = "v1.7.19";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -139,16 +139,16 @@ const BIGS = [
   { n: "真仙", segs: 4, color: "#a9f0c8", c: [169,240,200] },
   { n: "天仙", segs: 4, color: "#fff0a8", c: [255,240,168] },
 ];
-const TOTAL_SEGS = BIGS.reduce((s, b) => s + b.segs, 0);   // 30 段
+const TOTAL_SEGS = BIGS.reduce((s, b) => s + b.segs, 0);   // 54 段(凡人1 + 炼气13 + 其余10境各4)
 let __auraBig = null;   // 光环预览中的大境界(为 null=跟随真实修为)
 
 /* ---- 成长曲线(目标 ≈1个月到化神, 前期快、后期稳; 全部可调) ----
- * REALM_DAYS: 各境目标天数(合计30天; 炼气/筑基压短 → 前期一天能冲好几层)
+ * REALM_DAYS: 各境目标天数(合计≈129天; 炼气/筑基压短 → 前期一天能冲好几层)
  * SEG_SCALE : 修为需求系数锚点(=4 → 不开聚灵阵纯挂机也≈设计天数; 升阵会更快)
  * arrMult   : 聚灵阵收益 前10级+35%/11~20级+18%/21~30级+8%, 30级封顶, 防止后期产出失控
  * SPIRIT_RATE/ARRAY_COST: 灵石秒产与阵升级花费, 约束阵等级节奏
  */
-const REALM_DAYS = [0.15, 5, 4.8, 6, 6.8, 7.25, 9.5, 11.5, 14, 17, 21, 26]; // 化神后: 灵界(炼虚→渡劫)/仙界(真仙·天仙), 不再封顶30天
+const REALM_DAYS = [0.15, 5, 4.8, 6, 6.8, 7.25, 9.5, 11.5, 14, 17, 21, 26]; // 化神后: 灵界(炼虚→渡劫)/仙界(真仙·天仙), 合计≈129天
 const SEG_SCALE = 4;
 const arrMult = lv => {
   let m = 1;
@@ -1129,22 +1129,24 @@ function seg(i) { return SEG_META[Math.min(i, TOTAL_SEGS - 1)]; }
 function realm() { return seg(state.realmIdx); }
 function bigIdx() { return realm().bigIdx; }
 
+/* 有限数值兜底: 非数字 / NaN / Infinity 一律回退默认值 —— 防损坏存档把 NaN 经 artMult/buffMult/rateNow 污染全局部状态 */
+function fin(v, d) { return (typeof v === "number" && isFinite(v)) ? v : d; }
 /* 存档对象清洗(本地/云端共用): 合法则返回清洗后的对象, 否则返回 null */
 function adopt(s) {
   if (!s || !Array.isArray(s.arts)) return null;
   if (!Array.isArray(s.journal)) s.journal = [];
   if (!s.milestones || typeof s.milestones !== "object") s.milestones = {};
-  if (typeof s.peakSpirit !== "number") s.peakSpirit = 0;
-  if (typeof s.bestArtQ !== "number") s.bestArtQ = -1;
-  if (typeof s.realmIdx !== "number" || s.realmIdx < 0) s.realmIdx = 0;
-  if (typeof s.exp !== "number") s.exp = 0;
-  if (typeof s.spirit !== "number") s.spirit = 0;
-  if (typeof s.arrayLv !== "number" || s.arrayLv < 1) s.arrayLv = 1;
-  if (typeof s.lastTs !== "number") s.lastTs = Date.now();
+  s.peakSpirit = fin(s.peakSpirit, 0);
+  s.bestArtQ = fin(s.bestArtQ, -1);
+  s.realmIdx = Math.max(0, Math.min(TOTAL_SEGS - 1, Math.floor(fin(s.realmIdx, 0))));
+  s.exp = Math.max(0, fin(s.exp, 0));
+  s.spirit = Math.max(0, fin(s.spirit, 0));
+  s.arrayLv = Math.max(1, Math.floor(fin(s.arrayLv, 1)));
+  s.lastTs = fin(s.lastTs, Date.now());
   if (!s.mats || typeof s.mats !== "object") s.mats = {};
   if (!s.pills || typeof s.pills !== "object") s.pills = {};
   if (!Array.isArray(s.buffs)) s.buffs = [];
-  if (typeof s.offlineBoostUntil !== "number") s.offlineBoostUntil = 0;
+  s.offlineBoostUntil = Math.max(0, fin(s.offlineBoostUntil, 0));
   if (!s.travel || typeof s.travel !== "object") s.travel = null;
   if (!Array.isArray(s.mails)) s.mails = [];
   // 装备归一: 六槽旧档(兵兵护护佩诀)→四部位(兵护佩诀), 多余两件熔回灵石; 无属性旧件按部位补(确定性)
@@ -1155,22 +1157,28 @@ function adopt(s) {
       const order = [0, 2, 4, 5];                       // 六槽中保留 兵(0)/护(2)/佩(4)/诀(5)
       for (const oi of order) { const it = s.arts[oi]; if (it) { it.slot = pick.length; it.tp = M4T[pick.length]; pick.push(it); } }
       let rc = 0;
-      for (let i = 0; i < s.arts.length; i++) if (!pick.includes(s.arts[i])) rc += Math.round(40 * Math.pow(1.5, s.arts[i].q || 0));
-      if (rc > 0) s.spirit = (s.spirit || 0) + rc;
+      for (let i = 0; i < s.arts.length; i++) if (!pick.includes(s.arts[i])) rc += Math.round(40 * Math.pow(1.5, fin(s.arts[i].q, 0)));
+      if (rc > 0) s.spirit = fin(s.spirit, 0) + rc;
       s.arts = pick;
     }
     s.arts.forEach((a, i) => {
-      /* 开发阶段: 旧档不迁移(可直接弃档)。仅对"无数值"的极老结构按 v1.0.2 新基准确定性补全,
-         避免结构异常; 已有数值的法宝按原样保留(新档按新公式掉落, 天然一致)。 */
-      if (a && typeof a.a !== "number") {
-        a.slot = Math.min(i, 3); a.tp = M4T[Math.min(i, 3)];
+      if (!a || typeof a !== "object") return;
+      a.slot = Math.min(3, Math.max(0, fin(a.slot, i)));
+      a.q = Math.min(5, Math.max(0, fin(a.q, 0)));
+      a.lv = Math.max(1, Math.floor(fin(a.lv, 1)));
+      /* 关键: artMult() 累乘 a.mult; 老档缺/坏 mult 会产出 NaN, 经 rateNow 污染全部在线/离线收益。
+         缺省回退到当前品质基准, 保证数值有限可计算。 */
+      a.mult = fin(a.mult, (QUALITY[a.q] || QUALITY[0]).mult);
+      if (typeof a.a !== "number") {
+        a.tp = M4T[a.slot];
         a.lv = (typeof s.realmIdx === "number" ? s.realmIdx : 0) + 1;
-        const q = Math.min(5, Math.max(0, typeof a.q === "number" ? a.q : 0));
-        const M = eqMult(q), lv = a.lv, s2 = hashRand((a.name || "") + q + i);
+        const q = a.q, M = eqMult(q), lv = a.lv, s2 = hashRand((a.name || "") + q + i);
         if (i % 4 === 0) { a.a = Math.max(1, Math.round((2 + s2 * 8) * lv * M)); a.h = 0; a.d = 0; }
         else if (i % 4 === 1) { a.h = Math.round((20 + s2 * 60) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 8) * lv * M)); a.a = 0; }
         else if (i % 4 === 2) { a.h = Math.round((8 + s2 * 24) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 3) * lv * M)); a.a = Math.round((0.8 + s2 * 2.4) * lv * M); }
         else { a.a = Math.round((1.2 + s2 * 3.6) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 3) * lv * M)); a.h = 0; }
+      } else {
+        a.a = Math.max(0, fin(a.a, 0)); a.d = Math.max(0, fin(a.d, 0)); a.h = Math.max(0, fin(a.h, 0));
       }
     });
   }
@@ -1438,9 +1446,9 @@ function buffMult() {
   state.buffs = (state.buffs || []).filter(b => b.until > t);
   // 药力相冲，只取当前最强的一道（防 buff 叠乘指数爆炸）
   if (!(state.buffs || []).length) return 1;
-  return Math.max(...state.buffs.map(b => b.mult));
+  return Math.max(...state.buffs.map(b => fin(b.mult, 1)));
 }
-function rateNow() { return 4 * realmMult() * artMult() * arrMult(state.arrayLv) * buffMult(); }
+function rateNow() { return Math.max(0, fin(4 * realmMult() * artMult() * arrMult(state.arrayLv) * buffMult(), 0)); }
 function spiritRate() { return SPIRIT_RATE(state.arrayLv); }
 
 /* 品质与境界挂钩: 凡人只能粗制, 炼气→法器, 筑基→灵器, 结丹→古宝, 元婴→灵宝, 化神→玄天
@@ -3242,9 +3250,9 @@ function applyOffline() {
   const offBoost = Date.now() < (state.offlineBoostUntil || 0) ? 1.3 : 1;
   const gainExp = rateNow() * dt * 0.6 * offBoost;
   const gainSpirit = spiritRate() * dt * 0.7;
-  // 修复: 离线收益真正入账(此前版本只显示未累加)
-  state.exp += gainExp;
-  state.spirit += gainSpirit;
+  // 修复: 离线收益真正入账(此前版本只显示未累加); 写回前兜底为有限非负值, 杜绝 NaN/负数入账
+  state.exp = Math.max(0, fin(state.exp + gainExp, state.exp));
+  state.spirit = Math.max(0, fin(state.spirit + gainSpirit, state.spirit));
   // 离线自动精进(与在线 loop / 后端 settle 一致): 推过已修满的小境界段,
   // 大境界圆满前停——大境界渡劫留待亲手, 剧情绝不越卷
   {
@@ -3385,7 +3393,7 @@ function initFxLayer() {
   cv.style.cssText = "position:absolute;left:0;top:0;width:100%;height:100%;"
     + "pointer-events:none;z-index:3;animation:breath 4.6s ease-in-out infinite";
   cult.appendChild(cv);
-  import("./fx2d.js?v=50539d63")
+  import("./fx2d.js?v=50539d64")
     .then(m => { try { m.initFx(cv); } catch (e) { console.error("[fx2d] init:", e); } })
     .catch(e => console.error("[fx2d] load:", e));
 }
@@ -4553,12 +4561,12 @@ function openEquip() {
   m.classList.add("show");
 }
 function closeEquip() { const m = $("equipModal"); if (m) m.classList.remove("show"); }
-function renderEquip() {                 // v1.7.18 装备面板·玄天金辉(徽章+战力+药丸)
+function renderEquip() {                 // v1.7.19 装备面板·去圆圈, 顶部品质行 + 战力右置
   const box = $("equipBody"); if (!box) return;
   const eb = equipBonus();
   const arr = (state.arts || []).slice(-6);
   const SLOTN = SLOT_TYPES.map(t => t.n);
-  // 武器/护体/灵佩/功法 四形 inline svg(玄天会随品质发光)
+  // 部位小图标(无圆圈, 16px 随品质色) 兵器/护体/灵佩/功法
   const ICON = {
     w: '<svg viewBox="0 0 32 32"><path d="M21 3 L25 7 L8.5 23.5 L5 27 L3 25 L6.5 21.5 Z" fill="currentColor"/><path d="M21 3 L25 7 L27 5 L23 1 Z" fill="currentColor" opacity=".85"/></svg>',
     a: '<svg viewBox="0 0 32 32"><path d="M16 3 L27 8 V17 C27 23.5 22.5 28.5 16 30 C9.5 28.5 5 23.5 5 17 V8 Z" fill="currentColor"/><path d="M16 9 L22 12 V17 C22 20.5 19.5 23.5 16 24.5 C12.5 23.5 10 20.5 10 17 V12 Z" fill="rgba(0,0,0,.4)"/></svg>',
@@ -4577,12 +4585,11 @@ function renderEquip() {                 // v1.7.18 装备面板·玄天金辉(�
     const a = arr[i];
     if (!a) {
       rows += `<div class="eq-card empty">
-        <div class="eq-emblem dim">${ICON[SLOTI[i]]}</div>
-        <div class="eq-info">
-          <div class="eq-name dim">${SLOTN[i]} · 空位</div>
-          <div class="eq-sub dim">待小青出炉新宝填此槽</div>
+        <div class="eq-head">
+          <span class="eq-ico dim">${ICON[SLOTI[i]]}</span>
+          <span class="eq-slot dim">${SLOTN[i]} · 空位</span>
         </div>
-        <div class="eq-power dim"><span class="p-l">战力</span><span class="p-v">—</span></div>
+        <div class="eq-name dim">待小青出炉新宝填此槽</div>
       </div>`; continue;
     }
     const q = a.q;
@@ -4591,17 +4598,21 @@ function renderEquip() {                 // v1.7.18 装备面板·玄天金辉(�
     const fx = (a.fx && a.fx.length) ? `<div class="eq-fx">${a.fx.map(pill).join("")}</div>` : "";
     rows += `<div class="eq-card qc${q}">
       <div class="eq-glow"></div>
-      <div class="eq-emblem"><span class="star">${starOf(q + 1)}</span>${ICON[slotI]}</div>
-      <div class="eq-info">
-        <div class="eq-name">${a.name}</div>
-        <div class="eq-sub"><span class="eq-quality">${qn}</span> · <span>lv${a.lv || 1}</span> · <span>${SLOTN[i]}</span></div>
+      <div class="eq-head">
+        <span class="eq-ico">${ICON[slotI]}</span>
+        <span class="eq-quality">${qn}</span>
+        <span class="eq-star">${starOf(q + 1)}</span>
+        <span class="eq-slot">${SLOTN[i]} · lv${a.lv || 1}</span>
+      </div>
+      <div class="eq-name">${a.name}</div>
+      <div class="eq-foot">
         <div class="eq-stats">
           <span class="st st-a"><i>攻</i><b>${a.a || 0}</b></span>
           <span class="st st-d"><i>防</i><b>${a.d || 0}</b></span>
           <span class="st st-h"><i>血</i><b>${a.h || 0}</b></span>
         </div>
+        <div class="eq-power"><span class="p-l">战力</span><span class="p-v">${sc(a)}</span></div>
       </div>
-      <div class="eq-power"><span class="p-l">战力</span><span class="p-v">${sc(a)}</span><span class="p-q">${qn}</span></div>
       ${fx}
     </div>`;
   }

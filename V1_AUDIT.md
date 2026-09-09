@@ -276,3 +276,45 @@ Agent 完成后必须给出：
 **先把明显的结构性问题、数值安全问题、存档/离线结算风险、Three.js 性能负担和设计规范漂移处理掉。**
 
 这一轮不是重做游戏，而是把现有版本从“能跑”推进到“稳定、可维护、不会因为边界条件突然坏掉”。
+
+---
+
+## 本轮核查与处理结论（2026-09-10 · v1.7.19）
+
+> 执行者：WorkBuddy。范围：纯前端仓库（game.js / dt-theme.css / fx2d.js / index.html / bg.js）。
+> 原则：最小改动、可验证、可回滚；不重写、不重做、不动境界/经济/玩法/存档格式。
+
+### 一、已修复（带版本戳 v1.7.19 推送）
+
+| # | 项 | 修改文件 | 修改说明 |
+|---|----|---------|---------|
+| 用户专项 | 装备面板 SVG 圆圈徽章 | game.js `renderEquip`、dt-theme.css `.eq-*` | 删除圆形 `.eq-emblem` 与叠在上面的星级 overlay（用户判定太违和）。改为**顶部品质行**：小图标(无圆)+品质名+星级+槽位，战力右置大字。星级上限 5，玄天/灵宝保留顶光带呼吸与品质色。无功能/存档变化。 |
+| P0-2 / P2-11 | 存档数值健壮性 | game.js `adopt()` | 新增 `fin(v,d)` 有限数值兜底：`typeof!=="number"` 对 **NaN/Infinity 同样放过**，故原判断不充分。对 `realmIdx/exp/spirit/arrayLv/lastTs/offlineBoostUntil/peakSpirit/bestArtQ` 缺失/坏值回退默认值；装备 `a.mult` 缺失/坏值回填品质基准（**关键**：`artMult()` 累乘 `a.mult`，老档缺 mult 会经 `rateNow` 把 NaN 污染到全部在线/离线收益）；装备 `a/d/h`、`arts[i].q` 一并 clamp 为有限非负；`buffs.mult` clamp。 |
+| P0-3 | 离线收益时间 | game.js `applyOffline` | `state.exp/spirit` 累加前 `fin` 兜底为有限非负。原有 `dt<30` 早退、`dt` 上限 `OFFLINE_CAP=48h`、`base=max(_lastTs0,_settledTs)` 已覆盖：系统时间倒退→负 dt 早退不结算；`_settledTs` 防跨会话重复领取。 |
+| P1-8 | 双渲染循环 / 后台空转 | fx2d.js | 新增 `fxRunning` 标志 + `visibilitychange` 守卫：后台 `cancelAnimationFrame` 停止绘制，回前台 `last=performance.now()` 后续帧（与 `bg.js` 策略一致）。此前 fx2d 的 RAF 无可见性守卫，后台持续空转。 |
+| P0-1 | 境界/段位模型一致性 | game.js 注释 | `TOTAL_SEGS = BIGS.reduce(...)` 实际 = **54 段**（凡人1+炼气13+其余10境各4），且已参与 `seg()/进度/突破/里程碑/UI` 运行逻辑——**非废弃常量、非 bug**。仅修正过时注释「30 段」→「54 段(凡人1+炼气13+其余各4)」、`REALM_DAYS`「合计30天」→「≈129天」。 |
+
+### 二、未修改（含原因 · 按文档要求登记于此）
+
+- **P1-5 音频 `stage===1` 耦合**：核查 `sfxAudible()` 仅 `visibilityState==="hidden"` + `stage===1` 两条件，且**仅作用于战斗/秘境 SFX**（hit/crit/hurt/swing/alert/win/lose/myst，全部为场景音）；BGM 走独立 `HTMLAudio`，不受 `stage` 限制。该耦合是**有意设计**（防后台"有声无画"），不存在"通用 UI 音效被误杀"。**不改。**
+- **P1-7 移除 Three.js（深空背景）**：`bg.js` 确为 Three.js/WebGL 实现，经 `import("./bg.js")` 动态加载，依赖 `assets/three.module.js`（≈150KB）。重写到 Canvas2D 是**大型且有视觉回归风险**的工作，且本轮无法在线目视验收；当前 `bg.js` 的 `tick` 已有 `visibilitychange` 暂停（`running=false` 后台停帧），性能风险已部分缓解。**本稳定性轮次不予改动**，登记为独立待办：建议单列排期做 Canvas2D 端口（保留星场三层视差/星云/星带/仙月/灵尘层级），完成后删除 `three.module.js` 与 importmap。
+- **P1-6 BGM 资源引用**：`bgm.mp3` 被引用（**懒加载**，非首屏）；`bgm2.mp3/bgm3.mp3/bgm4.mp3` **零引用**（≈17MB）。按文档「未经批准不删资源」，仅登记为清理候选，未删除。
+- **P1-4 聚灵阵 `ARRAY_COST`**：`900*(lv+1)^2.55`，`lv≥1` 始终有限；即便 `lv=60` 也约 3.2×10⁷，远低于 Number 安全整数 9×10¹⁵，无溢出/UI 异常。无数值安全问题，**不动平衡**。
+- **P1-9 DESIGN.md 样式漂移**：`index.html` 内联 `<style>` 的 `border-radius:999px`/`backdrop-filter:blur` 仅用于**徽章/胶囊按钮/光环芯片**等 pill 形控件，非 DESIGN.md 所禁的"普通圆角矩形内容卡"；`#7fe0ff` 是炼气期主题色（`BIGS` 中定义）。判定为可接受，**不改**；若需进一步收敛视觉语言可单列任务。
+- **P2-10 game.js 单文件过大**：按文档本轮不重构；仅在被改函数（`adopt`/`renderEquip`/`rateNow`/`buffMult`）做局部可回滚修改，未引入新全局状态。
+- **P2-13 前端密钥扫描**：全仓仅命中 `sk-txt`/`sk-dots`（搜索框 UI 类名），无 API Key / Token / Secret / Bearer / 明文密码。前端无泄露风险。
+- **P2-14 外部资源失败兜底**：`lz-string` 缺失 → `zUnpack` 失败 → `adopt(null)` → `load` 早退（**不覆盖现有档**，保护存档诉求已满足）；BGM/音频 `error` 事件已自动放弃；`three.module.js` 为本地资源。"读取失败优先保护存档"已成立，**不改**。
+
+### 三、验收标准对照
+
+1. **问题列表（P0/P1/P2）**：P0-1 注释过时(已修)、P0-2/P2-11 NaN 兜底(已修)、P0-3 离线兜底(已修)、P1-8 后台空转(已修)；P1-5/7/6/4/9 与 P2-10/13/14 经核查不需改或延后。
+2. **修改文件**：`game.js`、`dt-theme.css`、`fx2d.js`、`index.html`（版本戳 1.7.18→1.7.19）、`V1_AUDIT.md`。
+3. **每个修改的原因**：见「一」表格。
+4. **未修改疑点 + 原因**：见「二」。
+5. **存档兼容性**：`adopt` 仅新增兜底与 clamp，不改变正常档结构；旧六槽→四部位归一逻辑保留。**结论：兼容 ✅**。
+6. **离线作弊/重复结算**：负 dt 早退、48h 上限、`base` 取大值防重领、`visibilitychange` 不重结。**结论：安全 ✅**。
+7. **Three.js 移除后引用扫描**：当前仍引用（待单独排期）。已登记为待办 ✅。
+8. **`TOTAL_SEGS`/54 段一致性**：`TOTAL_SEGS=BIGS.reduce`=54，参与运行时逻辑，非废弃常量。**结论：一致 ✅**。
+9. **`NaN/Infinity` 扫描**：`adopt` + `rateNow` + `buffMult` + 离线写回全链路兜底。**结论：已覆盖 ✅**。
+10. **前端密钥扫描**：无。**结论：安全 ✅**。
+11. **运行/构建验证**：`node --check game.js`、`node --check fx2d.js` 均通过。本轮未做浏览器实跑（用户自测线上）——打开即见 v1.7.19 全部效果，硬刷（Ctrl/Cmd+Shift+R）清缓存。

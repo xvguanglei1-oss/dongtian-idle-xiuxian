@@ -40,6 +40,7 @@ let cfg = null, bigNow = null;
 let parts = [];
 let cx = 0, cy = 0, R = 0;
 let t = 0, eraT = 0, last = 0, raf = 0, resizeT = 0;   // eraT: 当前境界时长(金丹成长用)
+let fxRunning = false;                                 // 可见性守卫: 后台暂停绘制(省电)
 let sprites = {};
 
 function curBig() {
@@ -149,6 +150,7 @@ function applyRealm(recreate) {
 }
 
 function loop(now) {
+  if (!fxRunning) return;                              // 后台不续帧
   raf = requestAnimationFrame(loop);
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
@@ -270,5 +272,11 @@ export function initFx(canvas) {
   applyRealm(true);
   last = performance.now();
   cancelAnimationFrame(raf);
+  fxRunning = true;
   raf = requestAnimationFrame(loop);
+  document.addEventListener("visibilitychange", onVisFx);
+}
+function onVisFx() {
+  if (document.hidden) { fxRunning = false; cancelAnimationFrame(raf); }
+  else if (!fxRunning) { fxRunning = true; last = performance.now(); raf = requestAnimationFrame(loop); }
 }
