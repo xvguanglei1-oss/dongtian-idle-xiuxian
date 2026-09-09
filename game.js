@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.11";
+const GAME_VER = "v1.7.12";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -4184,7 +4184,7 @@ async function btlHeroAct() {
     if (crit) { dmg = Math.round(dmg * 1.6); SND.crit(); } else SND.hit();   // v1.7.3 打击反馈(瞬时)
     BTL.mhp = Math.max(0, BTL.mhp - dmg);
     fieldLine();
-    btlLog(`${crit ? "◇ 正中要害、会心一击！" : ""}—— <b class="r">${m.n}</b> 受创 ${dmg} 点，余 ${BTL.mhp}/${BTL.mhpMax} 气血。`);
+    btlLog(`${crit ? "◇ 正中要害、会心一击！" : ""}<b class="r">${m.n}</b> 受创 <b class="r">${dmg}</b> 点。`);   // v1.7.12 血条已示剩余, 只报伤害
   }
   fieldLine();
   if (BTL.mhp <= 0) { btlWin(); }
@@ -4199,7 +4199,7 @@ async function btlFoeAct() {
     if (!BTL.skip) await slp(240);
     BTL.php = Math.max(0, BTL.php - d); SND.hurt();         // v1.7.3 受击反馈(瞬时)
     fieldLine();
-    btlLog(`　你受创 <b class="r">${d}</b> 点，余 ${BTL.php}/${BTL.phpMax} 气血。`);
+    btlLog(`　你受创 <b class="r">${d}</b> 点。`);   // v1.7.12 同上, 剩余由血条实时显示
   }
   fieldLine();
   if (BTL.php <= 0) { btlLose(); }
@@ -4492,6 +4492,7 @@ function renderEquip() {
       <span class="eq-cn">${a.name}</span>
       <span class="eq-cm">修为×${a.mult.toFixed(2)}</span>
       <span class="eq-bt">攻+${a.a||0} 防+${a.d||0} 血+${a.h||0}</span>
+      ${(a.fx||[]).length ? `<span class="eq-fx">${a.fx.map(f => `·${f.n}(+${f.pct}%)`).join(" ").replace(/^·/,"")}</span>` : ""}
     </div>`;
   }
   const rec = _eqRecycle.length ? `<div class="eq-rec">近记：${_eqRecycle.join(" · ")}</div>` : "";
@@ -4516,7 +4517,9 @@ function renderEquip() {
    装备属性 = 随机基础 × 境界级 lv × 品质乘子 QM; 品质概率 50/20/15/9/5/1 */
 function eqMult(q) { return [1.15, 1.35, 1.6, 1.9, 2.25, 2.7][q] || 1.15; }  // q0..q5 属性乘子(平缓化)
 /* 妖兽境界难度系数: 高境界妖兽攻按档强化(配合每境法宝档位, 使 12 境胜率同落 80~95%) */
-const MON_ATK_SCALE = [1.15, 0.94, 1, 1.1127, 1.2216, 1.225, 1.2636, 1.23, 1.24, 1.1943, 1.25, 1.2413];
+/* 凡人(第一项): 开局 1~2 分钟即入炼气 —— 只需保证"基本必过、打几场就有装备"。
+ * 原 1.15 裸装胜率仅~48%(可能开局卡手); 0.8 → 裸装~82%、有一二件即 96%+, 受击中位~45 有痛感不劝退。 */
+const MON_ATK_SCALE = [0.8, 0.94, 1, 1.1127, 1.2216, 1.225, 1.2636, 1.23, 1.24, 1.1943, 1.25, 1.2413];
 const SLOT_TYPES = [                                        // 四部位(参考): 兵/护/佩/诀
   { n: "兵器", k: "w" }, { n: "护体", k: "a" },
   { n: "灵佩", k: "p" }, { n: "功法", k: "s" },
@@ -4531,6 +4534,30 @@ function artName(kind, q) {
   const P = kind === "a" ? ARMOR_POOL : kind === "p" ? PEND_POOL : SCROLL_POOL;
   return P[Math.floor(Math.random() * P.length)];
 }
+/* v1.7.12 法宝词条: 按品质出 1~2 条, 词条为主属性加百分比(已计入 a/h/d 数值), 面板逐条展示 */
+const ART_FX = {
+  w: ["锋锐", "破军", "流刃", "穿云"],
+  a: ["磐石", "归元", "镇岳", "灵犀"],
+  p: ["辟邪", "聚灵", "通明", "守心"],
+  s: ["凌虚", "抱一", "藏锋", "焚寂"],
+};
+const FX_MAIN = { w: "a", a: "h", p: "h", s: "a" };   // 词条加成主属性(攻/血 各归其位)
+function artFx(art, kind, q) {
+  const pool = ART_FX[kind] || ART_FX.w;
+  const n = (q >= 5 && Math.random() < 0.6) || (q < 5 && Math.random() < 0.18) ? 2 : 1;   // 双词条偏稀有
+  art.fx = [];
+  const used = [];
+  for (let i = 0; i < n; i++) {
+    let nm;
+    do { nm = pool[(Math.random() * pool.length) | 0]; } while (used.includes(nm) && used.length < pool.length);
+    used.push(nm);
+    const pct = 2 + Math.round(Math.random() * 2) + (q >= 3 ? 1 : 0);   // q0:2~4% … q5:3~6%(微调, 不动平衡)
+    const key = FX_MAIN[kind];
+    const base = art[key] || 0;
+    art[key] = Math.round(base + base * pct / 100);
+    art.fx.push({ n: nm, pct });
+  }
+}
 function attrAssign(art, kind, q, lv) {          // 基础量纲 ≈ 旧版 1/5(旧: 兵攻10~50/护血100~400/佩血40~160/诀攻6~24 …)
   const M = eqMult(q);
   const r1 = Math.random(), r2 = Math.random(), r3 = Math.random();
@@ -4538,6 +4565,7 @@ function attrAssign(art, kind, q, lv) {          // 基础量纲 ≈ 旧版 1/5(
   else if (kind === "a") { art.h = Math.round((20 + r1 * 60) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 8) * lv * M)); art.a = 0; }
   else if (kind === "p") { art.h = Math.round((8 + r1 * 24) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 3) * lv * M)); art.a = Math.round((0.8 + r3 * 2.4) * lv * M); }
   else { art.a = Math.round((1.2 + r1 * 3.6) * lv * M); art.d = Math.max(1, Math.round((1 + r2 * 3) * lv * M)); art.h = 0; }
+  artFx(art, kind, q);
 }
 function genMonster(big, lv) {                   // 怪物 = 参考线性公式(随玩家境界级); 中位血≈450×lv
   const names = MON_NAMES[big] || MON_NAMES[0];
