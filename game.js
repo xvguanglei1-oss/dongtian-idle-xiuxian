@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.30";
+const GAME_VER = "v1.7.31";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1053,7 +1053,7 @@ const ZONES = [
   }
 ];
 const RECIPES = {   // 丹方 v3 —— 覆盖 12 大境(0凡→11天仙)；材料只用本境可集齐之物；配方 2~4 味、主药+辅材并用
-  /* ==================== 残页古方(隐藏丹, h:1; 云游拾残页解锁; 纵向毕业向强力 buff) ==================== */
+/* ==================== 残页古方(隐藏丹, h:1; 云游拾残页解锁; 纵向毕业向强力 buff) ==================== */
   xuanwu: { big: 0, h: 1, n: "玄牝丸", d: "上古残方：一个时辰内修为 +60%",
             need: { huangjing: 5, yaodan: 1 }, eff: { k: "buff", mult: 1.6, dur: 3600 } },
   tianyuan: { big: 1, h: 1, n: "天元聚气丹", d: "镜州古丹残篇：两个时辰内修为 +200%",
@@ -1161,7 +1161,9 @@ const RECIPES = {   // 丹方 v3 —— 覆盖 12 大境(0凡→11天仙)；材�
             need: { hongmeng: 3, hanpo: 1, qiongjing: 1, taiqing: 1 }, eff: { k: "buff", mult: 8, dur: 21600 } },
   bianhua: { big: 11, n: "天仙蜕变丹", d: "脱胎换骨：三十六时辰内离线收益 +50%",
             need: { hongmeng: 4, hanpo: 2, qiongjing: 2, taiqing: 1 }, eff: { k: "offline", dur: 129600, boost: .5 } },
-};
+}
+const PAGES_NEED = [2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];   // 各境需集齐页数解锁隐藏丹(置于 updateHUD 首次调用前, 防 TDZ)
+;
 
 
 const $ = id => document.getElementById(id);
@@ -1680,6 +1682,26 @@ function updateHUD() {
   const dE = state.exp - _floatPrev.exp;
   if (dE > thr) spawnFloat($("expWrap"), "+" + fmt(dE));
   _floatPrev.exp = state.exp;
+  refreshGlow(can);                       // v1.7.31: 可行动入口文字闪烁提醒(突破/聚灵阵/云游/丹房)
+}
+/* v1.7.31 行动提示闪烁: 按钮文字可达即亮(金色呼吸), 丹房有可炼之丹则丹字朱砂呼吸 */
+function refreshGlow(canBreak) {
+  const g = (sel, on) => { const el = document.querySelector(sel); if (el) el.classList.toggle("hint-gold", !!on); };
+  const em = (sel, on) => { const el = document.querySelector(sel); if (el) el.classList.toggle("hint-ember", !!on); };
+  g("#btnBreak .label", canBreak);                              // 渡劫可突破
+  g("#btnArray .label", state.spirit >= arrayCostNow());        // 聚灵阵可升级
+  g("#btnTravel .label", !state.travel);                        // 化身在府可遣出
+  let craftAny = false;                                         // 丹房: 存在一则可炼(已通晓且材料足)
+  const bi = bigIdx(), mats = state.mats || {};
+  for (const id in RECIPES) {
+    const rp = RECIPES[id];
+    if (!rp || rp.big > bi) continue;
+    if (rp.h && !hiddenUnlocked(bi)) continue;
+    let ok = true;
+    for (const k in rp.need) { if ((mats[k] || 0) < rp.need[k]) { ok = false; break; } }
+    if (ok) { craftAny = true; break; }
+  }
+  em("#alchemyChip .lg", craftAny);
 }
 function 段名(r) {
   if (r.big === "凡人") return "";
@@ -3834,7 +3856,6 @@ mailDot();
 /* ==================== P1 炼丹炉（v2 丹方体系） ==================== */
 /* ==================== v0.8.0 丹方残页 ==================== */
 const PAGE_RATE = 0.15;      // 每趟云游带回残页概率(前后端一致)
-const PAGES_NEED = [2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];   // 各境需集齐页数解锁隐藏丹
 function pagesOf(bi) { return (state.pages && state.pages["b" + bi]) || 0; }
 function hiddenUnlocked(bi) { return pagesOf(bi) >= PAGES_NEED[bi]; }
 const DAN_ZONE = ["凡尘", "炼气", "筑基", "结丹", "元婴", "化神", "炼虚", "合体", "大乘", "渡劫", "真仙", "天仙"];

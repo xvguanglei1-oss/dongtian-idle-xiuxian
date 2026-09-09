@@ -942,3 +942,10 @@
   width:100% !important; text-align:center !important;
 }
 .realm-badge::after{display:none !important}
+
+
+/* ==================== v1.7.31 行动提示闪烁(可突破/可升阵/可遣化身/可开炉 → 文字呼吸发光) ==================== */
+@keyframes hintGoldPulse{0%,100%{opacity:1;text-shadow:0 0 3px rgba(232,197,107,.22)}50%{opacity:.45;text-shadow:0 0 12px rgba(255,214,120,.95),0 0 26px rgba(232,197,107,.5)}}
+.hint-gold{animation:hintGoldPulse 1.5s ease-in-out infinite}
+@keyframes hintEmberPulse{0%,100%{opacity:1;text-shadow:0 0 3px rgba(255,150,110,.2)}50%{opacity:.5;text-shadow:0 0 12px rgba(255,160,110,.95),0 0 24px rgba(230,90,60,.45)}}
+.hint-ember{animation:hintEmberPulse 1.2s ease-in-out infinite}
