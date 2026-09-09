@@ -656,7 +656,6 @@
   .res-float{position:absolute;left:50%;top:-8px;transform:translateX(-50%);font-size:11px;font-weight:700;color:#ffd9a0;text-shadow:0 0 8px rgba(255,170,110,.7);pointer-events:none;animation:resFloat .95s ease-out forwards;z-index:6}
   .res-float.neg{color:#ff9a8a;text-shadow:0 0 8px rgba(255,120,100,.6)}
   @keyframes resFloat{0%{opacity:0;transform:translate(-50%,6px)}25%{opacity:1}100%{opacity:0;transform:translate(-50%,-20px)}}
-  #expWrap{position:relative}
   /* v1.6.0-B 灵气道场叠加层 canvas: 叠在深空背景之上, 灵气以 screen 混合发光 */
   #aura{position:fixed;inset:0;z-index:3;pointer-events:none;mix-blend-mode:screen}
   /* v1.6.0-C 突破雷劫蓄力: 屏幕四边电光框 + 主角灵光蓄力(不动 transform, 零布局风险) */
