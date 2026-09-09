@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.14";
+const GAME_VER = "v1.7.15";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -4189,12 +4189,16 @@ async function btlHeroAct() {
   } else {
     BTL.mhp = Math.max(0, BTL.mhp - st.dmg);
     SND.crit();   // 命中统一"扎实"音(区分度已由画面/文案承担)
-    const lead = st.kind === "critB" ? `<b class="critb">暴击!</b> ` : st.kind === "crit" ? `<b class="crit">会心!</b> ` : st.pen ? `<b class="w">破甲</b> ` : "";
+    const lead = st.kind === "critB" ? `<b class="critb">暴击!</b>` : st.kind === "crit" ? `<b class="crit">会心!</b>` : st.pen ? `<b class="w">破甲</b>` : "";
     fieldLine();
-    btlLog(`${lead}<b class="r">${monNm}</b> 受创 <b class="r">${st.dmg}</b> 点。`);
+    /* v1.7.15 主动视角: 你这一击打出多少伤害(暴击/会心/破甲前置高亮) */
+    btlLog(`${lead ? lead + " " : ""}命中 <b class="r">${monNm}</b>，打出 <b class="r">${st.dmg}</b> 伤害。`);
     if (BTL.life > 0) {
       const heal = Math.round(st.dmg * BTL.life / 100);
-      if (heal > 0) { BTL.php = Math.min(BTL.phpMax, BTL.php + heal); fieldLine(); }
+      if (heal > 0) {
+        BTL.php = Math.min(BTL.phpMax, BTL.php + heal); fieldLine();
+        btlLog(`　<b class="suck">噬灵 · 反哺 +${heal} 气血</b>`);   // v1.7.15 吸血演出
+      }
     }
   }
   fieldLine();
@@ -4212,9 +4216,17 @@ async function btlFoeAct() {
     btlNow(`${monNm} 反扑而至！`); SND.swing();               // 敌袭也先有声有影
     if (!BTL.skip) await slp(240);
     BTL.php = Math.max(0, BTL.php - st.dmg); SND.hurt();      // 受击反馈(瞬时)
-    const lead = st.kind === "critB" ? `<b class="critb">暴击!</b> ` : st.kind === "crit" ? `<b class="crit">会心!</b> ` : st.pen ? `<b class="w">破甲</b> ` : "";
+    const lead = st.kind === "critB" ? `<b class="critb">暴击!</b>` : st.kind === "crit" ? `<b class="crit">会心!</b>` : st.pen ? `<b class="w">破甲</b>` : "";
     fieldLine();
-    btlLog(`　${lead}你受创 <b class="r">${st.dmg}</b> 点。`);
+    /* v1.7.15 主动视角: 主语沿用上行"${monNm} 反扑而至", 报它打出多少伤害 */
+    btlLog(`　${lead ? lead + " " : ""}打出 <b class="r">${st.dmg}</b> 伤害。`);
+    if (BTL.ms.life > 0) {                                   // v1.7.15 妖吸血词缀
+      const heal = Math.round(st.dmg * BTL.ms.life / 100);
+      if (heal > 0) {
+        BTL.mhp = Math.min(BTL.mhpMax, BTL.mhp + heal); fieldLine();
+        btlLog(`　<b class="suck">妖噬血回春 +${heal}</b>`);
+      }
+    }
   }
   fieldLine();
   if (BTL.php <= 0) { btlLose(); }

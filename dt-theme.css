@@ -543,6 +543,8 @@
   .wl{font-size:14px;line-height:1.72;color:#e4eaf5;letter-spacing:.03em;animation:wlIn .38s ease;text-shadow:0 1px 5px rgba(0,0,0,.92),0 0 14px rgba(0,0,0,.55)}
   .wl b{color:#ffd9a0;font-weight:600}
   .wl .r{color:#ff8a70;font-weight:700}
+  .wl .suck{color:#9ff0c8;font-weight:600;font-size:12.5px;letter-spacing:.04em;
+    text-shadow:0 0 8px rgba(80,220,160,.35),0 1px 5px rgba(0,0,0,.9)}
   .wl.lead{color:#c9a86a;font-size:11.5px;letter-spacing:.06em}
   .wl.win{color:#ffd9a0;font-weight:600;margin-top:2px}
   .wl.lose{color:#ff8a70;font-weight:600;margin-top:2px}
