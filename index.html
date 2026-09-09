@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>洞天 · 挂机修仙 · 墨线夜谈 v1.7.39</title>
+<title>洞天 · 挂机修仙 · 墨线夜谈 v1.7.40</title>
 <meta name="description" content="洞天挂机修仙：主身巡猎斗法、分身云游寻宝，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -118,18 +118,18 @@
   .stage{position:fixed;inset:0;z-index:5;display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
   .cult{position:relative;height:min(54vh,430px);aspect-ratio:825/835}
   .cult img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;transform-origin:50% 88%}
-  /* v1.7.37: 三图层各自胸腔式呼吸(底部为轴 scaleY 错相) + 逐层境界色轮廓辉光(drop-shadow 挂各图, 随层呼吸无重影) */
-  .cult img{filter:drop-shadow(0 0 7px var(--rg,rgba(232,197,107,.45))) drop-shadow(0 0 20px var(--rg,rgba(232,197,107,.3)))}
-  .cult .bodyL{animation:bodyBreath 5.4s ease-in-out infinite}
-  .cult .robe{animation:robeBreath 5.4s ease-in-out infinite .2s}
-  .cult .bodyL,.cult .robe{transform-origin:50% 4%}   /* v1.7.39: 锚头顶 — 头皮钉死, 身体/袍摆向下呼吸探伸(原臀线锚让头顶随动≈4px, 已移除) */
-  /* v1.7.39: 头发拆两层 — 上层(0~18%, 头/鬓)静止钉死; 下层(18%+ 垂发)以分界为轴微缩放, 头皮不再上下晃 */
-  .cult .hair-top{clip-path:inset(0 0 82% 0);-webkit-clip-path:inset(0 0 82% 0)}
+  /* v1.7.40: 三图层胸腔呼吸 + 辉光呼吸(收放); 头部层(.hair-top)不发辉光 */
+  .cult .bodyL{animation:bodyBreath 5.4s ease-in-out infinite, cultGlow 3.6s ease-in-out infinite}
+  .cult .robe{animation:robeBreath 5.4s ease-in-out .2s infinite, cultGlow 3.6s ease-in-out .3s infinite}
+  .cult .bodyL,.cult .robe{transform-origin:50% 4%}   /* 锚头顶: 头皮钉死, 身体/袍摆向下呼吸探伸 */
+  /* 头发两层: .hair-top(头/鬓 0-18%)静止且不发光; .hair-low(垂发 18%+)以分界为轴缩放并带呼吸辉光 */
+  .cult .hair-top{clip-path:inset(0 0 82% 0);-webkit-clip-path:inset(0 0 82% 0);filter:none}
   .cult .hair-low{clip-path:inset(18% 0 0 0);-webkit-clip-path:inset(18% 0 0 0);
-    transform-origin:50% 18%;animation:hairLowBreath 5.4s ease-in-out .4s infinite}
+    transform-origin:50% 18%;animation:hairLowBreath 5.4s ease-in-out .4s infinite, cultGlow 3.6s ease-in-out .15s infinite}
   @keyframes bodyBreath{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.012)}}
   @keyframes robeBreath{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.02)}}
   @keyframes hairLowBreath{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.02)}}
+  @keyframes cultGlow{0%,100%{filter:drop-shadow(0 0 2px var(--rg,rgba(232,197,107,.32))) drop-shadow(0 0 8px var(--rg,rgba(232,197,107,.32)))}50%{filter:drop-shadow(0 0 6px var(--rg,rgba(232,197,107,.32))) drop-shadow(0 0 20px var(--rg,rgba(232,197,107,.32)))}}
 
   /* 中央按钮 */
   .actions{position:fixed;left:0;right:0;bottom:58px;z-index:10;display:flex;justify-content:center;gap:10px;padding:0 14px}
@@ -362,7 +362,7 @@
 </div>
 
 <div class="exp-wrap">
-  <div class="exp-labels"><span>境界进度<span class="ver-tag" id="verTag">v1.7.39</span></span><span><b id="expText">0</b> / <b id="expNeed">1000</b></span></div>
+  <div class="exp-labels"><span>境界进度<span class="ver-tag" id="verTag">v1.7.40</span></span><span><b id="expText">0</b> / <b id="expNeed">1000</b></span></div>
   <div class="exp-track"><div class="exp-fill" id="expFill"></div></div>
 </div>
 
@@ -485,7 +485,7 @@
 </div>
 
 <script src="assets/lz-string.min.js"></script>
-<script src="game.js?v=1.7.39"></script>
+<script src="game.js?v=1.7.40"></script>
 
 </body>
 </html>
