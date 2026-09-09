@@ -516,8 +516,24 @@
   .war-hd{display:flex;justify-content:space-between;align-items:center;
     padding:7px 14px 3px;position:relative;flex-wrap:nowrap}
   .war-t{font-family:var(--font-brush);font-size:14px;color:#e0b98a;letter-spacing:.2em;text-shadow:0 1px 6px rgba(0,0,0,.9),0 0 16px rgba(0,0,0,.6)}
-  .war-hp{font-size:9.5px;color:#c2cbe0;letter-spacing:.01em;white-space:nowrap;flex:0 0 auto;text-align:right;line-height:1.4;text-shadow:0 1px 5px rgba(0,0,0,.9)}
-  .war-hp i{font-style:normal;color:#ffd9a8;margin:0 2px;text-shadow:0 1px 5px rgba(0,0,0,.9)}
+  /* v1.7.11 实时血条: 妖(赤) / 主身(青碧) 双条叠字, 每合由 fieldLine 即时刷宽 */
+  .war-hp{display:none}   /* 旧纯文字行已废弃 */
+  .war-turn{font-size:9.5px;color:#a8904f;letter-spacing:.08em;flex:none;padding-left:8px;
+    text-shadow:0 1px 4px rgba(0,0,0,.9)}
+  .hprow{display:flex;gap:8px;padding:2px 14px 0;align-items:stretch}
+  .hpbar{position:relative;flex:1 1 0;height:13px;min-width:0;border-radius:7px;overflow:hidden;
+    background:rgba(8,12,20,.72);border:1px solid rgba(255,255,255,.15);
+    box-shadow:inset 0 1px 3px rgba(0,0,0,.65)}
+  .hpbar .bar{position:absolute;left:0;top:0;bottom:0;width:100%;border-radius:6px;
+    transition:width .28s ease;will-change:width}
+  .hpbar.foe .bar{background:linear-gradient(90deg,#a8362a,#e2624e);box-shadow:0 0 9px rgba(226,98,78,.4)}
+  .hpbar.hero .bar{background:linear-gradient(90deg,#27805f,#58d3ab);box-shadow:0 0 9px rgba(88,211,171,.38)}
+  .hpbar em{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
+    height:100%;font-style:normal;font-size:9.5px;font-weight:600;line-height:1;color:#f6e7cd;
+    letter-spacing:.04em;text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 6px rgba(0,0,0,.6);
+    white-space:nowrap}
+  .hpbar.foe em{color:#ffd9c8}
+  .hpbar.hero em{color:#d9fff1}
   .war-skip{margin-left:8px;padding:1px 7px}
   .war-bd{padding:3px 14px 9px;position:relative}
   .wl{font-size:14px;line-height:1.72;color:#e4eaf5;letter-spacing:.03em;animation:wlIn .38s ease;text-shadow:0 1px 5px rgba(0,0,0,.92),0 0 14px rgba(0,0,0,.55)}
@@ -526,6 +542,10 @@
   .wl.lead{color:#c9a86a;font-size:11.5px;letter-spacing:.06em}
   .wl.win{color:#ffd9a0;font-weight:600;margin-top:2px}
   .wl.lose{color:#ff8a70;font-weight:600;margin-top:2px}
+  .wl.drop{color:#ffe0ae;font-size:13px;letter-spacing:.02em;margin-top:1px}
+  /* v1.7.11 技能行(出招)专属色: 天青发光 —— 与受创红字/普通白字一眼区分 */
+  .wl.cast{color:#a8e2ff;font-size:14px;letter-spacing:.12em;font-weight:700;
+    text-shadow:0 0 12px rgba(120,200,255,.55),0 1px 5px rgba(0,0,0,.92)}
   @keyframes wlIn{0%{opacity:0;transform:translateY(3px)}100%{opacity:1;transform:none}}
   .war-skip{pointer-events:auto;margin-left:8px;flex:none;font-size:10px;line-height:1.7;padding:1px 10px;
     letter-spacing:.12em;color:#ffb199;background:rgba(150,60,40,.18);border:1px solid rgba(255,140,110,.45);

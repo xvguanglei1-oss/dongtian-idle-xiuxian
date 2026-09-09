@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js?v=926b5d17 v3(双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.10";
+const GAME_VER = "v1.7.11";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -4260,12 +4260,18 @@ function _typeNext() {
   nextToken();
 }
 
+/* v1.7.11 实时血条: 妖(赤,左) / 主身(青碧,右), 数值叠条显示, 每合即时刷新 */
+function setHpBar(bid, tid, cur, max, lab) {
+  const bar = $(bid), tx = $(tid);
+  if (bar) bar.style.width = Math.max(0, Math.min(100, (cur / (max || 1)) * 100)).toFixed(2) + "%";
+  if (tx) tx.textContent = `${lab} ${cur}/${max}`;
+}
 function fieldLine() {
   if (!BTL) return;
-  const el = $("tfFoe"), el2 = $("tfHero"), el3 = $("tfTurn");
-  if (el) el.innerHTML = `敌·${BTL.mhp}/${BTL.mhpMax}`;
-  if (el2) el2.innerHTML = `主身·${BTL.php}/${BTL.phpMax}`;
-  if (el3) el3.innerHTML = BTL.round ? `${BTL.round}合` : "";
+  setHpBar("barFoe", "txFoe", BTL.mhp, BTL.mhpMax, "妖");
+  setHpBar("barHero", "txHero", BTL.php, BTL.phpMax, "主");
+  const t = $("tfTurn"); if (t) t.textContent = BTL.round ? `${BTL.round}合` : "";
+  const row = $("warHpRow"); if (row) row.style.display = "flex";
 }
 function traceSay(txt) {
   const el = $("traceArea"); if (!el) return;
@@ -4278,7 +4284,12 @@ function warStart(title, lead) {
   huntBarShow(false);                    // v1.4.0: 开打/探秘时整条让位给横幅(二者同一行, 互斥)
   el.style.display = "flex";
   SND.setStage(true);                    // v1.7.9: 横幅上台 → 允许该场音效出声(有声必有画)
-  el.innerHTML = `<div class="war-hd"><span class="war-t">${title}</span><span class="war-hp"><i id="tfFoe">—</i>　<i id="tfHero">—</i>　<i id="tfTurn" style="color:#a8904f"></i></span><button class="war-skip" id="warSkipBtn" onclick="warSkip()">⚡</button></div><div class="war-bd" id="warLog"></div>`;
+  el.innerHTML = `<div class="war-hd"><span class="war-t">${title}</span><span class="war-turn" id="tfTurn"></span><button class="war-skip" id="warSkipBtn" onclick="warSkip()">⚡</button></div>` +
+    `<div class="hprow" id="warHpRow"><span class="hpbar foe"><i class="bar" id="barFoe"></i><em id="txFoe">妖 —</em></span>` +
+    `<span class="hpbar hero"><i class="bar" id="barHero"></i><em id="txHero">主 —</em></span></div>` +
+    `<div class="war-bd" id="warLog"></div>`;
+  const hpRow = $("warHpRow");
+  if (hpRow) hpRow.style.display = (title === "秘境") ? "none" : "flex";   // 秘境无对战, 不摆血条
   fieldLine();
   if (lead) warAppend(lead, "lead");
 }
