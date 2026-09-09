@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.36";
+const GAME_VER = "v1.7.37";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1635,6 +1635,12 @@ function updateRealmUI() {
   /* 灵力辉光按大境界切换(读 #cult data-big); 试光环预览期间保持所选境界 */
   const cult0 = document.getElementById("cult");
   if (cult0 && !__auraBig) cult0.setAttribute("data-big", r.big);
+  /* v1.7.37: 角色轮廓光随境界变色(大境界色 → --rg) */
+  if (cult0) {
+    const c = r.color || "#e8c56b";
+    const n = parseInt(c.slice(1), 16);
+    cult0.style.setProperty("--rg", `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},.5)`);
+  }
 }
 /* v1.6.0-A 数值成长爽感: 缓动显示(数字滚动涌入) + 离散增益飘字 + chip 微脉冲 */
 let _dsp = { spirit: 0, exp: 0 }, _floatPrev = { spirit: 0, exp: 0 };
