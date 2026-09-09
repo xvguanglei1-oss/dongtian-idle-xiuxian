@@ -128,7 +128,7 @@
 
 /* ================= v0.4.2 全界面清洗：墨形统一 =================
    统一"小墨条"轮廓(200x44)，用于日志/道具/筛选chip/离线奇遇等所有曾圆角矩形的小件 */
-  .fmsg,.art,.chip,.story-btn,.aura-chip,.off-tale,.cp-btn{
+  .fmsg,.art,.chip,.story-btn,.off-tale,.cp-btn{
     border:0 !important;border-radius:0 !important;backdrop-filter:none !important;
     background-color:transparent !important;
     background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(12,17,31,.78)%22 stroke=%22rgba(201,168,106,.26)%22 stroke-width=%221.1%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
@@ -137,7 +137,7 @@
   /* 各自内边距微调，文字不贴边 */
   .fmsg{padding:8px 14px !important}
   .art{padding:4px 12px !important;background-blend-mode:normal}
-  .chip,.story-btn,.aura-chip{padding:4px 13px !important}
+  .chip,.story-btn{padding:4px 13px !important}
   .off-tale{padding:10px 14px !important}
   .cp-btn{padding:4px 12px !important;color:#cfe3fb !important}
   /* 修行录条目 j-card：弃圆角底，改"左侧朱墨竖线+透明" */

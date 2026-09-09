@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.41";
+const GAME_VER = "v1.7.42";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -140,7 +140,7 @@ const BIGS = [
   { n: "天仙", segs: 4, color: "#fff0a8", c: [255,240,168] },
 ];
 const TOTAL_SEGS = BIGS.reduce((s, b) => s + b.segs, 0);   // 54 段(凡人1 + 炼气13 + 其余10境各4)
-let __auraBig = null;   // 光环预览中的大境界(为 null=跟随真实修为)
+
 
 /* ---- 成长曲线(不设硬性"多少天到哪境"; 只定相对权重, 节奏交给数值迭代与后期扩境) ----
  * REALM_DAYS: 仅作各境间的"修为需求相对权重"(前期短促轻快、后期绵长稳妥)。
@@ -153,6 +153,7 @@ let __auraBig = null;   // 光环预览中的大境界(为 null=跟随真实修�
  */
 const REALM_DAYS = [0.15, 5, 4.8, 6, 6.8, 7.25, 9.5, 11.5, 14, 17, 21, 26]; // 与 BIGS 一一对应(共12境), 权重自 凡人→天仙
 const SEG_SCALE = 4;
+const ARRAY_MAX_LV = 32;   // v1.7.42: 聚灵阵收益封顶级(arrMult 33+ 不再增长), 防灵石无底洞
 const arrMult = lv => {
   let m = 1;
   for (let k = 2; k <= lv; k++) m += k <= 11 ? 0.35 : (k <= 21 ? 0.18 : (k <= 31 ? 0.08 : 0));
@@ -477,30 +478,6 @@ const EVENTS = [
     "天地尽头有一道亘古裂隙，传闻踏过便可窥见道祖之路。你负手立于其前，望了许久，终究没有迈步，只道时机未至，转身归去。"
   ]
 ];
-/* 拾装专属场景句 */
-const ART_HINTS = [
-  "某处坍塌洞府的禁制松动，泄出一线宝光",
-  "溪流尽头的沉木匣被水冲开一角，内里生光",
-  "夜空一道遁光坠入荒野，焦土中埋着遗落之物",
-  "坊市地摊的障眼法被一眼看破，底下另有真品",
-  "古战场缝隙里，指尖触到一件温润之物",
-  "山崩后露出半间石室，案上供着一件蒙尘之物",
-  "拍卖行流拍的杂件堆里，混着一件被看走眼的宝贝",
-  "断崖鹰巢的枯枝间，有什么在微微发光",
-];
-/* 静坐吐纳专属句 */
-const STILL_MOMENTS = [
-  "寻一处清净地铺开蒲团，吐纳之间灵力缓缓沉淀",
-  "循灵脉走向踱步半日，气息愈发绵长",
-  "溪边青石上盘膝而坐，任水汽浸润经脉",
-  "入定片刻，杂念尽消，丹田温润如春",
-  "对着一盏烛火调息，火苗随呼吸轻轻摇曳",
-  "倚在古松根下小憩，灵气随呼吸沉入丹田",
-  "挑灯夜读丹书，烛影中体悟药性相生之理",
-  "清晨于露台采气，朝霞入体，神清气爽",
-];
-
-
 /* ============ 守山灵兽「阿青」· 左栏洞天日常 ============ */
 const PET = { name: "阿青", kind: "青丘灵狐" };
 const PET_FORGE = [
@@ -1237,10 +1214,7 @@ function adopt(s) {
   return s;
 }
 /* ==================== v1.7.26 道号 & 洞天风云榜 ==================== */
-/* 道号: 本地默认 6 位数字(_pn), 改名成功才进 state.name 并上传(服务器唯一) */
-function pnGen() { let n = ""; for (let i = 0; i < 6; i++) n += (Math.random() * 10) | 0; return n; }
-function pnLocal() { if (typeof state._pn !== "string" || !state._pn) state._pn = pnGen(); return state._pn; }
-function nameShow() { return (state.name || "").trim() || pnLocal(); }
+/* 道号显示: 未定名给'定道号'引导, 定名后只显示名字 */
 function renderPName() {
   const el = $("pName"); if (!el) return;
   const nm = (state.name || "").trim();
@@ -1433,7 +1407,7 @@ function cldAdoptCloud(s) {
   const c = adopt(s);
   if (!c) return false;
   state = c;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+  try { localStorage.setItem(SAVE_KEY, zPack(state)); } catch (e) {}
   updateRealmUI(); updateHUD(); updateArts(); realmPlot();
   /* v1.5.0: 云端档可能没有 autoHunt / travel 字段(老档), 采纳后按钮与行迹要跟着重绘,
      否则会出现"state 已变、开关还停在旧态"的错看 */
@@ -1474,7 +1448,7 @@ async function cldPull(forceImport) {        // v1.7.29 forceImport: 用户主�
         try { hadLocal = !!localStorage.getItem(SAVE_KEY); } catch (e) {}
         const adopted = cldAdoptCloud(r.data);
         state._cloudTs = cs;
-        try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
+        try { localStorage.setItem(SAVE_KEY, zPack(state)); } catch (e) {}
         cld.ready = true; cld.lastOkTs = Date.now();
         if (forceImport) {
           cldFlash("已导入云端存档");
@@ -1632,10 +1606,9 @@ function updateRealmUI() {
     $("realmName").textContent = r.big;
     setRealmSub(r.label.split("·")[1], r.sub);       // 行1=前/中/后/圆满; 行2=说明
   }
-  /* 灵力辉光按大境界切换(读 #cult data-big); 试光环预览期间保持所选境界 */
+  /* 灵力辉光按大境界切换 + 角色轮廓光随境界变色(读 #cult data-big / --rg) */
   const cult0 = document.getElementById("cult");
-  if (cult0 && !__auraBig) cult0.setAttribute("data-big", r.big);
-  /* v1.7.37: 角色轮廓光随境界变色(大境界色 → --rg) */
+  if (cult0) cult0.setAttribute("data-big", r.big);
   if (cult0) {
     const c = r.color || "#e8c56b";
     const n = parseInt(c.slice(1), 16);
@@ -1698,7 +1671,7 @@ function refreshGlow(canBreak) {
   const gb = (sel, on) => { const el = document.querySelector(sel); if (el) el.classList.toggle("glow-gold", !!on); };
   const eb = (sel, on) => { const el = document.querySelector(sel); if (el) el.classList.toggle("glow-ember", !!on); };
   gb("#btnBreak", canBreak);                                    // 渡劫可突破
-  gb("#btnArray", state.spirit >= arrayCostNow());              // 聚灵阵可升级
+  gb("#btnArray", state.arrayLv < ARRAY_MAX_LV && state.spirit >= arrayCostNow());  // 聚灵阵可升级(32级圆满后不再提示)
   gb("#btnTravel", !state.travel);                              // 化身在府可遣出
   let craftAny = false;                                         // 丹房: 存在一则可炼(已通晓且材料足)
   const bi = bigIdx(), mats = state.mats || {};
@@ -1713,7 +1686,7 @@ function refreshGlow(canBreak) {
   eb("#alchemyChip", craftAny);
   /* 文字同步提亮(双保险: 按钮光晕 + 内部文字亮度跳动) */
   const lg = (sel, on) => { const el = document.querySelector(sel); if (el) el.classList.toggle("hint-gold", !!on); };
-  lg("#btnBreak .label", canBreak); lg("#btnArray .label", state.spirit >= arrayCostNow());
+  lg("#btnBreak .label", canBreak); lg("#btnArray .label", state.arrayLv < ARRAY_MAX_LV && state.spirit >= arrayCostNow());
   lg("#btnTravel .label", !state.travel);
   const le = document.querySelector("#alchemyChip .lg"); if (le) le.classList.toggle("hint-ember", craftAny);
 }
@@ -1753,7 +1726,10 @@ function doBreak() {
       updateRealmUI(); updateHUD(); save();
       cloudFlush();   // v1.5.1: 渡劫突破是不可逆的关键跃迁 → 立即上云
       const nr = realm();
-      const greet = ["金丹凝形！", "元婴出窍！", "化神之姿！", "踏入筑基！"][nr.bigIdx - 2] || "";
+      const GREET_BY_BIG = { 1: "洗髓易骨，踏入炼气！", 2: "踏入筑基！", 3: "金丹凝形！", 4: "元婴出窍！",
+        5: "化神之姿！", 6: "虚室生白，炼神返虚！", 7: "法相天地，合道归真！", 8: "返璞归真，大乘无上！",
+        9: "度劫化凡，一步登仙！", 10: "羽化登仙，仙界之门！", 11: "位列仙班，天仙永寿！" };
+      const greet = GREET_BY_BIG[nr.bigIdx] || "";
       pushMsg("main", `<span class="g">${nr.big}</span>！${greet || "修行又进一步"}`);
       realmPlot();
     }, 950);
@@ -1764,6 +1740,10 @@ function manualBreak() { doBreak(); }
 /* 聚灵阵 */
 function arrayCostNow() { return ARRAY_COST(state.arrayLv); }
 function tapArray() {
+  if (state.arrayLv >= ARRAY_MAX_LV) {
+    pushMsg("main", `聚灵阵已至圆满 Lv.${state.arrayLv}，周天流转自足，灵石另作他用`);
+    return;
+  }
   const cost = arrayCostNow();
   if (state.spirit >= cost) {
     state.spirit -= cost; state.arrayLv++; save(); updateHUD(); cloudFlush();  // v1.5.1: 花灵石升阵 → 立即上云
@@ -3530,46 +3510,6 @@ function applyOffline() {
 function closeOffline() { $("offlineModal").classList.remove("show"); }
 
 /* ============ 背景与特效层 ============ */
-/* ===== 光环预览(调试工具): 只改 #cult data-big 让 fx2d 换境界, 不动修为 ===== */
-function toggleAuraTest() {
-  const box = document.getElementById("auraTest");
-  if (!box) return;
-  const show = !box.style.display || box.style.display === "none";
-  box.style.display = show ? "flex" : "none";
-  if (show) buildAuraChips();
-}
-function buildAuraChips() {
-  const row = document.getElementById("auraTestChips");
-  if (!row || row.children.length) return;
-  BIGS.forEach(big => {
-    const chip = document.createElement("button");
-    chip.type = "button";
-    chip.className = "aura-chip";
-    chip.textContent = big.n;
-    chip.onclick = () => previewRealmVisual(big.n);
-    row.appendChild(chip);
-  });
-  syncAuraChips();
-}
-function previewRealmVisual(big) {
-  const cult = document.getElementById("cult");
-  if (cult) cult.setAttribute("data-big", big);
-  __auraBig = big;
-  syncAuraChips();
-}
-function resetAuraPreview() {
-  __auraBig = null;
-  const cult = document.getElementById("cult");
-  if (cult) cult.setAttribute("data-big", realm().big);
-  syncAuraChips();
-}
-function syncAuraChips() {
-  const row = document.getElementById("auraTestChips");
-  if (!row) return;
-  const cur = __auraBig || realm().big;
-  [...row.querySelectorAll(".aura-chip")].forEach(c => c.classList.toggle("on", c.textContent === cur));
-}
-
 /* 灵力辉光层: 动态载入 fx2d.js, 挂一层 canvas 到角色容器(与立绘同频呼吸) */
 function initFxLayer() {
   const cult = document.getElementById("cult");
@@ -3679,12 +3619,13 @@ function mainMoment() {
 /* ============ 主循环 ============ */
 let _hudAcc = 0;   // v1.7.20 PERF-1: HUD 刷新累计, ≥100ms 才刷一次; 事件触发仍即时刷新
 function loop(dt) {
-  const r = realm();
   if (!breaking) {
     state.exp += rateNow() * dt;
-    // 小层/同大境自动精进; 大境界末尾(圆满)等玩家手动渡劫
+    // 小层/同大境自动精进; 每轮重取 realm() —— 修为只可升小段, 遇'圆满'必须停手等手动渡劫(防大额增益一次越过跨大境门槛)
     let guard = 0;
-    while (!breaking && state.exp >= r.need && !r.isBigEnd && state.realmIdx < TOTAL_SEGS - 1 && guard++ < 8) {
+    while (!breaking && state.realmIdx < TOTAL_SEGS - 1 && guard++ < 8) {
+      const r = realm();
+      if (state.exp < r.need || r.isBigEnd) break;
       state.exp -= r.need;
       state.realmIdx++;
       const nr = realm();
@@ -3753,8 +3694,6 @@ window.__game = {
 
 
 /* ==================== P0 分身云游 ==================== */
-function matCount(id) { return (state.mats || {})[id] || 0; }
-function pillCount(id) { return (state.pills || {})[id] || 0; }
 function zoneOfBig(bi) { const z = ZONES[bi]; return z ? z : ZONES[ZONES.length - 1]; }
 function zoneOfLoc(id) { for (const z of ZONES) if (z.locs.some(l => l.id === id)) return z; return null; }
 function locById(id) { for (const z of ZONES) { const l = z.locs.find(x => x.id === id); if (l) return l; } return null; }
@@ -4651,7 +4590,7 @@ async function mystRun() {
 /* ---------- 行迹刷新(含战斗/秘境中的顶行) ---------- */
 function traceRefresh() {
   const el = $("traceArea"); if (!el) return;
-  if (BTL || MYST) { if (el.dataset.k === "fight") return; }
+  if (BTL || MYST) return;   // 战斗/秘境演出中, 行迹条保持现状不覆写
   if (state.travel) {
     const loc = locById(state.travel.loc);
     const where = loc ? loc.n : "远方";
