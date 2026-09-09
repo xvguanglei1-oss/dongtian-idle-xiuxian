@@ -965,13 +965,30 @@ function updateRealmUI() {
   const cult0 = document.getElementById("cult");
   if (cult0 && !__auraBig) cult0.setAttribute("data-big", r.big);
 }
+/* v1.6.0-A 数值成长爽感: 缓动显示(数字滚动涌入) + 离散增益飘字 + chip 微脉冲 */
+let _dsp = { spirit: 0, exp: 0 }, _floatPrev = { spirit: 0, exp: 0 };
+function tickDsp(dt) {
+  const k = Math.min(1, dt * 5);
+  _dsp.spirit += (state.spirit - _dsp.spirit) * k;
+  _dsp.exp += (state.exp - _dsp.exp) * k;
+  if (Math.abs(state.spirit - _dsp.spirit) < 0.5) _dsp.spirit = state.spirit;
+  if (Math.abs(state.exp - _dsp.exp) < 0.5) _dsp.exp = state.exp;
+}
+function spawnFloat(el, txt, neg) {
+  if (!el) return;
+  const s = document.createElement("span");
+  s.className = "res-float" + (neg ? " neg" : "");
+  s.textContent = txt; el.appendChild(s);
+  setTimeout(() => s.remove(), 950);
+}
+function pulseChip(el) { if (!el) return; el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse"); }
 function updateHUD() {
   const r = realm();
-  $("expText").textContent = fmt(state.exp);
+  $("expText").textContent = fmt(_dsp.exp);
   $("expNeed").textContent = r.need === Infinity ? "∞" : fmt(r.need);
-  const pct = Math.min(100, state.exp / r.need * 100);
+  const pct = Math.min(100, _dsp.exp / r.need * 100);
   $("expFill").style.width = pct + "%";
-  $("spirit").textContent = fmt(state.spirit);
+  $("spirit").textContent = fmt(_dsp.spirit);
   $("rateText").textContent = fmt(rateNow());
   $("arrayLv").textContent = state.arrayLv;
   // 可渡劫: 处于大境界末尾且修为圆满
@@ -988,6 +1005,15 @@ function updateHUD() {
     pushMsg("main", `<span class="r">${r.big}·${段名(r)}已圆满</span>——你随时可亲手渡劫，踏入<span class="g">${nextBig}</span>`);
   }
   if (!can) lastReadyHint = false;
+  /* v1.6.0-A: 离散增益飘字 — 单帧变化远超平滑增速阈值才视为一次获得/花费, 自动覆盖所有获得点(adventure/邮件/离线/精进) */
+  const thr = Math.max(6, rateNow() * 0.6);
+  const dS = state.spirit - _floatPrev.spirit;
+  if (dS > thr) { spawnFloat($("spirit").parentElement, "+" + fmt(dS)); pulseChip($("spirit").parentElement); }
+  else if (dS < -thr) { spawnFloat($("spirit").parentElement, fmt(dS), true); }
+  _floatPrev.spirit = state.spirit;
+  const dE = state.exp - _floatPrev.exp;
+  if (dE > thr) spawnFloat($("expWrap"), "+" + fmt(dE));
+  _floatPrev.exp = state.exp;
 }
 function 段名(r) {
   if (r.big === "凡人") return "";
@@ -1002,25 +1028,34 @@ function doBreak() {
   if (state.exp < r.need || !r.isBigEnd || state.realmIdx >= TOTAL_SEGS - 1) return;
   breaking = true;
   const next = seg(state.realmIdx + 1);
-  const fl = $("flash"); fl.style.transition = "none"; fl.style.opacity = .95;
-  requestAnimationFrame(() => { fl.style.transition = "opacity 1.8s ease-out"; fl.style.opacity = 0; });
-  const up = $("realmUp");
-  $("realmUpT").textContent = next.big;
-  $("realmUpT").style.fontSize = next.big.length > 2 ? "30px" : "40px";
-  up.classList.remove("show"); void up.offsetWidth; up.classList.add("show");
-  burstBoom();
-  pushMsg("main", `<span class="r">天劫降临！</span>${r.label} → <span class="r">${next.label}</span>`);
+  // v1.6.0-C: 雷劫蓄力段 — 先 1.0s 天劫将至(屏幕电框 + 主角灵光蓄力), 再破境
+  pushMsg("main", `<span class="r">天劫将至……</span>${r.label} 将渡 ${next.label}`);
+  const trib = $("trib"); if (trib) { trib.classList.remove("show"); void trib.offsetWidth; trib.classList.add("show"); }
+  const cult = $("cult"); if (cult) { cult.classList.remove("trib-glow"); void cult.offsetWidth; cult.classList.add("trib-glow"); }
   setTimeout(() => {
-    state.realmIdx++;
-    state.exp = 0;
-    breaking = false;
-    updateRealmUI(); updateHUD(); save();
-    cloudFlush();   // v1.5.1: 渡劫突破是不可逆的关键跃迁 → 立即上云
-    const nr = realm();
-    const greet = ["金丹凝形！", "元婴出窍！", "化神之姿！", "踏入筑基！"][nr.bigIdx - 2] || "";
-    pushMsg("main", `<span class="g">${nr.big}</span>！${greet || "修行又进一步"}`);
-    realmPlot();
-  }, 950);
+    if (trib) trib.classList.remove("show");
+    if (cult) cult.classList.remove("trib-glow");
+    // 破境: 金光闪 + 境界名弹字 + 粒子爆发
+    const fl = $("flash"); fl.style.transition = "none"; fl.style.opacity = .95;
+    requestAnimationFrame(() => { fl.style.transition = "opacity 1.8s ease-out"; fl.style.opacity = 0; });
+    const up = $("realmUp");
+    $("realmUpT").textContent = next.big;
+    $("realmUpT").style.fontSize = next.big.length > 2 ? "30px" : "40px";
+    up.classList.remove("show"); void up.offsetWidth; up.classList.add("show");
+    burstBoom();
+    pushMsg("main", `<span class="r">天劫降临！</span>${r.label} → <span class="r">${next.label}</span>`);
+    setTimeout(() => {
+      state.realmIdx++;
+      state.exp = 0;
+      breaking = false;
+      updateRealmUI(); updateHUD(); save();
+      cloudFlush();   // v1.5.1: 渡劫突破是不可逆的关键跃迁 → 立即上云
+      const nr = realm();
+      const greet = ["金丹凝形！", "元婴出窍！", "化神之姿！", "踏入筑基！"][nr.bigIdx - 2] || "";
+      pushMsg("main", `<span class="g">${nr.big}</span>！${greet || "修行又进一步"}`);
+      realmPlot();
+    }, 950);
+  }, 1000);
 }
 function manualBreak() { doBreak(); }
 
@@ -2298,6 +2333,50 @@ async function initBg3D() {
   const mod = await import("./bg.js?v=926b5d17");
   window.__bgCtrl = await mod.initDeepSpace(canvas);
 }
+/* v1.6.0-B 灵气道场叠加层: 随大境界变色调的流动云雾 + 上升灵气粒子(叠在深空背景之上, 不动 bg.js) */
+const AURA_COLORS = [
+  [103,201,171], [103,201,171], [91,143,214], [233,196,126],
+  [180,138,214], [207,232,224], [207,232,224]
+];
+let _auraCv, _auraCtx, _auraP = [], _auraT = 0, _auraColor = AURA_COLORS[0].slice();
+function auraColorNow() { return AURA_COLORS[Math.min(bigIdx(), AURA_COLORS.length - 1)]; }
+function initAura() {
+  _auraCv = $("aura"); if (!_auraCv) return;
+  _auraCtx = _auraCv.getContext("2d");
+  const fit = () => {
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    _auraCv.width = innerWidth * dpr; _auraCv.height = innerHeight * dpr;
+    _auraCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  fit(); addEventListener("resize", fit);
+  for (let i = 0; i < 36; i++)
+    _auraP.push({ x: Math.random()*innerWidth, y: Math.random()*innerHeight, r: 1+Math.random()*2.4, s: 8+Math.random()*22, a: .25+Math.random()*.5, ph: Math.random()*7 });
+}
+function tickAura(dt) {
+  if (!_auraCtx) return;
+  _auraT += dt;
+  const W = innerWidth, H = innerHeight, c = auraColorNow();
+  for (let i = 0; i < 3; i++) _auraColor[i] += (c[i] - _auraColor[i]) * Math.min(1, dt * 1.5);
+  const [r,g,b] = _auraColor.map(v => Math.round(v));
+  _auraCtx.clearRect(0, 0, W, H);
+  _auraCtx.globalCompositeOperation = "lighter";
+  const blobs = [[.25,.3,.5],[.7,.25,.42],[.5,.7,.55],[.82,.72,.4]];
+  for (let i = 0; i < blobs.length; i++) {
+    const [bx,by,bz] = blobs[i];
+    const cx = (bx + Math.sin(_auraT*0.06 + i)*0.05)*W, cy = (by + Math.cos(_auraT*0.05 + i*1.3)*0.05)*H, rad = bz*Math.min(W,H)*0.6;
+    const grd = _auraCtx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+    grd.addColorStop(0, `rgba(${r},${g},${b},.07)`); grd.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    _auraCtx.fillStyle = grd; _auraCtx.beginPath(); _auraCtx.arc(cx, cy, rad, 0, 7); _auraCtx.fill();
+  }
+  for (const p of _auraP) {
+    p.y -= p.s*dt; p.x += Math.sin(_auraT*0.6 + p.ph)*6*dt;
+    if (p.y < -10) { p.y = H + 10; p.x = Math.random()*W; }
+    const a = p.a * (0.5 + 0.5*Math.sin(_auraT*1.2 + p.ph));
+    _auraCtx.fillStyle = `rgba(${r},${g},${b},${a*0.5})`;
+    _auraCtx.beginPath(); _auraCtx.arc(p.x, p.y, p.r, 0, 7); _auraCtx.fill();
+  }
+  _auraCtx.globalCompositeOperation = "source-over";
+}
 
 function mainMoment() {
   const pool = MAIN_STORY[Math.min(bigIdx(), MAIN_STORY.length - 1)];
@@ -2322,6 +2401,8 @@ function loop(dt) {
     }
     realmPlot(); // 到新小层即推进当前卷剧情(跨大境须手动渡劫 → 剧情也绝不越卷)
   }
+  tickDsp(dt);
+  tickAura(dt);
   updateHUD();
   checkMilestones();
   if (Math.random() < dt * 0.35) adventure();
@@ -2332,6 +2413,8 @@ function loop(dt) {
 /* ============ 启动 ============ */
 load();                       // 先本地存档
 updateRealmUI();
+_dsp.spirit = state.spirit; _dsp.exp = state.exp;
+_floatPrev.spirit = state.spirit; _floatPrev.exp = state.exp;
 updateHUD();
 updateArts();
 realmPlot(); // 启动即按当前境界推进已及剧情
@@ -2348,6 +2431,7 @@ document.addEventListener("visibilitychange", () => {
 });
 cloudInit();       // 云存档: 先拉云端 → 统一结算离线收益 → 回写(本地永远可玩, 云失败静默)
 setInterval(stayMailCheck, 60000);   // 在线寄包: iOS 常驻标签页也能收到化身手札
+initAura();
 initBg();
 initFxDiag();
 initFxLayer();
