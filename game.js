@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.61";
+const GAME_VER = "v1.7.62";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -25,6 +25,14 @@ const SND = (function () {
   }
   let bgmOn = lsOn(LS_BGM, LS_SFX);
   let sfxOn = lsOn(LS_SFX);
+  /* v1.7.62 硬静音(黑屏挂机用): 期间连音频上下文都不允许恢复。
+   * 只 suspend 上下文是不够的 —— ac() 会在每次播音效时把它 resume 回来,
+   * 表现就是"进了挂机音效还会跳出来"。 */
+  let hardMute = false;
+  function silent() {
+    if (hardMute) return true;
+    try { return document.hidden; } catch (e) { return false; }
+  }
   const SFX_V = "9";                 // 音效缓存戳: 换素材后递增, 强制重新拉取
   const files = { hit: 1, crit: 1, hurt: 1, alert: 1, swing: 1, myst: 1, win: 1, lose: 1 };
   const vol = { hit: 0.5, crit: 0.55, hurt: 0.42, alert: 0.6, swing: 0.42, myst: 0.5, win: 0.6, lose: 0.5 };
@@ -33,6 +41,7 @@ const SND = (function () {
   let bgmEl = null, bgmStarted = false, stage = 0;   // stage: 战斗/秘境横幅是否正在台上
   function ac() {
     if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; } }
+    if (silent()) return ctx;          // v1.7.62: 静音期间不 resume(关键修复)
     if (ctx && ctx.state === "suspended") { try { ctx.resume(); } catch (e) {} }
     return ctx;
   }
@@ -40,7 +49,7 @@ const SND = (function () {
   /* v1.7.8/v1.7.9: 只有「页面可见 && 战斗/秘境横幅在台上」才播单发音效 ——
    * 杜绝后台/横幅未起时的"有声无画"; BGM 走 HTMLAudio 不受影响 */
   function sfxAudible() {
-    try { if (document.visibilityState === "hidden") return false; } catch (e) {}
+    if (silent()) return false;
     return stage === 1;
   }
   function tone(f, dur, type, v, when, slideTo) {
@@ -83,8 +92,7 @@ const SND = (function () {
   }
   /* v1.7.60: 页面不可见时不播 BGM —— 修掉"切到后台音乐还在响" */
   function _bgmPlay() {
-    if (!bgmOn || !bgmEl) return;
-    try { if (document.hidden) return; } catch (e) {}
+    if (!bgmOn || !bgmEl || silent()) return;
     const p = bgmEl.play(); if (p && p.catch) p.catch(() => {});
   }
   /* 切后台: 停 BGM + 挂起音频上下文(音效一并静音); 回前台: 恢复 */
@@ -93,7 +101,7 @@ const SND = (function () {
     if (ctx && ctx.state === "running") { try { ctx.suspend(); } catch (e) {} }
   }
   function resumeAll() {
-    if (document.hidden) return;
+    if (silent()) return;          // 硬静音(挂机中)时, 回前台也不恢复
     ac();
     if (bgmOn) _bgmPlay();
   }
@@ -129,6 +137,9 @@ const SND = (function () {
     setSfx(v) { sfxOn = !!v; try { localStorage.setItem(LS_SFX, sfxOn ? "1" : "0"); } catch (e) {} },
     suspend() { suspendAll(); },                 // 供原生层 / 黑屏挂机调用
     resume() { resumeAll(); },
+    /* v1.7.62 硬静音开关: 挂机期间置 true, 任何音效都不会把上下文救活 */
+    mute(v) { hardMute = !!v; if (hardMute) suspendAll(); else resumeAll(); },
+    get muted() { return hardMute; },
     setStage(v) { stage = v ? 1 : 0; },          // 横幅上台/收台 由 warStart/warEnd 驱动
     hit() { playLayers("hit"); }, crit() { playLayers("crit"); }, hurt() { playLayers("hurt"); },
     swing() { playLayers("swing"); },
@@ -4166,7 +4177,7 @@ function enterDim() {
   DIMSTAT.on = true;
   DIMSTAT.battles = 0; DIMSTAT.win = 0; DIMSTAT.spirit = 0; DIMSTAT.exp = 0; DIMSTAT.loot = [];
   dimRender();
-  SND.suspend();                                   // 音乐 + 音效 全关
+  SND.mute(true);                                  // 音乐 + 音效 全关(硬静音, 音效不会自己跳出来)
   try { if (window.__bgCtrl && window.__bgCtrl.pause) window.__bgCtrl.pause(); } catch (e) {}
   resetDimKnob();
 }
@@ -4176,7 +4187,7 @@ function exitDim() {
   d.classList.remove("show");
   document.body.classList.remove("dimmed");
   DIMSTAT.on = false;
-  SND.resume();                                    // 按玩家原有开关恢复
+  SND.mute(false);                                 // 按玩家原有开关恢复
   try { if (window.__bgCtrl && window.__bgCtrl.resume) window.__bgCtrl.resume(); } catch (e) {}
 }
 

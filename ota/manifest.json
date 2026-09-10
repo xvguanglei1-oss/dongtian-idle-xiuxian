@@ -21,11 +21,11 @@
     "assets/sound/swing.mp3": "90d43e97f4c03c4578368fe927152d0dd587fbe7cd4d54963320c54d68609066",
     "assets/sound/win.mp3": "4732d1de74dcd4192687d983b15d2aca3cee81437e639955e3fa973d95a45fad",
     "bg.js": "d61cf11f268274f8bcdbea5aac1da08eb3f58b59e82b650b0d1f178803343954",
-    "dt-theme.css": "ab32db1611ee9b7769e8d47e3e1a12de73c893f09c6d86e9111113761c083493",
+    "dt-theme.css": "cc07b0892b709e1307b73e500c7d71479839e44737ab3d634ef9cdcc6ca058b0",
     "fx2d.js": "dbb9540db9984ac06f08d75490099497c9ce1d59dfe5de91ee32b0d5a6db0670",
-    "game.js": "7f60376fcca74999e6d3c8beaf1776a42576a74b907e474addbbf12374ebbcc9",
-    "index.html": "ff699e7575ff9bde3c1d3327698eeb3a98948e1568fce39b5024ae7bb63964f1"
+    "game.js": "fd4a40c9d4015cba9e03ccfa76117b6a5d07a76a0958e3056b7b6453865ee4ed",
+    "index.html": "8949c0a1d924a5edf3d39aacfb1fca7113314c7ec36c588ab0ccf43a6b537e0a"
   },
-  "rev": "c271b53c62eb62ba",
-  "version": "1.7.61"
+  "rev": "4e1b2ac8be88a7bc",
+  "version": "1.7.62"
 }
