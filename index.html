@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>闲人修仙 v1.7.62</title>
+<title>闲人修仙 v1.7.63</title>
 <meta name="description" content="闲人修仙：主身巡猎斗法、分身云游寻宝，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -31,7 +31,7 @@
   .res-chip{flex:none}
   .res-bar .spirit{padding:3px 10px;font-size:12px}
   .res-bar .rate{padding:3px 9px;font-size:10.5px}
-  /* v1.7.62 极窄屏(≤345px, 如 320 宽老机型): 收紧资源栏, 避免折成两行 */
+  /* v1.7.63 极窄屏(≤345px, 如 320 宽老机型): 收紧资源栏, 避免折成两行 */
   @media (max-width:345px){
     .res-bar{gap:3px}
     .res-bar .spirit{padding:3px 6px;font-size:11px}
@@ -63,7 +63,7 @@
   .snd-btn{flex:none;display:inline-flex;align-items:center;justify-content:center;width:30px;height:28px;
     cursor:pointer;color:#aeb8cd;background:rgba(12,18,34,.72);border:1px solid rgba(140,150,175,.35);border-radius:999px;
     backdrop-filter:blur(6px);-webkit-tap-highlight-color:transparent;transition:all .2s;padding:0}
-  /* v1.7.62: 图标改用内联 SVG —— 齿轮字符(⚙)在部分设备会被渲染成太阳/emoji, 各端不一致 */
+  /* v1.7.63: 图标改用内联 SVG —— 齿轮字符(⚙)在部分设备会被渲染成太阳/emoji, 各端不一致 */
   .snd-btn svg{display:block;width:15px;height:15px;fill:currentColor;pointer-events:none}
   .snd-btn:active{transform:scale(.9)}
   .snd-btn.muted{color:#5c667a;border-color:rgba(120,130,155,.22)}
@@ -90,7 +90,7 @@
     background:linear-gradient(180deg,rgba(232,197,107,.18),rgba(232,197,107,.05));
     text-shadow:0 0 10px rgba(232,197,107,.35);font-size:13.5px;letter-spacing:.14em}
   .pname-btn.named::before{content:"";display:none}
-  /* v1.7.62 榜单入口并入境界牌 —— 排版样式放在 dt-theme.css 末尾(需盖过其中的媒体查询) */
+  /* v1.7.63 榜单入口并入境界牌 —— 排版样式放在 dt-theme.css 末尾(需盖过其中的媒体查询) */
   .realm-badge{cursor:pointer;-webkit-tap-highlight-color:transparent}
   .story-btn{margin-top:6px;align-self:flex-start;pointer-events:auto;font-size:10px;padding:3px 10px;border-radius:999px;
     border:1px solid rgba(232,197,107,.32);background:rgba(232,197,107,.12);color:var(--gold);letter-spacing:.08em;
@@ -337,7 +337,7 @@
   .realm-badge .big{animation:bigBreath 2.8s ease-in-out infinite}
   @keyframes glowEmberInk{0%,100%{filter:drop-shadow(0 0 1px rgba(255,150,110,.2))}50%{filter:drop-shadow(0 0 6px rgba(255,150,110,.95)) drop-shadow(0 0 13px rgba(255,120,80,.5))}}
   .glow-ember{animation:glowEmberInk .75s ease-in-out infinite}
-  /* ==================== v1.7.62 设置面板 + 黑屏挂机 ==================== */
+  /* ==================== v1.7.63 设置面板 + 黑屏挂机 ==================== */
   .set-list{display:flex;flex-direction:column;gap:9px;margin:15px 0 10px}
   .set-row{display:flex;align-items:center;gap:11px;width:100%;padding:13px 14px;cursor:pointer;
     background:rgba(255,255,255,.045);border:1px solid rgba(140,150,175,.2);border-radius:12px;
@@ -405,7 +405,7 @@
     <p>合理安排时间，享受健康生活。</p>
   </div>
 
-  <div class="sp-foot"><span id="spVer">v1.7.62</span><span class="sp-skip">轻触屏幕跳过</span></div>
+  <div class="sp-foot"><span id="spVer">v1.7.63</span><span class="sp-skip">轻触屏幕跳过</span></div>
 </div>
   </div>
 </div>
@@ -434,7 +434,7 @@
   </div>
   <div class="hud-row">
     <div class="realm-left">
-      <!-- v1.7.62: 榜单入口从资源栏移进境界牌 —— 资源栏不再被挤到第二行, 点整块境界牌即看榜 -->
+      <!-- v1.7.63: 榜单入口从资源栏移进境界牌 —— 资源栏不再被挤到第二行, 点整块境界牌即看榜 -->
       <div class="realm-badge" id="realmBadge" onclick="openRank()" title="洞天风云榜 · 前十"><span class="big" id="realmName">凡人</span><span class="sub-a" id="realmSubA"></span><span class="sub-b" id="realmSubB"></span><span class="rb-rank">榜</span></div>
       <div class="rl-btns">
         <button class="story-btn" onclick="openStory()">📜 剧情纲目</button>
@@ -491,7 +491,7 @@
   <button class="btn" id="btnTravel" onclick="openTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">云游</span></button>
 </div>
 
-<div class="ver-float"><span class="ver-tag" id="verTag">v1.7.62</span></div>
+<div class="ver-float"><span class="ver-tag" id="verTag">v1.7.63</span></div>
 
 <canvas id="burst"></canvas>
 <div class="flash" id="flash"></div>
@@ -630,7 +630,7 @@
   </div>
 </div>
 
-<!-- v1.7.62 黑屏挂机: 静音 + 只留战绩; 必须滑动才进游戏(防误触) -->
+<!-- v1.7.63 黑屏挂机: 静音 + 只留战绩; 必须滑动才进游戏(防误触) -->
 <div id="dimScreen">
   <div class="dim-panel">
     <div class="dim-title">静 心 挂 机</div>

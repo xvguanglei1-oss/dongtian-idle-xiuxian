@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.62";
+const GAME_VER = "v1.7.63";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1581,6 +1581,8 @@ function cloudInit() {
   cldUI("sync");
   addEventListener("online", () => { if (!cld.ready) cldPull(); });   // 断网恢复后自动补同步
   bootCloud();           // 首次: 先同步云端, 再统一结算一次离线收益
+  /* v1.7.63 兜底: 云端迟迟不回(弱网/超时)也要能接管"回到前台补结算", 不能一直不武装 */
+  setTimeout(() => { _awayArmed = true; }, 10000);
   /* 低频兜底上传: 每 60s 检查一次, 仅在"有未同步进度"且"距上次成功上传 ≥5 分钟"时才传,
    * 避免高频轮询; 关键节点(突破/升阵/离线结算/切后台)另行即时上传 */
   setInterval(() => {   // v1.5.1: 每 60s 检查, 有未同步进度且距上次成功推 ≥5 分钟才推(合并窗口内所有高频进度)
@@ -1602,6 +1604,7 @@ async function bootCloud() {
   else if (!sr) applyOffline();
   cloudFlush();   // v1.5.1: 启动结算后尽快把建档/离线收益上云
   updateRealmUI(); updateHUD(); updateArts(); realmPlot();
+  _awayArmed = true;   // v1.7.63: 启动结算已完成, 之后才允许 settleAway 接管
 }
 
 /* ============ 数值 ============ */
@@ -3455,7 +3458,55 @@ function huntTxtOf(H) {                 // 离线巡猎纪要(云端 gains.hunt 
     (kN ? `<br>阿青收下 <b>${kN}</b> 件新宝${kName ? `（${kName} 等）` : ""}，藏宝阁在架 ${H.equipped || kN} 件` : "") +
     (H.melted ? `；余下 <b>${H.melted}</b> 件不入眼，尽数投炉熔作灵石 +<span class="num"> ${fmt(H.meltSp || 0)}</span>` : "");
 }
-function applyOffline() {
+/* 修为修满即自动精进小境界; 大境界圆满前停 —— 大境界渡劫留待亲手, 剧情绝不越卷 */
+function autoAdvanceSegs() {
+  let jg = 0;
+  while (jg++ < 60) {
+    const r0 = realm();
+    if (r0.isBigEnd) break;
+    if (state.realmIdx >= TOTAL_SEGS - 1) break;
+    if (state.exp >= r0.need) { state.exp -= r0.need; state.realmIdx++; }
+    else break;
+  }
+}
+
+/* ==================== v1.7.63 回到前台补结算 ====================
+ * 背景: Android WebView 切后台只是暂停、不销毁页面, 所以"最小化再回来"不会走冷启动,
+ *       而主循环的 dt 被夹在 0.1s —— 这段离开时间原本是白丢的。
+ * 做法(业界通行: 切后台存时间戳 → 回前台算差值补发):
+ *   < AWAY_SILENT(30s)  静默补, 按在线速率, 不弹面板也不惊动云端(玩家只是切出去看了一眼)
+ *   ≥ AWAY_SILENT       走完整离线结算(与冷启动同一套逻辑), 弹离线面板 */
+const AWAY_SILENT = 30;
+let _awayArmed = false;     // 启动结算跑完前不接管, 免得和 bootCloud 重复结算
+
+function settleAway() {
+  if (!state || !_awayArmed) return;
+  const now = Date.now();
+  const base = Math.max(state.lastTs || 0, state._settledTs || 0);
+  let away = (now - base) / 1000;
+  if (!(away > 3)) return;                    // 正常切帧/抖动, 不管
+
+  if (away < AWAY_SILENT) {
+    /* 短时离开: 视同"没走", 按在线速率补, 静默 */
+    away = Math.min(away, AWAY_SILENT);
+    const gE = rateNow() * away, gS = spiritRate() * away;
+    state.exp = Math.max(0, fin(state.exp + gE, state.exp));
+    state.spirit = Math.max(0, fin(state.spirit + gS, state.spirit));
+    autoAdvanceSegs();
+    state.lastTs = now; state._settledTs = now;
+    updateRealmUI(); updateHUD(); realmPlot();
+    save();
+    try { console.log(`[away] 短时离开 ${away.toFixed(1)}s, 修为+${Math.round(gE)} 灵石+${Math.round(gS)}`); } catch (e) {}
+    return;
+  }
+
+  /* 长时离开: 完整离线结算 —— 与冷启动同一套, 内部会弹离线面板并推进 _settledTs */
+  try { console.log(`[away] 离开 ${Math.round(away / 60)} 分钟, 走离线结算`); } catch (e) {}
+  applyOffline(base);
+  cloudFlush();                               // 把推进后的 lastTs 同步上去, 免得云端重复结算
+}
+
+function applyOffline(baseOverride) {
   const now = Date.now();
   /* v1.7.20 P0-1 时钟加固: 结算基准若明显落在"未来"(本地时钟被回拨过),
      不做倒贴也不重结, 将基准校正回当前并计数取证; 每次离线收益仍受 OFFLINE_CAP 限制。
@@ -3467,8 +3518,11 @@ function applyOffline() {
     return;
   }
   /* 结算基准 = 载入时的原始 lastTs(_lastTs0) 与上次结算推进点取大 → 多设备/换档不重不漏
-     (不能用 state.lastTs —— 它已被启动瞬间的 save() 刷成现在, 见 load 处注释) */
-  const base = Math.max(state._lastTs0 || state.lastTs || 0, state._settledTs || 0);
+     (不能用 state.lastTs —— 它已被启动瞬间的 save() 刷成现在, 见 load 处注释)
+     v1.7.63: 支持外部传入基准 —— "回到前台"补结算时基准是离开时刻(state.lastTs)。 */
+  const base = baseOverride != null
+    ? baseOverride
+    : Math.max(state._lastTs0 || state.lastTs || 0, state._settledTs || 0);
   let dt = (now - base) / 1000;
   if (dt < 30) return;
   dt = Math.min(dt, OFFLINE_CAP);
@@ -3481,16 +3535,7 @@ function applyOffline() {
   state.spirit = Math.max(0, fin(state.spirit + gainSpirit, state.spirit));
   // 离线自动精进(与在线 loop / 后端 settle 一致): 推过已修满的小境界段,
   // 大境界圆满前停——大境界渡劫留待亲手, 剧情绝不越卷
-  {
-    let jg = 0;
-    while (jg++ < 60) {
-      const r0 = realm();
-      if (r0.isBigEnd) break;
-      if (state.realmIdx >= TOTAL_SEGS - 1) break;
-      if (state.exp >= r0.need) { state.exp -= r0.need; state.realmIdx++; }
-      else break;
-    }
-  }
+  autoAdvanceSegs();
   /* v1.3.0 离线巡猎: 与在线同一波次模型(dt ÷ 180s 一波)，本地兜底(云端结算走后端 huntSettle) */
   const HUNT = huntOffline(dt);
   if (HUNT.waves) { updateArts(false); }
@@ -3722,6 +3767,7 @@ setInterval(save, 8000);
 addEventListener("pagehide", () => { save(); cloudFlush(); });
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") { save(); cloudFlush(); }  // 切后台/关页即同步"最后活跃"(关页时刻必须立刻推, 不能等节流窗口)
+  else if (document.visibilityState === "visible") settleAway();        // v1.7.63 回到前台补结算
 });
 cloudInit();       // 云存档: 先拉云端 → 统一结算离线收益 → 回写(本地永远可玩, 云失败静默)
 setInterval(stayMailCheck, 60000);   // 在线寄包: iOS 常驻标签页也能收到化身手札
