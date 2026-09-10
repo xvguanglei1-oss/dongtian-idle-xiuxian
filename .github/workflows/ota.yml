@@ -1,0 +1,42 @@
+name: 生成资源热更新清单
+
+# 游戏资源一改，就重新生成 ota/manifest.json。
+# Cloudflare Pages 会自动部署，App 下次启动就能看到新 rev 并热更新。
+on:
+  push:
+    branches: [main]
+    # ota/ 自己的提交不触发，避免自循环
+    paths-ignore:
+      - 'ota/**'
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ota-manifest
+  cancel-in-progress: true
+
+jobs:
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 生成清单
+        run: python3 tools/ota-manifest.py
+
+      - name: 提交清单
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ota/manifest.json
+          if git diff --cached --quiet; then
+            echo "清单无变化，跳过提交"
+          else
+            git commit -m "chore(ota): 更新资源清单"
+            git push
+          fi

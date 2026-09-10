@@ -1,0 +1,31 @@
+{
+  "files": {
+    "assets/cultivator_body.png": "ac8a8b07ca96548ca83b629ea9fb040c9518e8f3b66d0eb05faf60ec429a1e5c",
+    "assets/cultivator_hair.png": "d0de83e8f35679a4c99ecb70f7e12717cb3b2d5f287ef06c4c26d1466aa6d099",
+    "assets/cultivator_robe.png": "9ebf04fc48fc151f8f1da295a125a096cd4e78e0cab0600d29ef1dbfd6d2c08c",
+    "assets/lz-string.min.js": "95f4d1cbf099f57161b664bc048426ec3df92637801a4c79116e83315aa787e7",
+    "assets/main-bg.jpg": "30bda2c355760f1364da3a11f01f31cd7928babeb565ed064d0c41f66b8fb0d8",
+    "assets/monsters/m0_wolf.png": "6789c303957e665440519b98aa680a7f9308f960dcd5bca0576a3552e8bafbe8",
+    "assets/monsters/m1_shanyao.png": "0d7c9b8b9b2517d6755c94d0ca9a79d151ade5d7ab9bcc82bb8fbc5169ca4e06",
+    "assets/monsters/m2_xiongpi.png": "86f588d45ece7630b92f029163ac68e23180821d145879389eca08245b3ab510",
+    "assets/monsters/m3_yexia.png": "8c0d86f45842f88f87b720d81259445ae631e8485662f80f33dddc277fb17cdf",
+    "assets/monsters/m4_jiaoyao.png": "23c21be19f7cf63d4924d3d87b472e9a12af32e768a93012d191fea1bebafc54",
+    "assets/monsters/m5_tianmo.png": "4b4893a5bd5265150b3aa1be6caaf75c9f0bb546e9afc57e0309c081097a37a4",
+    "assets/music/bgm.mp3": "3139ad8a89de8d7284c4b0c00b9d94164d1f231e8b3a6b0a2923d78206c5befe",
+    "assets/sound/alert.mp3": "3cf7c6a93f00f79fd2136b08bf6dd78f2e4d8eed1f62a734d4d92906e89904e8",
+    "assets/sound/crit.mp3": "2874a4165eb320d01d910cbefec1fee765e8b76b8b7b07ab5a54fcac19e05f58",
+    "assets/sound/hit.mp3": "ba9d45eac4154f526e170216023ef43bf949d7e34d14dd4bb03bdec7cbb7f636",
+    "assets/sound/hurt.mp3": "65ffcf7c2f996c84bbc09b3a68731b0aa6dba16685f6b96d3614bb0ce7170f06",
+    "assets/sound/lose.mp3": "07386d024317819baedb4b4c613ceb850adfb8356e2ce79077500d05b94bb934",
+    "assets/sound/myst.mp3": "f9ad8bc90064e3873756900265d4a36f48014214bd0a1a6c4e61317a6eb7473e",
+    "assets/sound/swing.mp3": "90d43e97f4c03c4578368fe927152d0dd587fbe7cd4d54963320c54d68609066",
+    "assets/sound/win.mp3": "4732d1de74dcd4192687d983b15d2aca3cee81437e639955e3fa973d95a45fad",
+    "bg.js": "d9f0bd9495bedbdb730d603eb64a324a12c1bf072545d58c049aa699dacc777d",
+    "dt-theme.css": "ab32db1611ee9b7769e8d47e3e1a12de73c893f09c6d86e9111113761c083493",
+    "fx2d.js": "dbb9540db9984ac06f08d75490099497c9ce1d59dfe5de91ee32b0d5a6db0670",
+    "game.js": "4ae4d964f9700c7d274c5a7de10a7e0180291f129b95a2c81199c03ac74902be",
+    "index.html": "3b8a73d212aef73c8b19027df8431c8ec7c56d41e6bb555efcbb75bc2879f86d"
+  },
+  "rev": "f061a2259cac8ae3",
+  "version": "1.7.59"
+}
