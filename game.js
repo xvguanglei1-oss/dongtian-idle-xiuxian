@@ -33,7 +33,8 @@ const SND = (function () {
     if (hardMute) return true;
     try { return document.hidden; } catch (e) { return false; }
   }
-  const SFX_V = "9";                 // 音效缓存戳: 换素材后递增, 强制重新拉取
+  /* v1.9.0: 胜利结算音换素材(号角+和声) —— 递增缓存戳强制客户端重拉 */
+  const SFX_V = "10";                // 音效缓存戳: 换素材后递增, 强制重新拉取
   const files = { hit: 1, crit: 1, hurt: 1, alert: 1, swing: 1, myst: 1, win: 1, lose: 1 };
   const vol = { hit: 0.5, crit: 0.55, hurt: 0.42, alert: 0.6, swing: 0.42, myst: 0.5, win: 0.6, lose: 0.5 };
   const buf = {};            // name -> AudioBuffer | null(缺素材)
@@ -1137,16 +1138,18 @@ const RECIPES = {   // 丹方 v4 (v1.9.0) —— 覆盖 12 大境(0凡→11天�
   wanji: { big: 11, h: 1, n: "万界归元丹", d: "万界天墟尽头的终极丹方：十二时辰内修为 +1400%",
             need: { hongmeng: 11, hanpo: 4, qiongjing: 6, taiqing: 8 }, eff: { k: "buff", mult: 15, dur: 43200 } },
 
-  /* ---- 凡人(0)：只此一味，青牛镇一趟可炼多剂 ---- */
-  hjing: { big: 0, n: "黄精膏", d: "凡草慢熬，聊胜于无：立时回复约一刻钟修为",
-            need: { huangjing: 9 }, eff: { k: "inst", sec: 900 } },
+  /* ---- 凡人(0)：v1.9.0 起不设丹方 ----
+   * 凡人境只停留约 3.6 小时(REALM_DAYS[0]=0.15 天), 化身上路不到半日便渡入炼气,
+   * 期间最多只收得两三封手札, 凑不齐任何一味丹方 —— 与其摆个永远点不亮的死方, 不如不设。
+   * 凡人阶段只管赶路进阶; 炼气入门(镜州丹道)才是丹道之始。
+   * 注: 黄精并不因此作废 —— 它在炼气四丹里仍是主力辅材。 */
   /* ---- 炼气(镜州丹道：蛇涎/黄精为主，灵乳为贵) ---- */
   buqi:  { big: 1, n: "补气丹", d: "炼气常备：立时回复约半个时辰修为",
             need: { shexian: 6, huangjing: 4 }, eff: { k: "inst", sec: 1800 } },
   hlong: { big: 1, n: "黄龙丹", d: "药力绵长：一时辰内修为 +50%",
             need: { shexian: 7, huangjing: 5 }, eff: { k: "buff", mult: 1.5, dur: 3600 } },
   jinzui:{ big: 1, n: "金髓丸", d: "冲境烈药：一时辰内修为 +120%",
-            need: { shexian: 8, huangjing: 5, dihuo: 3 }, eff: { k: "buff", mult: 2.2, dur: 3600 } },
+            need: { shexian: 8, huangjing: 5, dihuo: 2 }, eff: { k: "buff", mult: 2.2, dur: 3600 } },
   zhuji: { big: 1, n: "筑基丹", d: "炼气圆满的叩门砖：立获约三时辰修为，此后两时辰修为翻倍",
             need: { shexian: 12, huangjing: 8, lingru: 3, yaodan: 2 }, eff: { k: "grand", sec: 10800, mult: 2, dur: 7200 } },
   /* ---- 筑基(海外丹道：紫猴为主，灵血/灵乳辅) ---- */
@@ -1155,7 +1158,7 @@ const RECIPES = {   // 丹方 v4 (v1.9.0) —— 覆盖 12 大境(0凡→11天�
   yuqing:{ big: 2, n: "玉清丹", d: "筑基培元：立时回复约两时辰修为",
             need: { zihou: 9, shexian: 5, lingxue: 4 }, eff: { k: "inst", sec: 7200 } },
   jiangchen: { big: 2, n: "降尘丹", d: "筑基圆满感结丹机缘：立获约六时辰修为，此后三时辰修为 +120%",
-            need: { zihou: 13, lingxue: 6, dihuo: 4, lingru: 5 }, eff: { k: "grand", sec: 21600, mult: 2.2, dur: 10800 } },
+            need: { zihou: 13, lingxue: 6, dihuo: 3, lingru: 5 }, eff: { k: "grand", sec: 21600, mult: 2.2, dur: 10800 } },
   /* ---- 结丹(寒域丹道：玄参为主，灵血/妖丹辅) ---- */
   guyuan:{ big: 3, n: "固元丹", d: "金丹固本：立时回复约两时辰修为",
             need: { xuancan: 9, zihou: 5, lingxue: 5 }, eff: { k: "inst", sec: 7200 } },
