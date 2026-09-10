@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.57";
+const GAME_VER = "v1.7.58";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -4922,17 +4922,23 @@ function hashRand(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { 
   const sp = document.getElementById("splash");
   if (!sp) return;
   const bar = document.getElementById("spBar");
+  const pctEl = document.getElementById("spPct");
+  const statEl = document.getElementById("spStat");
   const t0 = Date.now(), MIN_MS = 1800;
   let p = 0, finished = false;
   const timer = setInterval(() => {
-    p = Math.min(90, p + 3 + Math.random() * 8);
+    p = Math.min(92, p + 3 + Math.random() * 8);
     if (bar) bar.style.width = p.toFixed(0) + "%";
+    if (pctEl) pctEl.textContent = p.toFixed(0) + "%";
+    if (statEl) statEl.textContent = p < 40 ? "正在加载资源…" : (p < 78 ? "正在初始化…" : "正在入定…");
   }, 150);
   function finish() {
     if (finished) return;
     finished = true;
     clearInterval(timer);
     if (bar) bar.style.width = "100%";
+    if (pctEl) pctEl.textContent = "100%";
+    if (statEl) statEl.textContent = "即将进入";
     setTimeout(() => {
       sp.classList.add("sp-out");
       setTimeout(() => { try { sp.remove(); } catch (e) {} }, 600);

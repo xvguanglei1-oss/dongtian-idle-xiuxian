@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>闲人修仙 v1.7.57</title>
+<title>闲人修仙 v1.7.58</title>
 <meta name="description" content="闲人修仙：主身巡猎斗法、分身云游寻宝，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -125,40 +125,47 @@
   .btn .prog{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;
     mix-blend-mode:multiply;isolation:isolate}   /* v1.7.49: 与按钮底色相乘 → 恒为"本色加深", 任何状态(金/红/禁用灰调)都不割裂 */
   .ver-float{position:fixed;right:9px;bottom:4px;z-index:10;pointer-events:none}
-  /* ==================== v1.7.57 开屏页(标题在上·修士主视觉居中·忠告沉底) ==================== */
+  /* ==================== v1.7.58 开屏页(大厂式: 品牌居中 + 进度百分比 + 忠告沉底) ==================== */
   #splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;
-    justify-content:space-between;padding:11vh 24px 15px;overflow:hidden;
-    background:radial-gradient(125% 85% at 50% 30%,#101b2e 0%,#080d17 58%,#04060c 100%);
-    transition:opacity .55s ease;cursor:pointer;-webkit-tap-highlight-color:transparent}
+    justify-content:center;padding:0 28px;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent;
+    background:radial-gradient(130% 90% at 50% 34%,#0f1a2c 0%,#080d17 55%,#04060b 100%);
+    transition:opacity .55s ease}
   #splash.sp-out{opacity:0;pointer-events:none}
-  /* 顶部：标题 + 金线 */
-  .sp-top{display:flex;flex-direction:column;align-items:center;gap:11px}
-  .sp-title{font-family:var(--font-brush);font-size:33px;letter-spacing:.26em;text-indent:.26em;color:#e9cd8a;
-    text-shadow:0 0 20px rgba(232,197,107,.5),0 0 54px rgba(232,197,107,.2);
+  /* 品牌光晕(极淡呼吸, CSS 合成不耗 CPU) */
+  #splash::before{content:"";position:absolute;inset:-18%;pointer-events:none;
+    background:radial-gradient(46% 32% at 50% 40%,rgba(232,197,107,.11),transparent 72%);
+    animation:spHalo 6.5s ease-in-out infinite}
+  /* 品牌区(视觉中心略偏上) */
+  .sp-brand{position:relative;display:flex;flex-direction:column;align-items:center;gap:13px;margin-bottom:9vh}
+  .sp-title{font-family:var(--font-brush);font-size:34px;letter-spacing:.26em;text-indent:.26em;color:#e9cd8a;
+    text-shadow:0 0 22px rgba(232,197,107,.5),0 0 58px rgba(232,197,107,.2);
     animation:spTitle 1.15s cubic-bezier(.2,.7,.3,1) both}
-  .sp-rule{width:116px;height:1px;transform-origin:center;
+  .sp-en{font-size:9.5px;letter-spacing:.42em;text-indent:.42em;color:rgba(226,214,186,.42);
+    font-family:ui-monospace,SFMono-Regular,monospace;animation:spFade .9s .3s ease both}
+  .sp-rule{width:132px;height:1px;transform-origin:center;
     background:linear-gradient(90deg,transparent,rgba(232,197,107,.55),transparent);
-    animation:spRule .9s .25s ease both}
-  /* 中部：打坐修士主视觉(复用游戏立绘的呼吸与境界辉光) */
-  .sp-figure-wrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;width:100%}
-  .sp-figure{height:min(37vh,310px) !important;animation:spFig 1.3s .18s cubic-bezier(.2,.7,.3,1) both}
-  /* 底部：进度 → 忠告 → 页脚 */
-  .sp-bottom{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%}
-  .sp-load{display:flex;flex-direction:column;align-items:center;gap:8px;animation:spFade .8s .5s ease both}
-  .sp-load span{font-size:10px;letter-spacing:.32em;color:rgba(200,212,232,.44)}
-  .sp-load i{display:block;width:152px;height:3px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden}
-  .sp-load i b{display:block;height:100%;width:0%;border-radius:999px;
+    animation:spRule .9s .22s ease both}
+  /* 进度区(品牌下方) */
+  .sp-load{position:absolute;left:0;right:0;bottom:31%;display:flex;flex-direction:column;align-items:center;gap:9px;
+    animation:spFade .8s .5s ease both}
+  .sp-bar{width:206px;height:3px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+  .sp-bar b{display:block;height:100%;width:0%;border-radius:999px;
     background:linear-gradient(90deg,#6b5426,#c9a86a 60%,#f0d795);transition:width .2s linear}
-  .sp-advice{text-align:center;animation:spFade .9s .72s ease both}
-  .sp-advice p{margin:0;font-size:10px;line-height:1.95;letter-spacing:.06em;color:rgba(226,214,186,.42)}
-  .sp-foot{display:flex;align-items:center;justify-content:center;gap:18px;
+  .sp-load .row{display:flex;align-items:baseline;gap:10px;
+    font-size:10px;letter-spacing:.16em;color:rgba(200,212,232,.46)}
+  .sp-load .row em{font-style:normal;font-family:ui-monospace,SFMono-Regular,monospace;color:rgba(232,197,107,.72);min-width:34px;text-align:right}
+  /* 忠告(底部合规文案, 四句独立) */
+  .sp-advice{position:absolute;left:0;right:0;bottom:62px;text-align:center;animation:spFade .9s .72s ease both}
+  .sp-advice p{margin:0;font-size:9.5px;line-height:1.9;letter-spacing:.05em;color:rgba(226,214,186,.38)}
+  /* 底部信息行 */
+  .sp-foot{position:absolute;left:0;right:0;bottom:20px;display:flex;align-items:center;justify-content:center;gap:18px;
     font-size:9px;font-family:ui-monospace,SFMono-Regular,monospace;color:rgba(233,226,208,.26);
     animation:spFade .8s .88s ease both}
+  @keyframes spHalo{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.07)}}
   @keyframes spTitle{from{opacity:0;transform:translateY(15px);letter-spacing:.52em;filter:blur(7px)}
     to{opacity:1;transform:none;letter-spacing:.26em;filter:blur(0)}}
   @keyframes spRule{from{opacity:0;transform:scaleX(0)}to{opacity:1;transform:scaleX(1)}}
-  @keyframes spFig{from{opacity:0;transform:translateY(24px) scale(.95)}to{opacity:1;transform:none}}
-  @keyframes spFade{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}to{opacity:1;transform:none}}
+  @keyframes spFade{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}to{opacity:1;transform:none}}to{opacity:1;transform:none}}
   /* v1.7.52 按钮正下方数字进度(灵石/升级价, 修为/所需) */
   .btn .pnum{position:absolute;left:0;right:0;bottom:-14px;text-align:center;white-space:nowrap;
     font-size:9.5px;font-family:ui-monospace,SFMono-Regular,monospace;letter-spacing:.02em;
@@ -321,32 +328,31 @@
   @keyframes glowEmberInk{0%,100%{filter:drop-shadow(0 0 1px rgba(255,150,110,.2))}50%{filter:drop-shadow(0 0 6px rgba(255,150,110,.95)) drop-shadow(0 0 13px rgba(255,120,80,.5))}}
   .glow-ember{animation:glowEmberInk .75s ease-in-out infinite}
 </style>
-<link rel="stylesheet" href="dt-theme.css?v=1.7.57">
+<link rel="stylesheet" href="dt-theme.css?v=1.7.58">
 </head>
 <body>
-<!-- v1.7.57 开屏页: 健康游戏忠告 + 首屏缓存遮罩(load 完成或点击后淡出) -->
+<!-- v1.7.58 开屏页: 品牌 + 进度 + 健康游戏忠告(load 完成或点击后淡出) -->
 <div id="splash">
-  <div class="sp-top">
+  <div class="sp-brand">
     <div class="sp-title">闲人修仙</div>
+    <div class="sp-en">IDLE XIUXIAN</div>
     <div class="sp-rule"></div>
   </div>
 
-  <div class="sp-figure-wrap">
-    <div class="cult sp-figure">
-      <img class="bodyL" src="assets/cultivator_body.png" alt="">
-      <img class="robe" src="assets/cultivator_robe.png" alt="">
-      <img class="hair-low" src="assets/cultivator_hair.png" alt="">
-      <img class="hair-top" src="assets/cultivator_hair.png" alt="">
-    </div>
+  <div class="sp-load">
+    <div class="row"><span id="spStat">正在加载资源…</span><em id="spPct">0%</em></div>
+    <div class="sp-bar"><b id="spBar"></b></div>
   </div>
 
-  <div class="sp-bottom">
-    <div class="sp-load"><span>正 在 入 定</span><i><b id="spBar"></b></i></div>
-    <div class="sp-advice">
-      <p>抵制不良游戏，拒绝盗版游戏。注意自我保护，谨防受骗上当。</p>
-      <p>适度游戏益脑，沉迷游戏伤身。合理安排时间，享受健康生活。</p>
-    </div>
-    <div class="sp-foot"><span id="spVer">v1.7.57</span><span class="sp-skip">轻触屏幕跳过</span></div>
+  <div class="sp-advice">
+    <p>抵制不良游戏，拒绝盗版游戏。</p>
+    <p>注意自我保护，谨防受骗上当。</p>
+    <p>适度游戏益脑，沉迷游戏伤身。</p>
+    <p>合理安排时间，享受健康生活。</p>
+  </div>
+
+  <div class="sp-foot"><span id="spVer">v1.7.58</span><span class="sp-skip">轻触屏幕跳过</span></div>
+</div>
   </div>
 </div>
   </div>
@@ -431,7 +437,7 @@
   <button class="btn" id="btnTravel" onclick="openTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">云游</span></button>
 </div>
 
-<div class="ver-float"><span class="ver-tag" id="verTag">v1.7.57</span></div>
+<div class="ver-float"><span class="ver-tag" id="verTag">v1.7.58</span></div>
 
 <canvas id="burst"></canvas>
 <div class="flash" id="flash"></div>
@@ -552,7 +558,7 @@
 </div>
 
 <script src="assets/lz-string.min.js"></script>
-<script src="game.js?v=1.7.57"></script>
+<script src="game.js?v=1.7.58"></script>
 
 </body>
 </html>
