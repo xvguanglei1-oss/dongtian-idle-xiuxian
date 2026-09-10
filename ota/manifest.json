@@ -23,9 +23,9 @@
     "bg.js": "d61cf11f268274f8bcdbea5aac1da08eb3f58b59e82b650b0d1f178803343954",
     "dt-theme.css": "d6c2f043819a31b51e9244eb091b89b40a5011d8e5c51307ace2e91539d8bb6f",
     "fx2d.js": "dbb9540db9984ac06f08d75490099497c9ce1d59dfe5de91ee32b0d5a6db0670",
-    "game.js": "2eeda6f45f6dc78ce3d53864c15d0e0455fac85e0e5af1ed0fe02e9522ec58d3",
-    "index.html": "a7a698202b963f39f7e1862d983b9eec9d6485e10d7ea9d3cb43dfea61eb2a90"
+    "game.js": "1f76b4bdba61e54bb359dd98087ec240cdaa532da17995484796473bb98f1b0c",
+    "index.html": "7ec5ed4b4ef1dad302193a26dd2750f38126f0ab037e11aa3ebda2b59a03ef16"
   },
-  "rev": "161d821e747c769a",
-  "version": "1.8.2"
+  "rev": "22ea1cc3fff6780f",
+  "version": "1.8.3"
 }
