@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.8.4";
+const GAME_VER = "v1.8.5";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1231,6 +1231,18 @@ function adopt(s) {
   if (!Array.isArray(s.buffs)) s.buffs = [];
   s.offlineBoostUntil = Math.max(0, fin(s.offlineBoostUntil, 0));
   if (!s.travel || typeof s.travel !== "object") s.travel = null;
+  /* v1.8.5 化身行囊: 信匣满后由服务端 stayTravel 攒进 travel.bag。
+   * adopt 是白名单式的"规整"而非深拷贝原样保留 —— 显式归一 bag/bagPages,
+   * 免得服务端下发的行囊在本地被当作脏字段丢掉(云游面板要显示"行囊在攒")。 */
+  if (s.travel) {
+    s.travel.since = fin(s.travel.since, Date.now());
+    if (s.travel.mailAt) s.travel.mailAt = fin(s.travel.mailAt, 0);
+    s.travel.bag = Array.isArray(s.travel.bag)
+      ? s.travel.bag.filter(x => x && typeof x.id === "string" && fin(x.q, 0) > 0)
+          .map(x => ({ id: x.id, q: Math.round(fin(x.q, 0)) }))
+      : [];
+    s.travel.bagPages = Math.max(0, Math.round(fin(s.travel.bagPages, 0)));
+  }
   if (!Array.isArray(s.mails)) s.mails = [];
   // 装备归一: 六槽旧档(兵兵护护佩诀)→四部位(兵护佩诀), 多余两件熔回灵石; 无属性旧件按部位补(确定性)
   if (Array.isArray(s.arts)) {
@@ -3733,21 +3745,31 @@ function travelAvatarHTML() {
     const minSec = z ? z.dur[0] : 1800;
     const y = travelYield(awaySec);
     const yPct = Math.round(y * 100);
-    const full = awaySec >= TRAVEL_CAP;
-    /* 收益进度条: 直观展示"何时满载、何时收益趋缓" */
-    const hint = full
-      ? `已游历 ${durTxt(awaySec)}，收益已至上限（48 时辰为限）。`
-      : y >= 0.95
-        ? `已游历 ${durTxt(awaySec)}，收益 ${yPct}%　—　再久所增甚微。`
-        : `已游历 ${durTxt(awaySec)}，收益 ${yPct}%　—　满 ${durTxt(minSec)} 可达 ${Math.round((1 - Math.exp(-minSec / TRAVEL_TAU)) * 100)}%。`;
+    /* v1.8.5 累计行囊: 化身在外超过一个寄信周期就不再寄信, 改把收获攒在"行囊"里,
+     * 随之外时长一起衰减; 召回时随化身一并带回(服务端 settle 权威发放)。 */
+    const cyc = travelCycleSec(z);
+    const trips = Math.floor(awaySec / cyc);
+    const bagY = travelYield(awaySec);
+    const bagHas = awaySec >= cyc;
+    const bagEst = bagHas ? travelRollZonePreview(z, bagY) : null;
+    const bagTxt = bagEst ? bagEst.map(x => `${MATS[x.id] ? MATS[x.id].n : x.id}×${x.q}`).join("、") : "";
+    const nextIn = Math.max(0, cyc - (awaySec - trips * cyc));
+    const tripHint = bagHas
+      ? `行囊已积 ${durTxt(awaySec)} 的收获，随它归来一并交予你。`
+      : `再行 ${durTxt(nextIn)} 满一个寄信周期，化身会寄一回手札。`;
     return `<div style="text-align:center;padding:14px 4px">
         <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${Math.max(0, sinceMin)}分钟</div>
-        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">化身在外游历，<b style="color:#c9b98a">不会自行归来</b>，须由你亲自召回。<br>出去越久，收获越多；满 <b style="color:#c9b98a">${durTxt(minSec)}</b> 后增益渐微，<b style="color:#c9b98a">两日</b> 为限。<br>游历间会不时<b style="color:#c9b98a">寄回手札</b>，捎来的药草与丹方残页都进了丹房行囊。</p>
+        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">化身在外游历，<b style="color:#c9b98a">不会自行归来</b>，须由你亲自召回。<br>出去越久，收获越多；满 <b style="color:#c9b98a">${durTxt(minSec)}</b> 后增益渐微，<b style="color:#c9b98a">两日</b> 为限。<br>在外每满一个周期会托雁足<b style="color:#c9b98a">寄回一封手札</b>；信匣满八封后改为<b style="color:#c9b98a">攒进行囊</b>，召回时一并带回。</p>
         <div style="height:4px;background:rgba(201,168,106,.14);margin:11px 18px 0">
           <i style="display:block;height:100%;width:${Math.min(100, yPct)}%;background:linear-gradient(90deg,rgba(201,168,106,.55),rgba(232,197,107,.95))"></i>
         </div>
-        <p style="color:${y >= 0.95 ? "#8fd8bd" : "#8b94a8"};font-size:11.5px;margin-top:8px;line-height:1.7">${hint}</p>
-        <button class="btn ${y >= 0.6 ? "ready" : ""}" style="margin-top:12px" onclick="recallTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">↩ 召回化身</span></button>
+        <p style="color:${y >= 0.95 ? "#8fd8bd" : "#8b94a8"};font-size:11.5px;margin-top:8px;line-height:1.7">已游历 ${durTxt(awaySec)}，化身收获约 <b>${yPct}%</b>　—　${tripHint}</p>
+        <div style="text-align:left;margin:10px 10px 0;padding:9px 11px;background:rgba(201,168,106,.07);border:1px dashed rgba(201,168,106,.22)">
+          <div style="font-size:11px;color:#8b94a8;letter-spacing:.04em">化身行囊 · ${bagHas ? "在攒" : "尚无"}</div>
+          <div style="font-size:12.5px;color:#c9b98a;margin-top:5px;line-height:1.8">${bagHas ? (bagTxt || "一囊清风") : "在外满一个周期后开始积攒。"}</div>
+          <div style="font-size:10.5px;color:#6d7688;margin-top:5px;line-height:1.7">行囊随在外时长增长，亦随之外时长衰减；<b style="color:#a98a5a">召回时随化身一并带回</b>。</div>
+        </div>
+        <button class="btn ${y >= 0.6 ? "ready" : ""}" style="margin-top:12px" onclick="recallTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">↩ 召回化身${bagHas ? " · 收行囊" : ""}</span></button>
         <div style="font-size:10.5px;color:#6d7688;margin-top:8px">开炉炼丹与服丹，请去左上角 <b style="color:#a98a5a">丹</b> 房。</div></div>`;
   }
   const z = zoneOfBig(bigIdx());
@@ -3838,6 +3860,23 @@ function travelYield(awaySec) {
   const t = Math.max(0, Math.min(+awaySec || 0, TRAVEL_CAP));
   return 1 - Math.exp(-t / TRAVEL_TAU);
 }
+/* v1.8.5: 寄信周期(前后端同式, 见 game-core.js stayTravel) —— 化身在外每满一个周期寄一封信 */
+function travelCycleSec(z) {
+  return Math.max(300, Math.min(1800, Math.round((z && z.dur && z.dur[0] ? z.dur[0] : 1800) / 2)));
+}
+/* v1.8.5: 行囊预估(仅用于面板展示, 真值由服务端召回时权威发放) —— 与 recallRollZone 同式 */
+function travelRollZonePreview(z, yieldK) {
+  const out = [];
+  if (!z) return out;
+  const y = yieldK;
+  for (const m of (z.mats || [])) {
+    if (Math.random() < (m.c || 0)) {
+      const base = (m.a || 1) + Math.floor(Math.random() * Math.max(1, (m.b || 1) - (m.a || 1) + 1));
+      out.push({ id: m.id, q: travelAmount(base, y) });
+    }
+  }
+  return out;
+}
 /* 产出份数: 基础量 × 衰减系数, 至少 1 份(只要出了门就不空手, 仅限已满最低门槛时) */
 function travelAmount(base, yieldK) {
   return Math.max(1, Math.round(base * yieldK));
@@ -3922,8 +3961,10 @@ async function recallViaCloud(tv, l, z) {
     /* 归来叙事(数值已由服务端入账) —— v1.8.2: 不再有"空手而归", 一律按在外时长给产出 */
     const where = l ? l.n : "远方";
     const matTxt = (back.mats || []).map(x => `${MATS[x.id] ? MATS[x.id].n : x.id}×${x.q}`).join("、");
+    const bagCnt = (back.bag || []).map(x => `${MATS[x.id] ? MATS[x.id].n : x.id}×${x.q}`).join("、");
     const awayTxt = durTxt(Math.max(0, Math.floor((Date.now() - (tv.since || Date.now())) / 1000)));
-    pushMsg("main", `你掐诀召化身回山。它在<span class="r">${where}</span>走了一遭（${awayTxt}），带回 <b>${matTxt || "一囊清风"}</b>${back.pages ? " ｜ <b>丹方残页×1</b>" : ""}。`);
+    pushMsg("main", `你掐诀召化身回山。它在<span class="r">${where}</span>走了一遭（${awayTxt}），带回 <b>${matTxt || "一囊清风"}</b>`
+      + (bagCnt ? `，另有行囊中攒下的 <b>${bagCnt}</b>` : "") + `${back.pages ? " ｜ <b>丹方残页×1</b>" : ""}。`);
     pushMsg("avatar", `阿青迎到山门口｜化身自${where}归来`);
     travelBtnLbl(); traceRefresh(); updateHUD(); updateRealmUI(); save();
   } catch (e) {
@@ -4184,10 +4225,14 @@ function presentSettle(r) {
    * 化身在外游历/寄信的事走【鸿雁信匣】与云游面板, 不混进离线收益。 */
   const jumpTxt = (gg.jumps && gg.jumps > 0)
     ? `<br><span style="color:#8fd8bd">修为精进，连破 ${gg.jumps} 个小境界</span>` : "";
+  /* v1.8.5: 化身在外挂机时若信匣已满, 收获会攒进行囊。这里只做一句提示,
+   * 数量细节留在云游面板 —— 离线面板本身仍不含"归来"结算(归来只由手动召回)。 */
+  const bagTip = (state.travel && state.travel.bag && state.travel.bag.length)
+    ? `<br><span style="color:#a98a5a">化身行囊中另攒了些许收获，召回时可一并带回。</span>` : "";
   $("offlineText").innerHTML =
     `你于洞天闭关打坐 <b>${hh ? hh + " 小时 " : ""}${mm ? mm + " 分钟" : "片刻"}</b>。<br>` +
     `主身周天自行运转，修为 +<span class="num"> ${fmt(gg.exp)}</span><br>聚灵阵凝出灵石 +<span class="num"> ${fmt(gg.spirit)}</span>${jumpTxt}` +
-    huntTxtOf(gg.hunt);
+    huntTxtOf(gg.hunt) + bagTip;
   // 离线际遇叙事(每满 1 时辰一段, 至多 3 段; 纯叙事)
   const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
   const bigName = realm().big;
