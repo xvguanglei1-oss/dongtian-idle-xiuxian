@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.55";
+const GAME_VER = "v1.7.56";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3569,7 +3569,7 @@ async function initBg() {
 /* v1.7.20: bg.js 已重写为纯 Canvas 2D(无 WebGL/无 Three), 移动端低端机更稳 */
 async function initBg2D() {
   const canvas = $("bg");
-  const mod = await import("./bg.js?v=1.7.21");
+  const mod = await import("./bg.js?v=1.7.56");
   window.__bgCtrl = await mod.initDeepSpace(canvas);
 }
 /* v1.7.20 PERF-2: 渲染 DPR 自适应 —— 触屏/小内存低端设备收敛到 1.5(帧缓冲像素约 -44%), 桌面保留 2 */

@@ -168,17 +168,15 @@ function initDeepSpace(canvas) {
   let W = 0, H = 0, dpr = 1;
   let stars = [], neb = [], moon = null;
   let t = 0, last = performance.now(), raf = 0, running = true;
+  /* v1.7.56 省电: 背景是极缓动画(雾霭漂移/星点闪烁), 30fps 观感无损 → 主线程占用减半 */
+  let _lastPaint = 0;
+  const FRAME_MS = 33;   // ≈30fps
 
-  /* 低端收敛: 粗指针(触屏)或内存小 → DPR ≤1.5; 桌面高分保留 2 */
+  /* v1.7.56 省电: 背景为柔和雾霭/星点, 降分辨率观感无损 → DPR 统一上限 1.5
+   * (实测 DPR 2→1.5 背景像素量减 44%, 主线程占用显著下降; 细节由立绘/UI 层保留高清) */
   function pickDPR() {
     const raw = window.devicePixelRatio || 1;
-    let low = false;
-    try { low = matchMedia("(pointer:coarse)").matches; } catch (e) {}
-    try {
-      if (navigator.deviceMemory && navigator.deviceMemory <= 4) low = true;
-    } catch (e) {}
-    const cap = low ? 1.5 : 2;
-    return Math.min(raw, cap);
+    return Math.min(raw, 1.5);
   }
 
   function resize() {
@@ -256,6 +254,11 @@ function initDeepSpace(canvas) {
 
   function tick(now) {
     if (!running) return;
+    if (now - _lastPaint < FRAME_MS) {                 // 距上帧不足 33ms → 跳过绘制(仍续帧)
+      raf = requestAnimationFrame(tick);
+      return;
+    }
+    _lastPaint = now;
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     t += dt;
@@ -354,6 +357,7 @@ function initDeepSpace(canvas) {
   }
   function staticFrame() {                    // prefers-reduced-motion: 只画一帧
     running = false; cancelAnimationFrame(raf);
+    _lastPaint = 0;                           // 绕过限帧, 确保这一帧真的画出来
     t = 3.1415; tick(performance.now());
     running = false; cancelAnimationFrame(raf);
   }
