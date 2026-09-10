@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.0";
+const GAME_VER = "v1.9.1";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3727,7 +3727,7 @@ async function boot() {
   let passed = false;
   try { passed = await bootGate(); } catch (e) { passed = false; }
   if (!passed) { splashFail(); return; }   // 连不通 → 停在失败页, 不进入游戏
-  splashFinish();
+  await splashFinish();                    // v1.9.1: 开屏彻底退场后才初始化主页(resolve 与 startGame 同一微任务链, 中间不会被渲染)
   startGame();
 }
 setTimeout(boot, 0);   // 放到下一 tick: 等开屏控制函数(splashStat/Finish/Fail)就位
@@ -5298,17 +5298,23 @@ function hashRand(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { 
     statEl.textContent = txt;
   };
 
+  /* v1.9.1: 返回 Promise, 开屏真正移除后才 resolve。
+   * 之前 boot() 在同一帧就 startGame(), 主页初始化(HUD/背景/飘字/主循环)在开屏
+   * 淡出的半透明窗口里抢跑 —— WebView 上掉帧, 有的帧画开屏、有的帧透出主页,
+   * 看起来就是"快 100% 时主页和开屏反复交替闪烁"。现在等开屏彻底退场再进主页。 */
   window.splashFinish = function () {
-    if (done) return;
+    if (done) return Promise.resolve();
     done = true; clearInterval(timer);
     if (bar) bar.style.width = "100%";
     if (pctEl) pctEl.textContent = "100%";
     if (statEl) statEl.textContent = "即将进入";
-    setTimeout(() => {
-      if (!sp) return;
-      sp.classList.add("sp-out");
-      setTimeout(() => { try { sp.remove(); } catch (e) {} }, 600);
-    }, 240);
+    return new Promise(res => {
+      setTimeout(() => {
+        if (!sp) return res();
+        sp.classList.add("sp-out");
+        setTimeout(() => { try { sp.remove(); } catch (e) {} res(); }, 720);
+      }, 240);
+    });
   };
 
   /* 门禁失败: 停在失败页, 不进入游戏。自动重试已在 bootGate 里退避跑完, 这里给手动重试 */
