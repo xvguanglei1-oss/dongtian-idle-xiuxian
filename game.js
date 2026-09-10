@@ -1230,6 +1230,8 @@ const PAGES_NEED = [0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];   // 各境需集齐页
 
 
 const $ = id => document.getElementById(id);
+// v1.9.4: HTML 转义——所有来自存档/榜单的动态字符串进 innerHTML 前必须过 esc()
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = n => n >= 1e8 ? (n / 1e8).toFixed(2).replace(/\.?0+$/, "") + "亿"
              : n >= 1e4 ? (n / 1e4).toFixed(1).replace(/\.0$/, "") + "万"
              : Math.floor(n).toLocaleString();
@@ -1378,7 +1380,7 @@ async function loadRank(force) {
     if (!j.list || !j.list.length) { body.innerHTML = '<div class="al-empty">仙途初开，尚无修士上榜。</div>'; return; }
     body.innerHTML = j.list.map(x => {
       const isMe = !!x.me;
-      const nm = x.name ? x.name : '<span style="color:#5f6778">未定道号</span>';
+      const nm = x.name ? esc(x.name) : '<span style="color:#5f6778">未定道号</span>';
       return '<div class="rk-row ' + (isMe ? "me " : "") + "n" + x.rank + '">' +
         '<div class="rk-no">' + x.rank + "</div>" +
         '<div class="rk-main"><div class="rk-nm">' + nm + (isMe ? ' <span style="font-size:9px;color:#e8c56b">(我)</span>' : "") + "</div>" +
@@ -3336,11 +3338,11 @@ function storyItemHtml(j) {
   const tm = new Date(j.ts);
   const big = j.big || rec.big || "";
   const kind = j.kind || rec.kind || "际遇";
-  return `<div class="j-card k-${kind}">` +
-    `<div class="j-head"><span class="j-big">${big}</span>` +
-    `<span class="j-kind k-${kind}">${kind}</span>` +
+  return `<div class="j-card k-${esc(kind)}">` +
+    `<div class="j-head"><span class="j-big">${esc(big)}</span>` +
+    `<span class="j-kind k-${esc(kind)}">${esc(kind)}</span>` +
     `<span class="j-time">${pad(tm.getMonth() + 1)}-${pad(tm.getDate())} ${pad(tm.getHours())}:${pad(tm.getMinutes())}</span></div>` +
-    `<h5>${rec.title || j.title || "仙途拾遗"}</h5><p>${rec.text || j.text || ""}</p></div>`;
+    `<h5>${esc(rec.title || j.title || "仙途拾遗")}</h5><p>${esc(rec.text || j.text || "")}</p></div>`;
 }
 function storyLoadMore(reset) {
   const body = $("storyBody");
