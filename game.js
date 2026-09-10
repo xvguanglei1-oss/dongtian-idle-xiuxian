@@ -3792,7 +3792,7 @@ function travelAvatarHTML() {
       ? `每 <b>30 分钟</b> 一封（前八封）`
       : `每 <b>2 小时</b> 一封（第八封之后）`;
     const nextTxt = capped
-      ? `<span style="color:#8fd8bd">已在外满两日，信不再增；上线即归。</span>`
+      ? `<span style="color:#8fd8bd">已在外满两日，信不再增，化身就此回山。</span>`
       : nextIn == null
         ? `<span style="color:#8fd8bd">八封已足，上线即可收化身回山。</span>`
         : `下一封还需 <b style="color:#c9b98a">${durTxt(nextIn)}</b>`;
@@ -3811,7 +3811,7 @@ function travelAvatarHTML() {
         : "";
     return `<div style="text-align:center;padding:14px 4px">
         <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${durTxt(awaySec)}</div>
-        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">化身在外游历，${pace}。已寄回 <b style="color:#c9b98a">${sent}</b> 封手札。<br>满 <b style="color:#c9b98a">八封</b>（四个时辰）化身便自行回山，<b style="color:#c9b98a">不必也不必能召回</b>——它在外的所得，全在信里。</p>
+        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">化身在外游历，${pace}。已寄回 <b style="color:#c9b98a">${sent}</b> 封手札。<br>满 <b style="color:#c9b98a">八封</b>（四个时辰）化身便自行回山，<b style="color:#c9b98a">无从召回</b>——它在外的所得，全在信里。</p>
         <div style="height:4px;background:rgba(201,168,106,.14);margin:11px 18px 0">
           <i style="display:block;height:100%;width:${Math.min(100, progPct)}%;background:linear-gradient(90deg,rgba(201,168,106,.55),rgba(232,197,107,.95))"></i>
         </div>
