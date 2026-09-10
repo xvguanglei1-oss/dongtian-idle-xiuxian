@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.64";
+const GAME_VER = "v1.7.65";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1579,7 +1579,10 @@ function cloudInit() {
         !e.target.closest("#cloudPanel") && !e.target.closest("#cloudChip")) p.classList.remove("show");
   });
   cldUI("sync");
-  addEventListener("online", () => { if (!cld.ready) cldPull(); });   // 断网恢复后自动补同步
+  addEventListener("online", () => {                                  // 断网恢复后自动补同步
+    if (!cld.ready) cldPull();
+    if (state && state._awayPending) flushAwayPending();               // v1.7.65: 补算挂起的离线收益
+  });
   bootCloud();           // 首次: 先同步云端, 再统一结算一次离线收益
   /* v1.7.63 兜底: 云端迟迟不回(弱网/超时)也要能接管"回到前台补结算", 不能一直不武装 */
   setTimeout(() => { _awayArmed = true; }, 10000);
@@ -1603,6 +1606,9 @@ async function bootCloud() {
   if (sr && sr.settled) presentSettle(sr);
   else if (!sr) applyOffline();
   cloudFlush();   // v1.5.1: 启动结算后尽快把建档/离线收益上云
+  /* v1.7.65: 冷启动这一次已把整个离线窗口结清(云端成功→cloudSettle 内已清; 云端失败→applyOffline 本地兜底),
+     所以上次遗留的欠账在此一并销掉, 免得联网后又被补算一次(重复发钱)。 */
+  clearAwayPending();
   updateRealmUI(); updateHUD(); updateArts(); realmPlot();
   _awayArmed = true;   // v1.7.63: 启动结算已完成, 之后才允许 settleAway 接管
 }
@@ -3475,12 +3481,15 @@ function autoAdvanceSegs() {
  *       而主循环的 dt 被夹在 0.1s —— 这段离开时间原本是白丢的。
  * 做法(业界通行: 切后台存时间戳 → 回前台算差值补发):
  *   < AWAY_SILENT(30s)  静默补, 按在线速率, 不弹面板也不惊动云端(玩家只是切出去看了一眼)
- *   ≥ AWAY_SILENT       走完整离线结算(与冷启动同一套逻辑), 弹离线面板 */
+ *   ≥ AWAY_SILENT       交给服务端权威结算(服务器时间), 弹离线面板
+ * v1.7.65 改: ≥30s 遇到断网时不再本地兜底, 改为记账等联网 —— 本地兜底用设备时钟, 不可信,
+ *   会留下"改时钟刷收益"的口子。联网后带 end(回到前台时刻)请服务端按指定区间补算。 */
 const AWAY_SILENT = 30;
 let _awayArmed = false;     // 启动结算跑完前不接管, 免得和 bootCloud 重复结算
 
 function settleAway() {
   if (!state || !_awayArmed) return;
+  if (state._awayPending) { flushAwayPending(); return; }   // v1.7.65: 有欠账先补, 本次不另起一笔
   const now = Date.now();
   const base = Math.max(state.lastTs || 0, state._settledTs || 0);
   let away = (now - base) / 1000;
@@ -3505,20 +3514,19 @@ function settleAway() {
    * 所以往回改时钟刷不动(实测: 谎报 30 天前, 服务端给 0 秒)。
    * 本地 applyOffline 用的是设备时钟, 不可信, 只作真断网时的兜底。 */
   try { console.log(`[away] 离开 ${Math.round(away / 60)} 分钟, 走云端结算`); } catch (e) {}
-  settleAwayCloud(base);
+  settleAwayCloud(base, now);
 }
 
-/* 断网兜底上限: 本地时钟不可信, 兜底只给一个保守值。
- * 想更严就把这里改小(甚至改成 0 = 断网不补, 等联网由服务端结算)。 */
-const AWAY_FALLBACK_CAP = 2 * 3600;
-
-async function settleAwayCloud(base) {
+/* v1.7.65 断网不再本地兜底:
+ * 本地兜底用的是设备时钟, 不可信 —— 既留下"改时钟就能刷收益"的口子, 也和服务端已有的防篡改锚打架。
+ * 改成「记账等联网」: 把离开区间存下来, 联网后由服务端按指定区间(带 end)权威结算。 */
+async function settleAwayCloud(base, endTs) {
   let r = null;
-  try { r = await cloudSettle(base); } catch (e) { r = null; }
+  try { r = await cloudSettle(base, endTs); } catch (e) { r = null; }
   if (!r) {
     /* 第一次没通(弱网常见) → 再试一次, 给个短窗口 */
     try { await new Promise(s => setTimeout(s, 2500)); } catch (e) {}
-    try { r = await cloudSettle(base); } catch (e) { r = null; }
+    try { r = await cloudSettle(base, endTs); } catch (e) { r = null; }
   }
   if (r) {
     /* 服务端有应答就以它为准: settled=true → 已入账并采纳; false → 服务端认为无需结算 */
@@ -3526,10 +3534,36 @@ async function settleAwayCloud(base) {
     else { state._settledTs = Date.now(); state.lastTs = Date.now(); save(); }
     return;
   }
-  /* 真断网: 本地兜底, 封顶 AWAY_FALLBACK_CAP */
-  try { console.log(`[away] 云端不可达, 本地兜底(封顶 ${AWAY_FALLBACK_CAP / 3600}h)`); } catch (e) {}
-  applyOffline(base, AWAY_FALLBACK_CAP);
-  cloudFlush();
+  /* 真断网: 记账等联网补算, 不本地发钱 */
+  try { console.log(`[away] 云端不可达 → 记账待补 (离开 ${Math.round((endTs - base) / 60000)} 分钟)`); } catch (e) {}
+  markAwayPending(base, endTs);
+}
+
+/* ---- v1.7.65 离线欠账: 断网时挂起, 联网后由服务端按指定区间补算 ---- */
+function markAwayPending(base, endTs) {
+  const prev = state._awayPending;
+  state._awayPending = {
+    base: (prev && prev.base) || base || 0,      // 首次欠账的基准(服务端另有自己的锚, 此值仅兜底)
+    end: endTs || Date.now(),                    // 区间终点 = 回到前台的时刻
+    ts: Date.now(),
+  };
+  state.lastTs = Date.now(); state._settledTs = Date.now();   // 本地推进, 免得主循环重复算这一段
+  save();
+  pushMsg("main", `<span class="y">离线收益待结算</span>：当前网络不可用，联网后会自动到账。`);
+}
+function clearAwayPending() {
+  if (state && state._awayPending) { state._awayPending = null; save(); }
+}
+let _awayFlushBusy = false;
+async function flushAwayPending() {
+  const p = state && state._awayPending;
+  if (!p || _awayFlushBusy) return;
+  try { if (navigator.onLine === false) return; } catch (e) {}
+  _awayFlushBusy = true;
+  try {
+    const r = await cloudSettle(p.base, p.end);   // 成功路径内部会 clearAwayPending()
+    if (r && r.settled) presentSettle(r);
+  } catch (e) {} finally { _awayFlushBusy = false; }
 }
 
 function applyOffline(baseOverride, capOverride) {
@@ -4016,6 +4050,7 @@ function cloudSnap(src) {
   out.journal = (s.journal || []).filter(j => !(j && !j.sid && j.kind === "游历"));
   /* v1.7.26: 未定道号(_named=0)不上传名字与本地临时名 → 服务器/风云榜只见定名者 */
   if (!out._named) { delete out.name; delete out._pn; }
+  delete out._awayPending;    // v1.7.65: 纯客户端欠账标记, 不上云(免得跨设备/换档带出脏数据)
   return out;
 }
 /* ==================== v0.8.1 在线寄包: 化身不归, 周期寄回手札 ==================== */
@@ -4079,7 +4114,7 @@ async function stayMailCheck() {
   } catch (e) { clearTimeout(tm); }
 }
 /* ==================== v0.8.0 丹方残页(Cloud Settle) 辅助 ==================== */
-async function cloudSettle(baseOverride) {
+async function cloudSettle(baseOverride, endOverride) {
   if (!window.fetch || !cld.id) return null;
   cldUI("sync");
   // 上传“原样快照”，绝不刷新 state.lastTs —— 后端才能看到真实离线区间
@@ -4094,10 +4129,15 @@ async function cloudSettle(baseOverride) {
     : Math.max(state._lastTs0 || 0, state._settledTs || 0);
   snap.lastTs = b0 || snap.lastTs || 0;
   snap._settledAt = state._settledTs || 0;
+  /* v1.7.65 指定区间结算: end = 离线区间终点(回到前台的时刻)。
+   * 服务端会把它夹在 [anchor, now] 内 —— 只能提前、不能延后, 所以刷不动收益。
+   * 断网补算时必须带上它: 否则服务端按"联网那一刻"结算, 会把回来之后在线玩的时间也算成离线, 重复发钱。 */
+  const endQ = (typeof endOverride === "number" && endOverride > 0)
+    ? "&end=" + Math.floor(endOverride) : "";
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), 8000);
   try {
-    const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&settle=1", {
+    const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&settle=1" + endQ, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ __z: zPack(snap) }),
@@ -4110,6 +4150,7 @@ async function cloudSettle(baseOverride) {
       const j0 = zUnpack(j.data);
       if (!adoptKeep(j0)) return null;
       state._lastTs0 = Date.now(); state._settledTs = Date.now();   // 云端已结算 → 基准推进, 防重复领取
+      clearAwayPending();                                           // v1.7.65: 服务端已结清 → 欠账清零
       mailDot();
       state._cloudTs = j.ts || Date.now();
       cld.ready = true; cld.lastOkTs = Date.now(); cld.lastOkLocal = state.lastTs;
