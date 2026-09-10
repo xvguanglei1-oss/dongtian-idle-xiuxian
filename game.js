@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.45";
+const GAME_VER = "v1.7.46";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1638,12 +1638,16 @@ function spawnFloat(el, txt, neg) {
   setTimeout(() => s.remove(), 950);
 }
 function pulseChip(el) { if (!el) return; el.classList.remove("pulse"); void el.offsetWidth; el.classList.add("pulse"); }
+/* v1.7.46 进度写入按钮墨形: SVG rect 宽 0~200 即 0~100%(clipPath 复用墨形路径) */
+function setProg(id, pct) {
+  const el = document.getElementById(id); if (!el) return;
+  el.setAttribute("width", (Math.max(0, Math.min(1, pct || 0)) * 200).toFixed(1));
+}
 function updateHUD() {
   const r = realm();
-  $("expText").textContent = fmt(_dsp.exp);
-  $("expNeed").textContent = r.need === Infinity ? "∞" : fmt(r.need);
-  const pct = Math.min(100, _dsp.exp / r.need * 100);
-  $("expFill").style.width = pct + "%";
+  /* 聚灵阵: 灵石 / 下一级所需(满级满格); 突破: 修为 / 所需(need=∞ 视为满格) */
+  setProg("arrFill", state.arrayLv >= ARRAY_MAX_LV ? 1 : (arrayCostNow() > 0 ? state.spirit / arrayCostNow() : 0));
+  setProg("brkFill", (r.need === Infinity || !r.need) ? 1 : state.exp / r.need);   // 用真实修为(非缓动值), 进度与"能否渡劫"严格一致
   $("spirit").textContent = fmt(_dsp.spirit);
   $("rateText").textContent = fmt(rateNow());
   $("arrayLv").textContent = state.arrayLv;
@@ -1668,7 +1672,7 @@ function updateHUD() {
   else if (dS < -thr) { spawnFloat($("spirit").parentElement, fmt(dS), true); }
   _floatPrev.spirit = state.spirit;
   const dE = state.exp - _floatPrev.exp;
-  if (dE > thr) spawnFloat($("expWrap"), "+" + fmt(dE));
+  if (dE > thr) spawnFloat($("btnBreak"), "+" + fmt(dE));   // v1.7.46: 进度条移除, 修为飘字改从突破按钮升起
   _floatPrev.exp = state.exp;
   refreshGlow(can);                       // v1.7.31: 可行动入口文字闪烁提醒(突破/聚灵阵/云游/丹房)
 }

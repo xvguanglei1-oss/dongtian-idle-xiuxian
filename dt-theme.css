@@ -92,12 +92,6 @@
     background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 40%22 preserveAspectRatio=%22none%22><path d=%22M12 8 C42 -2 88 16 138 2 C172 -4 198 6 200 18 C202 30 188 38 174 36 C136 44 88 30 48 38 C18 40 2 36 0 24 C-2 14 6 8 12 8 Z%22 fill=%22rgba(12,18,34,.9)%22 stroke=%22rgba(201,168,106,.28)%22 stroke-width=%221.2%22 vector-effect=%22non-scaling-stroke%22/></svg>');
     background-size:100% 100%;background-repeat:no-repeat}
   .spirit.cloud #cloudChip.dot{width:7px;height:7px;border-radius:50%;background:#7a8694;flex:none}
-  /* 进度条：灵气暖金 + 墨形轨道（不再是胶囊矩形） */
-  .exp-track{position:relative;height:18px;border:0;outline:0;overflow:hidden;
-    background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 20%22 preserveAspectRatio=%22none%22><path d=%22M10 4 C50 -2 90 12 130 2 C170 -2 198 4 196 12 C198 18 188 18 178 14 C140 16 100 18 60 16 C30 18 12 16 4 14 C-2 10 4 6 10 4 Z%22 fill=%22rgba(10,14,28,.92)%22 stroke=%22rgba(201,168,106,.28)%22 stroke-width=%221.1%22 vector-effect=%22non-scaling-stroke%22/></svg>');
-    background-size:100% 100%;background-repeat:no-repeat}
-  .exp-fill{background:linear-gradient(90deg,#2c7a52,#52b980 55%,#9fe3b4);box-shadow:0 0 16px rgba(110,220,160,.5)}   /* v1.7.44: 填充条粗块改玉青绿(金线细可留, 粗即屎黄) */
-  .exp-labels b{color:#d4b06a}
   /* 卡片：宣纸晕染感 + 墨线双框 */
   .card{position:relative;padding:26px 24px;text-align:center;
     background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 130%22 preserveAspectRatio=%22none%22><path d=%22M16 8 C50 0 92 16 132 4 C170 -2 192 12 198 26 C200 46 188 70 196 88 C198 108 184 124 166 126 C140 132 108 122 80 126 C50 130 24 122 10 118 C0 102 -2 80 2 60 C4 38 -4 20 16 8 Z%22 fill=%22rgba(15,20,34,.94)%22 stroke=%22rgba(201,168,106,.32)%22 stroke-width=%221.4%22 vector-effect=%22non-scaling-stroke%22/></svg>');
