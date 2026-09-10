@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.8.3";
+const GAME_VER = "v1.8.4";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3949,9 +3949,11 @@ function consumePill(id) {
   const now = Date.now(); const e = rp.eff;
   state.pills[id]--;
   if (state.pills[id] <= 0) delete state.pills[id];
-  if (e.k === "buff") { state.buffs.push({ mult: e.mult, until: now + e.dur * 1000 }); pushMsg("main", `药力化开，周天运转如飞`); }
+  /* v1.8.4: buff 记 start —— 服务端离线结算按"有效时段占区间比例"加权,
+     缺 start 会被当成覆盖整个离线区间, 把短时丹药放大到整段。 */
+  if (e.k === "buff") { state.buffs.push({ mult: e.mult, start: now, until: now + e.dur * 1000 }); pushMsg("main", `药力化开，周天运转如飞`); }
   else if (e.k === "inst") { const gg = rateNow() * e.sec; state.exp += gg; pushMsg("main", `药力化开，修为<span class="g">+${fmt(gg)}</span>`); }
-  else if (e.k === "grand") { const gg = rateNow() * e.sec; state.exp += gg; state.buffs.push({ mult: e.mult, until: now + e.dur * 1000 }); pushMsg("main", `感悟天劫真意，修为<span class="g">+${fmt(gg)}</span>，道韵萦绕`); }
+  else if (e.k === "grand") { const gg = rateNow() * e.sec; state.exp += gg; state.buffs.push({ mult: e.mult, start: now, until: now + e.dur * 1000 }); pushMsg("main", `感悟天劫真意，修为<span class="g">+${fmt(gg)}</span>，道韵萦绕`); }
   else if (e.k === "offline") { state.offlineBoostUntil = Math.max(state.offlineBoostUntil || 0, now + e.dur * 1000); pushMsg("main", "洗髓伐脉，此后离线游历更有所得"); }
   updateHUD(); save(); cloudSoon(); refreshOpenPanel(); renderPillHints();
 }
@@ -4359,6 +4361,22 @@ function renderMailBox() {
 }
 /* v1.8.2 一键收取: 把信匣内全部信件一次入账。
  * 设计: 复用单封的入账逻辑, 汇总成一条消息(不敢信匣轰炸聊天窗), 末尾一次性落盘。 */
+/* v1.8.4 收取信件的服务端确认: 把"这封信已被收"同步给服务端。
+ * 不这么做的话, 下一次 settle 会拿服务端旧档的信匣去合并, 玩家收了信还会被"退回" → 重复收取。
+ * claim 成功则由服务端落档(信已删); 失败(断网)只标脏, 下次心跳再补。 */
+function mailClaim(idOrAll) {
+  if (!window.fetch || !cld.id || !cld.ready) { cloudSoon(); return; }
+  fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&claim=" + encodeURIComponent(idOrAll), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ __z: zPack(cloudSnap(state)) }),
+  }).then(r => (r.ok ? r.json() : null)).then(j => {
+    if (j && j.ok && j.data) {
+      const c0 = zUnpack(j.data);
+      if (c0 && adoptKeep(c0)) { mailDot(); updateHUD(); }
+    } else { cloudSoon(); }
+  }).catch(() => { cloudSoon(); });
+}
 function collectAllMail() {
   const ml = state.mails || [];
   if (!ml.length) return;
@@ -4382,7 +4400,7 @@ function collectAllMail() {
     + (pages ? `，另得 <b>丹方残页×${pages}</b>` : "") + "。");
   pushMsg("avatar", `展信收取 · 共 ${n} 封`);
   renderMailBox(); mailDot(); updateHUD();
-  save(); cloudSoon();
+  save(); mailClaim("all");            // v1.8.4: 告知服务端清空信匣, 防重复收取
 }
 function collectMail(id) {
   const ml = state.mails || [];
@@ -4406,7 +4424,7 @@ function collectMail(id) {
   pushMsg("main", "你拆开" + where + "的来信，" + gotTxt + "。");
   pushMsg("avatar", "展信收取 · 化身自" + where + "寄回");
   renderMailBox(); mailDot(); updateHUD();
-  save(); cloudSoon();
+  save(); mailClaim(m.id);             // v1.8.4: 告知服务端删掉这封, 防重复收取
 }
 
 
