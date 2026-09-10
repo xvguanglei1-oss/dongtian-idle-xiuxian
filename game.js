@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.8.2";
+const GAME_VER = "v1.8.3";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3742,7 +3742,7 @@ function travelAvatarHTML() {
         : `已游历 ${durTxt(awaySec)}，收益 ${yPct}%　—　满 ${durTxt(minSec)} 可达 ${Math.round((1 - Math.exp(-minSec / TRAVEL_TAU)) * 100)}%。`;
     return `<div style="text-align:center;padding:14px 4px">
         <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${Math.max(0, sinceMin)}分钟</div>
-        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">化身在外游历，<b style="color:#c9b98a">可随时召回</b>。<br>出去越久，收获越多；满 <b style="color:#c9b98a">${durTxt(minSec)}</b> 后增益渐微，<b style="color:#c9b98a">两日</b> 为限。<br>游历间会不时<b style="color:#c9b98a">寄回手札</b>，捎来的药草与丹方残页都进了丹房行囊。</p>
+        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">化身在外游历，<b style="color:#c9b98a">不会自行归来</b>，须由你亲自召回。<br>出去越久，收获越多；满 <b style="color:#c9b98a">${durTxt(minSec)}</b> 后增益渐微，<b style="color:#c9b98a">两日</b> 为限。<br>游历间会不时<b style="color:#c9b98a">寄回手札</b>，捎来的药草与丹方残页都进了丹房行囊。</p>
         <div style="height:4px;background:rgba(201,168,106,.14);margin:11px 18px 0">
           <i style="display:block;height:100%;width:${Math.min(100, yPct)}%;background:linear-gradient(90deg,rgba(201,168,106,.55),rgba(232,197,107,.95))"></i>
         </div>
@@ -3754,7 +3754,7 @@ function travelAvatarHTML() {
   const placeNames = z.locs.map(x => x.n).join("、");
   return `<div style="padding:10px 4px 14px;text-align:center;border-bottom:1px dashed rgba(201,168,106,.16)">
       <div style="font-family:var(--font-brush);font-size:16px;color:#d8b06a;letter-spacing:.06em">${z.name}</div>
-      <p style="color:#8b94a8;font-size:11.5px;margin-top:6px;line-height:1.9">化身会顺着自己的心意，在 ${placeNames} 一带游历。<br>无需盘缠，<b style="color:#a98a5a">中途也可召回</b>；在外约 <b style="color:#a98a5a">${durTxt(z.dur[0])}</b> 收获即丰，此后增益渐微（两日为限）。</p>
+      <p style="color:#8b94a8;font-size:11.5px;margin-top:6px;line-height:1.9">化身会顺着自己的心意，在 ${placeNames} 一带游历。<br>无需盘缠，<b style="color:#a98a5a">不会自行归来</b>，须由你召回；在外约 <b style="color:#a98a5a">${durTxt(z.dur[0])}</b> 收获即丰，此后增益渐微（两日为限）。</p>
       <button class="btn" style="margin-top:10px" onclick="startTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">遣化身出门</span></button>
     </div>
     <div style="font-size:10.5px;color:#6d7688;text-align:center;padding:10px 4px;line-height:1.8">拾得的药草与丹方残页会进<b style="color:#a98a5a">丹房</b>行囊，随时可开炉炼丹。<br>化身在外时会托<b style="color:#a98a5a">鸿雁</b>寄回手札，记得去右上角收取。</div>`;
@@ -3811,12 +3811,11 @@ function startTravel() {
   closeTravel();
 }
 /* ==================== v1.8.1 召回化身 ====================
- * 需求: 以前"人在外头唤不回", 现在随时可召回, 按已游历时长结算。
- * 分工(与服务端 game-core v1.8.1 同源):
+ * 需求: 云游只由玩家亲自召回, 不会自行归来。
+ * 分工(与服务端 game-core v1.8.3 同源):
  *   · 召回 = 玩家显式动作, 优先级高于"抖动保护", 服务端立即判归来。
- *   · 已游历 ≥ 该地界最短时长 dur[0] → 给产出(材料/残页)。
- *   · 不足最短时长 → 空手而归(匆匆折返), 不给产出。
- *   · 未召回且未满时长 → 服务端原样保留 travel, 继续在外游历。
+ *   · 一律给产出: 按已游历时长 travelYield 折算(材料/残页), 不设"空手而归"。
+ *   · 未召回 → 服务端原样保留 travel, 化身继续在外游历(上线/离线/待满时长都不收回)。
  * 结算走服务端权威账本(core.settle + ?recall=1); 断网时服务端不可达,
  * 则退化为本地结算 —— 保证玩法在任何网络下都不卡死。
  */
@@ -3864,14 +3863,13 @@ function recallTravel() {
   const l = locById(tv.loc);
   const z = zoneOfLoc(tv.loc);
   const awaySec = Math.max(0, Math.floor((srvNow() - tv.since) / 1000));
-  /* v1.8.2: 不再有"空手而归"。只要出过门(≥1 分钟)就按 travelYield 给保底产出,
-   * 拿多拿少看在外多久。z.dur[0] 仅用于文案提示"满载所需时长"。 */
-  const enough = !!(z && awaySec >= z.dur[0]);
+  /* v1.8.3: 召回是唯一的归来途径; 一律按 travelYield 给产出, 拿多拿少看在外多久。
+   * z.dur[0] 仅用于文案提示"满载所需时长"。 */
   /* v1.8.1: 云端可用时走服务端权威结算(推荐路径) —— 不本地清 travel,
    * 由 settle 的归来事件清, 保证"账本只有一份"。断网/未就绪才本地兜底。 */
   if (cld.ready && window.fetch) {
     pushMsg("main", `你掐诀召回化身……`);
-    recallViaCloud(tv, l, z, enough);
+    recallViaCloud(tv, l, z);
     closeTravel();
     return;
   }
@@ -3894,7 +3892,7 @@ function recallTravel() {
   closeTravel();
 }
 /* 召回 · 云端权威结算: PUT ?settle=1&recall=1, 服务端立即判归来并回传新账本 */
-async function recallViaCloud(tv, l, z, enough) {
+async function recallViaCloud(tv, l, z) {
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), 8000);
   try {
@@ -4180,39 +4178,14 @@ function presentSettle(r) {
   if (!gg || !gg.settled) return;
   const dt = gg.dt || 0;
   const hh = Math.floor(dt / 3600), mm = Math.floor((dt % 3600) / 60);
-  let retTxt = "";
-  // 化身归来叙事(数值已由后端入账; 文案与见闻在本地补全)
-  if (gg.travel) {
-    const tv = gg.travel;
-    const loc = locById(tv.loc);
-    const matTxt = (tv.mats || []).map(x => `${MATS[x.id].n}×${x.q}`).join("、")
-      + (tv.pages ? " ｜ <b>丹方残页×1</b>" : "");
-    const taleLines = [];
-    if (loc) {
-      taleLines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
-      if (dt > 7200 && loc.tale.length > 1) {
-        taleLines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
-      }
-      /* v1.8.2: 不再有 early(空手)概念 —— 一律按在外时长给产出, 只区分"满载"与否 */
-      const awayH = Math.round((tv.away || 0) / 3600 * 10) / 10;
-      retTxt = `化身自<span class="num">${loc.n}</span>归来，带回 <b>${matTxt || "一囊清风"}</b>。阿青绕着你转了三圈，又嗅了嗅化身衣摆，才心满意足地回去守门。`;
-      retTxt += " 见闻：" + taleLines.join("｜");
-      if (taleLines.length) {
-        addJournal({ key: "tr-" + Date.now(), big: realm().big, kind: "游历",
-          title: "云游·" + loc.n, text: taleLines.join(" ") });
-      }
-    } else {
-      retTxt = matTxt ? `化身归来，带回 <b>${matTxt}</b>。` : "";
-    }
-    pushMsg("avatar", `阿青迎到山门口｜化身自${loc ? loc.n : "远方"}归来`);
-  }
+  /* v1.8.3: 云游永不自动归来 —— 只有玩家手动召回才结算。故离线面板里不再有「化身归来」一段,
+   * 化身在外游历/寄信的事走【鸿雁信匣】与云游面板, 不混进离线收益。 */
   const jumpTxt = (gg.jumps && gg.jumps > 0)
     ? `<br><span style="color:#8fd8bd">修为精进，连破 ${gg.jumps} 个小境界</span>` : "";
   $("offlineText").innerHTML =
     `你于洞天闭关打坐 <b>${hh ? hh + " 小时 " : ""}${mm ? mm + " 分钟" : "片刻"}</b>。<br>` +
     `主身周天自行运转，修为 +<span class="num"> ${fmt(gg.exp)}</span><br>聚灵阵凝出灵石 +<span class="num"> ${fmt(gg.spirit)}</span>${jumpTxt}` +
-    huntTxtOf(gg.hunt) +
-    (retTxt ? `<br><br>${retTxt}` : "");
+    huntTxtOf(gg.hunt);
   // 离线际遇叙事(每满 1 时辰一段, 至多 3 段; 纯叙事)
   const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
   const bigName = realm().big;
