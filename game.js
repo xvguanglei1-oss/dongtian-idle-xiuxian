@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.2";
+const GAME_VER = "v1.9.3";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -4907,8 +4907,8 @@ function btlWin() {
   /* v1.7.61 黑屏挂机记账: 场次 / 灵石 / 修为 / 掉落 */
   dimNoteWin(g, ge, drName ? { n: drName, q: drQ, qn: drQn, slot: drSlot } : null);
   pushMsg("main", `你击退 <span class="r">${m.n}</span>，<span class="g">+${fmt(g)} 灵石</span>、修为+<span class="g">${fmt(ge)}</span>。`);
-  addJournal({ key: "bt-" + Date.now(), big: realm().big, kind: "纪事", title: "斗法 · 退" + m.n,
-    text: `你于${warZone().name}巡猎，遇 ${m.n} 拦路，施「${(SKILLS[BTL.big] || SKILLS[SKILLS.length - 1])[0]}」「${(SKILLS[BTL.big] || SKILLS[SKILLS.length - 1])[1]}」数合将其击退，捡得灵石 ${fmt(g)}。` });
+  /* v1.9.3: 普通斗法不再入修行录 —— 巡猎每两三秒一场, 实测存档 86% 字节是这类战斗流水;
+   * 演出留在消息栏/巡猎记录/黑屏挂机账里, 修行录只记剧情、里程碑与游历。 */
   warEnd(`妖雾散尽 · 斗法得胜! 灵石 <b>+${fmt(g)}</b>，修为 +<b>${fmt(ge)}</b>`, "win", dropInfo);
   if (dropCard) {                                            // 高品宝卡 + 品光一闪
     const wl = $("warLog"); if (wl) { const d = document.createElement("div"); d.innerHTML = dropCard; wl.appendChild(d); }
@@ -4933,8 +4933,7 @@ function btlLose() {
   dimNoteLose();                     // v1.7.61 黑屏挂机: 败仗也计一场
   warEnd(`你力竭不支，被 ${m.n} 击倒在地 …… 败退 · 回洞天休养`, "lose");
   pushMsg("main", `<span class="r">你不敌 ${m.n}</span>，狼狈遁回洞天。阿青在旁呜咽，叼来药囊替你敷上。`);
-  addJournal({ key: "bt-" + Date.now(), big: realm().big, kind: "纪事", title: "斗法 · 败于" + m.n,
-    text: `你于${warZone().name}巡猎，不敌 ${m.n}，负伤遁回洞天休养。` });
+  /* v1.9.3: 败仗同样不入修行录(理由同上) */
   traceSay(`你不敌 ${m.n}，负伤归府休养`);
   const wait = (BTL && BTL.skip) ? 2400 : 3800;
   setTimeout(() => { if (BTL) { BTL = null; huntNext(); traceRefresh(); save(); cloudSoon(); } }, wait);
