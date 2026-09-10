@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.63";
+const GAME_VER = "v1.7.64";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3500,13 +3500,39 @@ function settleAway() {
     return;
   }
 
-  /* 长时离开: 完整离线结算 —— 与冷启动同一套, 内部会弹离线面板并推进 _settledTs */
-  try { console.log(`[away] 离开 ${Math.round(away / 60)} 分钟, 走离线结算`); } catch (e) {}
-  applyOffline(base);
-  cloudFlush();                               // 把推进后的 lastTs 同步上去, 免得云端重复结算
+  /* 长时离开: 优先交给服务端结算。
+   * 服务端不信任客户端报的 lastTs —— 它会与「自己记录的最后同步时间」取 max,
+   * 所以往回改时钟刷不动(实测: 谎报 30 天前, 服务端给 0 秒)。
+   * 本地 applyOffline 用的是设备时钟, 不可信, 只作真断网时的兜底。 */
+  try { console.log(`[away] 离开 ${Math.round(away / 60)} 分钟, 走云端结算`); } catch (e) {}
+  settleAwayCloud(base);
 }
 
-function applyOffline(baseOverride) {
+/* 断网兜底上限: 本地时钟不可信, 兜底只给一个保守值。
+ * 想更严就把这里改小(甚至改成 0 = 断网不补, 等联网由服务端结算)。 */
+const AWAY_FALLBACK_CAP = 2 * 3600;
+
+async function settleAwayCloud(base) {
+  let r = null;
+  try { r = await cloudSettle(base); } catch (e) { r = null; }
+  if (!r) {
+    /* 第一次没通(弱网常见) → 再试一次, 给个短窗口 */
+    try { await new Promise(s => setTimeout(s, 2500)); } catch (e) {}
+    try { r = await cloudSettle(base); } catch (e) { r = null; }
+  }
+  if (r) {
+    /* 服务端有应答就以它为准: settled=true → 已入账并采纳; false → 服务端认为无需结算 */
+    if (r.settled) { presentSettle(r); }
+    else { state._settledTs = Date.now(); state.lastTs = Date.now(); save(); }
+    return;
+  }
+  /* 真断网: 本地兜底, 封顶 AWAY_FALLBACK_CAP */
+  try { console.log(`[away] 云端不可达, 本地兜底(封顶 ${AWAY_FALLBACK_CAP / 3600}h)`); } catch (e) {}
+  applyOffline(base, AWAY_FALLBACK_CAP);
+  cloudFlush();
+}
+
+function applyOffline(baseOverride, capOverride) {
   const now = Date.now();
   /* v1.7.20 P0-1 时钟加固: 结算基准若明显落在"未来"(本地时钟被回拨过),
      不做倒贴也不重结, 将基准校正回当前并计数取证; 每次离线收益仍受 OFFLINE_CAP 限制。
@@ -3525,7 +3551,7 @@ function applyOffline(baseOverride) {
     : Math.max(state._lastTs0 || state.lastTs || 0, state._settledTs || 0);
   let dt = (now - base) / 1000;
   if (dt < 30) return;
-  dt = Math.min(dt, OFFLINE_CAP);
+  dt = Math.min(dt, capOverride != null ? capOverride : OFFLINE_CAP);
   // 洗髓丹: 12时辰内离线收益+30%
   const offBoost = Date.now() < (state.offlineBoostUntil || 0) ? 1.3 : 1;
   const gainExp = rateNow() * dt * 0.6 * offBoost;
@@ -4053,15 +4079,20 @@ async function stayMailCheck() {
   } catch (e) { clearTimeout(tm); }
 }
 /* ==================== v0.8.0 丹方残页(Cloud Settle) 辅助 ==================== */
-async function cloudSettle() {
+async function cloudSettle(baseOverride) {
   if (!window.fetch || !cld.id) return null;
   cldUI("sync");
   // 上传“原样快照”，绝不刷新 state.lastTs —— 后端才能看到真实离线区间
   let snap = null;
   try { snap = cloudSnap(JSON.parse(JSON.stringify(state))); } catch (e) { return null; }
   /* 上传快照必须以「载入时原始 lastTs」为基准(state.lastTs 已被启动的 save() 刷成现在),
-     后端 settle 取 max(lastTs, _settledAt) 才能算出完整离线区间 */
-  snap.lastTs = Math.max(state._lastTs0 || 0, state._settledTs || 0) || snap.lastTs || 0;
+     后端 settle 取 max(lastTs, _settledAt) 才能算出完整离线区间。
+     v1.7.64: 支持外部传入基准 —— 回前台补结算时, 基准是「离开时刻」。
+     注意: 服务端并不全信这个值, 它会与自己记录的最后同步时间取 max, 所以往回改时钟刷不动。 */
+  const b0 = baseOverride != null
+    ? baseOverride
+    : Math.max(state._lastTs0 || 0, state._settledTs || 0);
+  snap.lastTs = b0 || snap.lastTs || 0;
   snap._settledAt = state._settledTs || 0;
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), 8000);
