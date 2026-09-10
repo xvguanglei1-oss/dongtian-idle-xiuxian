@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.8.1";
+const GAME_VER = "v1.8.2";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -749,7 +749,11 @@ const MATS = {   // 材料库 21 种 —— 12 株主药灵植按大境分阶(0�
   taiqing:  { n: "太清仙泉", t: "仙泉", src: "劫雷古域·雷池" },
 };
 const ZONES = [
-  { big: 0, name: "青牛镇一带", dur: [120, 3600],
+  /* v1.8.2 云游时长收敛(不再按境界指数拉长):
+   *   dur[0] = 「满载时长」该地界约多久能收满一趟; dur[1] 一律 48 小时(与离线收益同上限)。
+   *   凡人 2 分钟 / 炼气 5 分钟 / 筑基 15 分钟 / 结丹及以上 30 分钟。
+   *   实收由 travelYield(在外时长) 的指数曲线决定, 30 分钟≈满载, 此后增益渐微。 */
+  { big: 0, name: "青牛镇一带", dur: [120, 172800],
     mats: [ { id: "huangjing", c: 1.0, a: 1, b: 2 }, { id: "yaodan", c: .16, a: 1, b: 1 } ],
     locs: [
       { id: "b0qnt", n: "青牛镇", d: "山脚市集 · 烟火人间",
@@ -759,7 +763,7 @@ const ZONES = [
       { id: "b0qfc", n: "青枫村", d: "依山小村 · 灵枫成荫",
         tale: [ "村童追着你喊仙人，你从行囊摸出几颗糖丸分他们", "溪边浣衣妇人指了条进山的捷径", "村后灵枫下埋着半坛陈酿，你替主人守了一夜", "帮猎户修好塌了半边的篱笆，他送你一块熏肉" ] },
     ] },
-  { big: 1, name: "镜州地界", dur: [1800, 43200],
+  { big: 1, name: "镜州地界", dur: [300, 172800],
     mats: [ { id: "shexian", c: .92, a: 1, b: 2 }, { id: "huangjing", c: .5, a: 1, b: 2 },
             { id: "lingru", c: .24, a: 1, b: 1 }, { id: "dihuo", c: .14, a: 1, b: 1 },
             { id: "yaodan", c: .22, a: 1, b: 1 } ],
@@ -777,7 +781,7 @@ const ZONES = [
       { id: "b1qys", n: "青阳坊", d: "半山集市 · 以物易物",
         tale: [ "山民以兽骨换盐，你看中一块磨得发亮的骨片", "坊口有个摆摊的盲眼道人，只跟有缘人搭话", "你拿一株路上采的黄精换到半张泛黄药方", "暮色里集市散场，山道上亮起一串灯笼" ] },
     ] },
-  { big: 2, name: "筑基诸海", dur: [7200, 172800],
+  { big: 2, name: "筑基诸海", dur: [900, 172800],
     mats: [ { id: "zihou", c: .92, a: 1, b: 3 }, { id: "shexian", c: .42, a: 1, b: 2 },
             { id: "lingxue", c: .4, a: 1, b: 2 }, { id: "lingru", c: .42, a: 1, b: 2 },
             { id: "dihuo", c: .3, a: 1, b: 1 }, { id: "yaodan", c: .3, a: 1, b: 1 } ],
@@ -791,7 +795,7 @@ const ZONES = [
       { id: "b2yjb", n: "燕家堡", d: "岛主城寨 · 铁血秩序",
         tale: [ "堡门前立着两尊吞海兽像，眼珠是打磨过的妖丹", "堡内不许私斗，伤了人要按岛规断一指", "你替堡中账房誊了一夜海贸册子，得了些酬劳", "离堡那日，海风里飘来堡主千金练剑的破空声" ] },
     ] },
-  { big: 3, name: "极渊之海", dur: [28800, 518400],
+  { big: 3, name: "极渊之海", dur: [1800, 172800],
     mats: [ { id: "xuancan", c: .92, a: 1, b: 3 }, { id: "zihou", c: .3, a: 1, b: 2 },
             { id: "lingxue", c: .5, a: 1, b: 2 }, { id: "lingru", c: .55, a: 1, b: 2 },
             { id: "dihuo", c: .45, a: 1, b: 2 }, { id: "yaodan", c: .45, a: 1, b: 1 } ],
@@ -805,7 +809,7 @@ const ZONES = [
       { id: "b3ymh", n: "幽冥海沟", d: "极深之处 · 灵压如山",
         tale: [ "越往深处，水中灵光越密，像坠入一条光的河", "压力大得连法器都微微变形，你不敢再深", "沟底有东西在缓慢翻动，你当机立断返身", "上浮时遇见一群灯笼鱼，为你照了一路" ] },
     ] },
-  { big: 4, name: "天外诸域", dur: [86400, 1209600],
+  { big: 4, name: "天外诸域", dur: [1800, 172800],
     mats: [ { id: "jiuyou", c: .92, a: 1, b: 3 }, { id: "xuancan", c: .32, a: 1, b: 2 },
             { id: "yaopo", c: .5, a: 1, b: 2 }, { id: "lingru", c: .7, a: 1, b: 2 },
             { id: "dihuo", c: .62, a: 1, b: 2 }, { id: "yaodan", c: .35, a: 1, b: 1 } ],
@@ -817,7 +821,7 @@ const ZONES = [
       { id: "b4ljx", n: "灵界裂隙", d: "两界夹缝 · 罡风如刀",
         tale: [ "裂隙中涌出的灵气浓得像酒，吸一口都醉人", "你看见对面有座比山还高的城，只露出一角", "罡风里裹着异界的沙尘，落在掌心竟自行聚成小塔", "裂隙边缘立着块碑，碑文用的是你从未见过的文字" ] },
     ] },
-  { big: 5, name: "人界之巅", dur: [172800, 2592000],
+  { big: 5, name: "人界之巅", dur: [1800, 172800],
     mats: [ { id: "wenxin", c: .92, a: 1, b: 3 }, { id: "jiuyou", c: .35, a: 1, b: 2 },
             { id: "yaopo", c: .55, a: 1, b: 2 }, { id: "lingru", c: .8, a: 1, b: 2 },
             { id: "dihuo", c: .72, a: 1, b: 2 } ],
@@ -830,7 +834,7 @@ const ZONES = [
 
   { "big": 6,
     "name": "蛮荒古陆一带",
-    "dur": [259200, 4320000],
+    "dur": [1800, 172800],
     mats: [ { id: "longxue", c: .92, a: 1, b: 3 }, { id: "wenxin", c: .32, a: 1, b: 2 },
             { id: "jiaojiao", c: .5, a: 1, b: 2 }, { id: "lingru", c: .82, a: 1, b: 2 },
             { id: "dihuo", c: .75, a: 1, b: 2 }, { id: "yaodan", c: .3, a: 1, b: 1 } ],
@@ -869,7 +873,7 @@ const ZONES = [
   },
   { "big": 7,
     "name": "飞灵圣域一带",
-    "dur": [432000, 8640000],
+    "dur": [1800, 172800],
     mats: [ { id: "qianyu", c: .92, a: 1, b: 3 }, { id: "longxue", c: .32, a: 1, b: 2 },
             { id: "jiaojiao", c: .55, a: 1, b: 2 }, { id: "lingru", c: .85, a: 1, b: 2 },
             { id: "dihuo", c: .78, a: 1, b: 2 } ],
@@ -908,7 +912,7 @@ const ZONES = [
   },
   { "big": 8,
     "name": "镇魔渊一带",
-    "dur": [691200, 17280000],
+    "dur": [1800, 172800],
     mats: [ { id: "duen", c: .92, a: 1, b: 3 }, { id: "qianyu", c: .32, a: 1, b: 2 },
             { id: "mogu", c: .5, a: 1, b: 2 }, { id: "taiqing", c: .42, a: 1, b: 2 },
             { id: "lingru", c: .85, a: 1, b: 2 }, { id: "dihuo", c: .72, a: 1, b: 2 } ],
@@ -947,7 +951,7 @@ const ZONES = [
   },
   { "big": 9,
     "name": "劫雷古域一带",
-    "dur": [1209600, 25920000],
+    "dur": [1800, 172800],
     mats: [ { id: "zilei", c: .92, a: 1, b: 3 }, { id: "duen", c: .35, a: 1, b: 2 },
             { id: "mogu", c: .55, a: 1, b: 2 }, { id: "taiqing", c: .55, a: 1, b: 2 },
             { id: "lingru", c: .85, a: 1, b: 2 }, { id: "dihuo", c: .75, a: 1, b: 2 } ],
@@ -986,7 +990,7 @@ const ZONES = [
   },
   { "big": 10,
     "name": "北寒仙域一带",
-    "dur": [1728000, 43200000],
+    "dur": [1800, 172800],
     mats: [ { id: "hanpo", c: .92, a: 1, b: 3 }, { id: "zilei", c: .32, a: 1, b: 2 },
             { id: "qiongjing", c: .5, a: 1, b: 2 }, { id: "taiqing", c: .78, a: 1, b: 2 },
             { id: "lingru", c: .88, a: 1, b: 2 } ],
@@ -1035,7 +1039,7 @@ const ZONES = [
   },
   { "big": 11,
     "name": "万界天墟一带",
-    "dur": [2592000, 69120000],
+    "dur": [1800, 172800],
     mats: [ { id: "hongmeng", c: .92, a: 1, b: 3 }, { id: "hanpo", c: .35, a: 1, b: 2 },
             { id: "qiongjing", c: .6, a: 1, b: 2 }, { id: "taiqing", c: .92, a: 1, b: 2 },
             { id: "lingru", c: .9, a: 1, b: 2 } ],
@@ -1084,116 +1088,118 @@ const ZONES = [
   }
 ];
 const RECIPES = {   // 丹方 v3 —— 覆盖 12 大境(0凡→11天仙)；材料只用本境可集齐之物；配方 2~4 味、主药+辅材并用
-/* ==================== 残页古方(隐藏丹, h:1; 云游拾残页解锁; 纵向毕业向强力 buff) ==================== */
-  xuanwu: { big: 0, h: 1, n: "玄牝丸", d: "上古残方：一个时辰内修为 +60%",
-            need: { huangjing: 5, yaodan: 1 }, eff: { k: "buff", mult: 1.6, dur: 3600 } },
+/* ==================== 残页古方(隐藏丹, h:1; 云游拾残页解锁; 纵向毕业向强力 buff) ====================
+ * v1.8.2: 砍掉凡尘隐藏丹(玄牝丸) —— 凡人境只停留约 3.6 小时且很快渡入炼气,
+ *         要在此时凑齐 2 页残页极不现实, 等于永久锁死一个丹方。凡尘不再设隐藏丹。 */
   tianyuan: { big: 1, h: 1, n: "天元聚气丹", d: "镜州古丹残篇：两个时辰内修为 +200%",
-            need: { shexian: 5, lingru: 2, yaodan: 2 }, eff: { k: "buff", mult: 3, dur: 7200 } },
+            need: { shexian: 3, lingru: 1, yaodan: 1 }, eff: { k: "buff", mult: 3, dur: 7200 } },
   jiuzhuan: { big: 2, h: 1, n: "九转玉髓丹", d: "乱星海沉船古方：三个时辰内修为 +300%",
-            need: { zihou: 5, lingru: 3, dihuo: 2 }, eff: { k: "buff", mult: 4, dur: 10800 } },
+            need: { zihou: 3, lingru: 2, dihuo: 1 }, eff: { k: "buff", mult: 4, dur: 10800 } },
   taishang: { big: 3, h: 1, n: "太上凝金丹", d: "虚天殿壁刻残方：三个时辰内修为 +400%",
-            need: { xuancan: 5, lingru: 3, yaodan: 3 }, eff: { k: "buff", mult: 5, dur: 10800 } },
+            need: { xuancan: 3, lingru: 2, yaodan: 2 }, eff: { k: "buff", mult: 5, dur: 10800 } },
   jiutian: { big: 4, h: 1, n: "九天婴华丹", d: "灵界裂隙飘来的丹道：四个时辰内修为 +500%",
-            need: { jiuyou: 5, lingru: 4, dihuo: 3 }, eff: { k: "buff", mult: 6, dur: 14400 } },
+            need: { jiuyou: 3, lingru: 3, dihuo: 2 }, eff: { k: "buff", mult: 6, dur: 14400 } },
   hunwu: { big: 5, h: 1, n: "混元无极丹", d: "飞升台前人界第一丹：六个时辰内修为 +700%",
-            need: { wenxin: 5, lingru: 4, dihuo: 3, yaodan: 4 }, eff: { k: "buff", mult: 8, dur: 21600 } },
+            need: { wenxin: 3, lingru: 3, dihuo: 2, yaodan: 3 }, eff: { k: "buff", mult: 8, dur: 21600 } },
   guixu: { big: 6, h: 1, n: "归墟炼神丹", d: "沉灵谷残方：五时辰内修为 +600%",
-            need: { longxue: 5, wenxin: 2, jiaojiao: 2, lingru: 2 }, eff: { k: "buff", mult: 7, dur: 18000 } },
+            need: { longxue: 3, wenxin: 1, jiaojiao: 1, lingru: 1 }, eff: { k: "buff", mult: 7, dur: 18000 } },
   feiling: { big: 7, h: 1, n: "飞灵圣丹", d: "千羽台遗刻古方：六时辰内修为 +700%",
-            need: { qianyu: 5, longxue: 2, jiaojiao: 2, lingru: 2, dihuo: 1 }, eff: { k: "buff", mult: 8, dur: 21600 } },
+            need: { qianyu: 3, longxue: 1, jiaojiao: 1, lingru: 1, dihuo: 1 }, eff: { k: "buff", mult: 8, dur: 21600 } },
   zhenyuan: { big: 8, h: 1, n: "镇元渡厄丹", d: "镇魔碑下镇压的古方：六时辰内修为 +800%",
-            need: { duen: 5, qianyu: 2, mogu: 2, taiqing: 2 }, eff: { k: "buff", mult: 9, dur: 21600 } },
+            need: { duen: 3, qianyu: 1, mogu: 1, taiqing: 1 }, eff: { k: "buff", mult: 9, dur: 21600 } },
   jiulei: { big: 9, h: 1, n: "九转雷纹丹", d: "焦雷原雷击石中藏方：六时辰内修为 +900%",
-            need: { zilei: 5, duen: 2, mogu: 2, taiqing: 2 }, eff: { k: "buff", mult: 10, dur: 21600 } },
+            need: { zilei: 3, duen: 1, mogu: 1, taiqing: 1 }, eff: { k: "buff", mult: 10, dur: 21600 } },
   xiansui: { big: 10, h: 1, n: "太清仙髓丹", d: "北寒仙宫旧档丹方：八时辰内修为 +1100%",
-            need: { hanpo: 5, zilei: 2, qiongjing: 2, taiqing: 2 }, eff: { k: "buff", mult: 12, dur: 28800 } },
+            need: { hanpo: 3, zilei: 1, qiongjing: 1, taiqing: 1 }, eff: { k: "buff", mult: 12, dur: 28800 } },
   wanji: { big: 11, h: 1, n: "万界归元丹", d: "万界天墟尽头的终极丹方：十二时辰内修为 +1400%",
-            need: { hongmeng: 5, hanpo: 2, qiongjing: 2, taiqing: 2 }, eff: { k: "buff", mult: 15, dur: 43200 } },
+            need: { hongmeng: 3, hanpo: 1, qiongjing: 1, taiqing: 1 }, eff: { k: "buff", mult: 15, dur: 43200 } },
 
   /* ---- 凡人(凡草单方，未入丹道) ---- */
   hjing: { big: 0, n: "黄精膏", d: "凡草慢熬，聊胜于无：立时回复约一刻钟修为",
-            need: { huangjing: 3 }, eff: { k: "inst", sec: 900 } },
+            need: { huangjing: 8 }, eff: { k: "inst", sec: 900 } },
   /* ---- 炼气(镜州丹道) ---- */
   buqi:  { big: 1, n: "补气丹", d: "炼气常备：立时回复约半个时辰修为",
-            need: { shexian: 2, huangjing: 1 }, eff: { k: "inst", sec: 1800 } },
+            need: { shexian: 5, huangjing: 3 }, eff: { k: "inst", sec: 1800 } },
   hlong: { big: 1, n: "黄龙丹", d: "药力绵长：一时辰内修为 +50%",
-            need: { shexian: 2, huangjing: 2 }, eff: { k: "buff", mult: 1.5, dur: 3600 } },
+            need: { shexian: 5, huangjing: 5 }, eff: { k: "buff", mult: 1.5, dur: 3600 } },
   jinzui:{ big: 1, n: "金髓丸", d: "冲境烈药：一时辰内修为 +120%",
-            need: { shexian: 2, huangjing: 1, dihuo: 1 }, eff: { k: "buff", mult: 2.2, dur: 3600 } },
+            need: { shexian: 5, huangjing: 3, dihuo: 3 }, eff: { k: "buff", mult: 2.2, dur: 3600 } },
   zhuji: { big: 1, n: "筑基丹", d: "炼气圆满的叩门砖：立获约三时辰修为，此后两时辰修为翻倍",
-            need: { shexian: 4, lingru: 2, yaodan: 2 }, eff: { k: "grand", sec: 10800, mult: 2, dur: 7200 } },
+            need: { shexian: 10, lingru: 5, yaodan: 5 }, eff: { k: "grand", sec: 10800, mult: 2, dur: 7200 } },
   /* ---- 筑基(海外丹道) ---- */
   xisui: { big: 2, n: "洗髓丹", d: "洗髓伐脉：十二时辰内离线收益 +30%",
-            need: { zihou: 2, shexian: 1 }, eff: { k: "offline", dur: 43200, boost: .3 } },
+            need: { zihou: 5, shexian: 3 }, eff: { k: "offline", dur: 43200, boost: .3 } },
   yuqing:{ big: 2, n: "玉清丹", d: "筑基培元：立时回复约两时辰修为",
-            need: { zihou: 2, shexian: 1, lingru: 1 }, eff: { k: "inst", sec: 7200 } },
+            need: { zihou: 5, shexian: 3, lingru: 3 }, eff: { k: "inst", sec: 7200 } },
   jiangchen: { big: 2, n: "降尘丹", d: "筑基圆满感结丹机缘：立获约六时辰修为，此后三时辰修为 +120%",
-            need: { zihou: 4, lingru: 2, dihuo: 1, yaodan: 2 }, eff: { k: "grand", sec: 21600, mult: 2.2, dur: 10800 } },
+            need: { zihou: 10, lingru: 5, dihuo: 3, yaodan: 5 }, eff: { k: "grand", sec: 21600, mult: 2.2, dur: 10800 } },
   /* ---- 结丹(寒域丹道) ---- */
   guyuan:{ big: 3, n: "固元丹", d: "金丹固本：立时回复约两时辰修为",
-            need: { xuancan: 2, zihou: 1, dihuo: 1 }, eff: { k: "inst", sec: 7200 } },
+            need: { xuancan: 5, zihou: 3, dihuo: 3 }, eff: { k: "inst", sec: 7200 } },
   ningyuan: { big: 3, n: "凝元丹", d: "三时辰内修为 +200%，冲击金丹后期",
-            need: { xuancan: 3, lingru: 2, yaodan: 2 }, eff: { k: "buff", mult: 3, dur: 10800 } },
+            need: { xuancan: 8, lingru: 5, yaodan: 5 }, eff: { k: "buff", mult: 3, dur: 10800 } },
   yingbian: { big: 3, n: "婴变丹", d: "结丹圆满窥元婴大道：立获约六时辰修为，此后四时辰修为 +150%",
-            need: { xuancan: 4, dihuo: 2, lingru: 2, yaodan: 3 }, eff: { k: "grand", sec: 21600, mult: 2.5, dur: 14400 } },
+            need: { xuancan: 10, dihuo: 5, lingru: 5, yaodan: 8 }, eff: { k: "grand", sec: 21600, mult: 2.5, dur: 14400 } },
   /* ---- 元婴(幽域丹道) ---- */
   yuying:{ big: 4, n: "育婴丹", d: "滋养元婴：立时回复约四时辰修为",
-            need: { jiuyou: 2, xuancan: 1, lingru: 1 }, eff: { k: "inst", sec: 14400 } },
+            need: { jiuyou: 5, xuancan: 3, lingru: 3 }, eff: { k: "inst", sec: 14400 } },
   yinghua: { big: 4, n: "婴华丹", d: "四时辰内修为 +250%，元婴期冲关利器",
-            need: { jiuyou: 2, xuancan: 2, dihuo: 1 }, eff: { k: "buff", mult: 3.5, dur: 14400 } },
+            need: { jiuyou: 5, xuancan: 5, dihuo: 3 }, eff: { k: "buff", mult: 3.5, dur: 14400 } },
   tongshen: { big: 4, n: "通神丹", d: "元婴圆满感化神天劫：立获约八时辰修为，此后六时辰修为 +200%",
-            need: { jiuyou: 4, dihuo: 2, lingru: 2, yaodan: 3 }, eff: { k: "grand", sec: 28800, mult: 3, dur: 21600 } },
+            need: { jiuyou: 10, dihuo: 5, lingru: 5, yaodan: 8 }, eff: { k: "grand", sec: 28800, mult: 3, dur: 21600 } },
   /* ---- 化神(巅峰丹道，静候飞升) ---- */
   wendao:{ big: 5, n: "问道丹", d: "化神问道：立时回复约四时辰修为",
-            need: { wenxin: 2, jiuyou: 1, lingru: 1 }, eff: { k: "inst", sec: 14400 } },
+            need: { wenxin: 5, jiuyou: 3, lingru: 3 }, eff: { k: "inst", sec: 14400 } },
   hunyuan: { big: 5, n: "混元一气丹", d: "六时辰内修为 +300%，人界绝巅的一口气",
-            need: { wenxin: 3, dihuo: 2, yaodan: 3 }, eff: { k: "buff", mult: 4, dur: 21600 } },
+            need: { wenxin: 8, dihuo: 5, yaodan: 8 }, eff: { k: "buff", mult: 4, dur: 21600 } },
   taiyi: { big: 5, n: "太一虚元丹", d: "化神圆满静候飞升的底蕴：立获约十二时辰修为，此后六时辰修为 +250%",
-            need: { wenxin: 4, lingru: 3, dihuo: 2, yaodan: 4 }, eff: { k: "grand", sec: 43200, mult: 3.5, dur: 21600 } },
+            need: { wenxin: 10, lingru: 8, dihuo: 5, yaodan: 10 }, eff: { k: "grand", sec: 43200, mult: 3.5, dur: 21600 } },
   /* ---- 炼虚(蛮荒丹道) ---- */
   yuxu: { big: 6, n: "元虚丹", d: "炼虚固本：立时回复约五时辰修为",
-            need: { longxue: 2, wenxin: 1, yaodan: 1 }, eff: { k: "inst", sec: 18000 } },
+            need: { longxue: 5, wenxin: 3, yaodan: 3 }, eff: { k: "inst", sec: 18000 } },
   xuling: { big: 6, n: "虚灵丹", d: "三时辰内修为 +200%，稳固虚境",
-            need: { longxue: 3, wenxin: 1, dihuo: 2 }, eff: { k: "buff", mult: 3, dur: 10800 } },
+            need: { longxue: 8, wenxin: 3, dihuo: 5 }, eff: { k: "buff", mult: 3, dur: 10800 } },
   polv: { big: 6, n: "破虚丹", d: "炼虚圆满窥合体：立获约六时辰修为，此后四时辰修为 +150%",
-            need: { longxue: 4, wenxin: 2, jiaojiao: 1, dihuo: 2 }, eff: { k: "grand", sec: 21600, mult: 2.5, dur: 14400 } },
+            need: { longxue: 10, wenxin: 5, jiaojiao: 3, dihuo: 5 }, eff: { k: "grand", sec: 21600, mult: 2.5, dur: 14400 } },
   /* ---- 合体(飞灵丹道) ---- */
   linghe: { big: 7, n: "灵合丹", d: "灵肉相合：立时回复约五时辰修为",
-            need: { qianyu: 2, longxue: 1, lingru: 1 }, eff: { k: "inst", sec: 18000 } },
+            need: { qianyu: 5, longxue: 3, lingru: 3 }, eff: { k: "inst", sec: 18000 } },
   shengyu: { big: 7, n: "圣羽丹", d: "三时辰内修为 +300%，圣域真灵之气",
-            need: { qianyu: 3, longxue: 1, jiaojiao: 1, dihuo: 1 }, eff: { k: "buff", mult: 4, dur: 10800 } },
+            need: { qianyu: 8, longxue: 3, jiaojiao: 3, dihuo: 3 }, eff: { k: "buff", mult: 4, dur: 10800 } },
   hedao: { big: 7, n: "合道丹", d: "合体圆满感大乘道韵：立获约六时辰修为，此后四时辰修为 +200%",
-            need: { qianyu: 4, longxue: 2, jiaojiao: 1, lingru: 2 }, eff: { k: "grand", sec: 21600, mult: 3, dur: 14400 } },
+            need: { qianyu: 10, longxue: 5, jiaojiao: 3, lingru: 5 }, eff: { k: "grand", sec: 21600, mult: 3, dur: 14400 } },
   /* ---- 大乘(镇魔丹道) ---- */
   jingmo: { big: 8, n: "净魔丹", d: "涤荡心魔：立时回复约六时辰修为",
-            need: { duen: 2, qianyu: 1, taiqing: 1 }, eff: { k: "inst", sec: 21600 } },
+            need: { duen: 5, qianyu: 3, taiqing: 3 }, eff: { k: "inst", sec: 21600 } },
   duemo: { big: 8, n: "渡厄丹", d: "三时辰内修为 +350%，厄难不侵",
-            need: { duen: 3, qianyu: 1, mogu: 1, lingru: 1 }, eff: { k: "buff", mult: 4.5, dur: 10800 } },
+            need: { duen: 8, qianyu: 3, mogu: 3, lingru: 3 }, eff: { k: "buff", mult: 4.5, dur: 10800 } },
   zhenmo: { big: 8, n: "镇魔丹", d: "大乘圆满镇压魔渊：立获约八时辰修为，此后五时辰修为 +250%",
-            need: { duen: 4, qianyu: 2, mogu: 1, taiqing: 1, dihuo: 1 }, eff: { k: "grand", sec: 28800, mult: 3.5, dur: 18000 } },
+            need: { duen: 10, qianyu: 5, mogu: 3, taiqing: 3, dihuo: 3 }, eff: { k: "grand", sec: 28800, mult: 3.5, dur: 18000 } },
   /* ---- 渡劫(劫雷丹道) ---- */
   yinlei: { big: 9, n: "引雷丹", d: "引雷淬体：立时回复约六时辰修为",
-            need: { zilei: 2, duen: 1, taiqing: 1 }, eff: { k: "inst", sec: 21600 } },
+            need: { zilei: 5, duen: 3, taiqing: 3 }, eff: { k: "inst", sec: 21600 } },
   cuilei: { big: 9, n: "淬雷丹", d: "三时辰内修为 +400%，紫霄淬体",
-            need: { zilei: 3, duen: 1, mogu: 1, lingru: 1 }, eff: { k: "buff", mult: 5, dur: 10800 } },
+            need: { zilei: 8, duen: 3, mogu: 3, lingru: 3 }, eff: { k: "buff", mult: 5, dur: 10800 } },
   yingjie: { big: 9, n: "应劫丹", d: "渡劫圆满直面天威：立获约十时辰修为，此后五时辰修为 +300%",
-            need: { zilei: 4, duen: 2, mogu: 1, taiqing: 1, dihuo: 1 }, eff: { k: "grand", sec: 36000, mult: 4, dur: 18000 } },
+            need: { zilei: 10, duen: 5, mogu: 3, taiqing: 3, dihuo: 3 }, eff: { k: "grand", sec: 36000, mult: 4, dur: 18000 } },
   /* ---- 真仙(北寒丹道) ---- */
   ningxian: { big: 10, n: "凝仙丹", d: "凝聚仙元：立时回复约八时辰修为",
-            need: { hanpo: 2, zilei: 1, qiongjing: 1 }, eff: { k: "inst", sec: 28800 } },
+            need: { hanpo: 5, zilei: 3, qiongjing: 3 }, eff: { k: "inst", sec: 28800 } },
   xianpo: { big: 10, n: "寒魄仙丹", d: "四时辰内修为 +500%，北寒仙气",
-            need: { hanpo: 3, zilei: 1, qiongjing: 1, lingru: 1 }, eff: { k: "buff", mult: 6, dur: 14400 } },
+            need: { hanpo: 8, zilei: 3, qiongjing: 3, lingru: 3 }, eff: { k: "buff", mult: 6, dur: 14400 } },
   yinxian: { big: 10, n: "引仙丹", d: "真仙圆满叩问天仙：立获约十二时辰修为，此后六时辰修为 +400%",
-            need: { hanpo: 4, zilei: 2, qiongjing: 1, taiqing: 1 }, eff: { k: "grand", sec: 43200, mult: 5, dur: 21600 } },
+            need: { hanpo: 10, zilei: 5, qiongjing: 3, taiqing: 3 }, eff: { k: "grand", sec: 43200, mult: 5, dur: 21600 } },
   /* ---- 天仙(天墟丹道；终境无破境，重离线与长时) ---- */
   guiyuan: { big: 11, n: "归元丹", d: "万法归一：立时回复约十二时辰修为",
-            need: { hongmeng: 2, hanpo: 1, qiongjing: 1 }, eff: { k: "inst", sec: 43200 } },
+            need: { hongmeng: 5, hanpo: 3, qiongjing: 3 }, eff: { k: "inst", sec: 43200 } },
   taichu: { big: 11, n: "太初丹", d: "六时辰内修为 +700%，一点太初之气",
-            need: { hongmeng: 3, hanpo: 1, qiongjing: 1, taiqing: 1 }, eff: { k: "buff", mult: 8, dur: 21600 } },
+            need: { hongmeng: 8, hanpo: 3, qiongjing: 3, taiqing: 3 }, eff: { k: "buff", mult: 8, dur: 21600 } },
   bianhua: { big: 11, n: "天仙蜕变丹", d: "脱胎换骨：三十六时辰内离线收益 +50%",
-            need: { hongmeng: 4, hanpo: 2, qiongjing: 2, taiqing: 1 }, eff: { k: "offline", dur: 129600, boost: .5 } },
+            need: { hongmeng: 10, hanpo: 5, qiongjing: 5, taiqing: 3 }, eff: { k: "offline", dur: 129600, boost: .5 } },
 }
-const PAGES_NEED = [2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];   // 各境需集齐页数解锁隐藏丹(置于 updateHUD 首次调用前, 防 TDZ)
+/* v1.8.2: 凡人(0)不设隐藏丹 → 首项置 0 占位; 其余各境统一 3 页。
+ * 说明: 云游周期已收敛为 30 分钟满载, 3 页在炼气(5 天)后可轻松凑齐(掉率 25%)。 */
+const PAGES_NEED = [0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3];   // 各境需集齐页数解锁隐藏丹(置于 updateHUD 首次调用前, 防 TDZ)
 ;
 
 
@@ -3723,27 +3729,35 @@ function travelAvatarHTML() {
     const awaySec = Math.max(0, Math.floor((srvNow() - state.travel.since) / 1000));
     const sinceMin = Math.floor(awaySec / 60);
     /* v1.8.1: 召回 —— 随时可唤回, 按已游历时长结算。已达该地界最短时长才有实收,
-     * 不足则视作"匆匆折返"(见 recallTravel)。 */
-    const minSec = z ? z.dur[0] : 0;
-    const ready = awaySec >= minSec;
-    const hint = ready
-      ? `已游历 ${durTxt(awaySec)}，此时召回，所得归山。`
-      : `已游历 ${durTxt(awaySec)}；满 ${durTxt(minSec)} 方有所获，此刻召回恐空手而归。`;
+     * v1.8.2: 不再有"空手而归" —— 按 travelYield(在外时长)折算, 越久越多但边际递减。 */
+    const minSec = z ? z.dur[0] : 1800;
+    const y = travelYield(awaySec);
+    const yPct = Math.round(y * 100);
+    const full = awaySec >= TRAVEL_CAP;
+    /* 收益进度条: 直观展示"何时满载、何时收益趋缓" */
+    const hint = full
+      ? `已游历 ${durTxt(awaySec)}，收益已至上限（48 时辰为限）。`
+      : y >= 0.95
+        ? `已游历 ${durTxt(awaySec)}，收益 ${yPct}%　—　再久所增甚微。`
+        : `已游历 ${durTxt(awaySec)}，收益 ${yPct}%　—　满 ${durTxt(minSec)} 可达 ${Math.round((1 - Math.exp(-minSec / TRAVEL_TAU)) * 100)}%。`;
     return `<div style="text-align:center;padding:14px 4px">
         <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${Math.max(0, sinceMin)}分钟</div>
-        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">化身在外游历，<b style="color:#c9b98a">可随时召回</b>。<br>${z ? "这一带走一遭，约摸 " + durTxt(z.dur[0]) + " 到 " + durTxt(z.dur[1]) + "。" : ""}<br>游历间会不时<b style="color:#c9b98a">寄回手札</b>，捎来的药草、灵石与丹方残页都进了丹房行囊。</p>
-        <p style="color:${ready ? "#8fd8bd" : "#8b94a8"};font-size:11.5px;margin-top:8px;line-height:1.7">${hint}</p>
-        <button class="btn ${ready ? "ready" : ""}" style="margin-top:12px" onclick="recallTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">↩ 召回化身</span></button>
+        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">化身在外游历，<b style="color:#c9b98a">可随时召回</b>。<br>出去越久，收获越多；满 <b style="color:#c9b98a">${durTxt(minSec)}</b> 后增益渐微，<b style="color:#c9b98a">两日</b> 为限。<br>游历间会不时<b style="color:#c9b98a">寄回手札</b>，捎来的药草与丹方残页都进了丹房行囊。</p>
+        <div style="height:4px;background:rgba(201,168,106,.14);margin:11px 18px 0">
+          <i style="display:block;height:100%;width:${Math.min(100, yPct)}%;background:linear-gradient(90deg,rgba(201,168,106,.55),rgba(232,197,107,.95))"></i>
+        </div>
+        <p style="color:${y >= 0.95 ? "#8fd8bd" : "#8b94a8"};font-size:11.5px;margin-top:8px;line-height:1.7">${hint}</p>
+        <button class="btn ${y >= 0.6 ? "ready" : ""}" style="margin-top:12px" onclick="recallTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">↩ 召回化身</span></button>
         <div style="font-size:10.5px;color:#6d7688;margin-top:8px">开炉炼丹与服丹，请去左上角 <b style="color:#a98a5a">丹</b> 房。</div></div>`;
   }
   const z = zoneOfBig(bigIdx());
   const placeNames = z.locs.map(x => x.n).join("、");
   return `<div style="padding:10px 4px 14px;text-align:center;border-bottom:1px dashed rgba(201,168,106,.16)">
       <div style="font-family:var(--font-brush);font-size:16px;color:#d8b06a;letter-spacing:.06em">${z.name}</div>
-      <p style="color:#8b94a8;font-size:11.5px;margin-top:6px;line-height:1.9">化身会顺着自己的心意，在 ${placeNames} 一带游历。<br>一去约 ${durTxt(z.dur[0])} 到 ${durTxt(z.dur[1])}，无需盘缠，<b style="color:#a98a5a">中途也可召回</b>。</p>
+      <p style="color:#8b94a8;font-size:11.5px;margin-top:6px;line-height:1.9">化身会顺着自己的心意，在 ${placeNames} 一带游历。<br>无需盘缠，<b style="color:#a98a5a">中途也可召回</b>；在外约 <b style="color:#a98a5a">${durTxt(z.dur[0])}</b> 收获即丰，此后增益渐微（两日为限）。</p>
       <button class="btn" style="margin-top:10px" onclick="startTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">遣化身出门</span></button>
     </div>
-    <div style="font-size:10.5px;color:#6d7688;text-align:center;padding:10px 4px;line-height:1.8">拾得的药草与丹方残页会进<b style="color:#a98a5a">丹房</b>行囊，随时可开炉炼丹。</div>`;
+    <div style="font-size:10.5px;color:#6d7688;text-align:center;padding:10px 4px;line-height:1.8">拾得的药草与丹方残页会进<b style="color:#a98a5a">丹房</b>行囊，随时可开炉炼丹。<br>化身在外时会托<b style="color:#a98a5a">鸿雁</b>寄回手札，记得去右上角收取。</div>`;
 }
 /* v1.7.22: 炼丹独立成【丹房】(原嵌在云游面板内) —— 材料/丹药/开炉集中于此 */
 function matBagHTML() {
@@ -3806,15 +3820,42 @@ function startTravel() {
  * 结算走服务端权威账本(core.settle + ?recall=1); 断网时服务端不可达,
  * 则退化为本地结算 —— 保证玩法在任何网络下都不卡死。
  */
-function recallRollZone(z) {              // 一趟云游的产出(材料 + 残页), 与后端同式
+/* ==================== v1.8.2 云游收益曲线(指数衰减) ====================
+ * 与离线收益同一套直觉: 挂得越久总量越多, 但边际收益递减; 48 小时封顶。
+ *
+ *   travelYield(awaySec) = 1 - exp( -awaySec / TAU ),  TAU = 1800s(30 分钟)
+ *
+ *   5 分钟  → 15%   (有保底, 不空手)
+ *   30 分钟 → 63%
+ *   2 小时  → 98%
+ *   6 小时  → 99.99% (实质满载)
+ *   48 小时 → 100%  (硬顶, 与 OFFLINE_CAP 对齐)
+ *
+ * 产出 = 该地界基础量 × travelYield。前 30 分钟是"快速回报区", 之后越挂越"肉"。
+ * 超时不惩罚(不会清零), 只是不再显著增长 —— 挂机游戏不该罚玩家离线。 */
+const TRAVEL_TAU = 1800;          // 30 分钟满载基准
+const TRAVEL_CAP = 172800;        // 48 小时硬顶(与 OFFLINE_CAP / dur[1] 一致)
+function travelYield(awaySec) {
+  const t = Math.max(0, Math.min(+awaySec || 0, TRAVEL_CAP));
+  return 1 - Math.exp(-t / TRAVEL_TAU);
+}
+/* 产出份数: 基础量 × 衰减系数, 至少 1 份(只要出了门就不空手, 仅限已满最低门槛时) */
+function travelAmount(base, yieldK) {
+  return Math.max(1, Math.round(base * yieldK));
+}
+function recallRollZone(z, awaySec) {
   const out = { mats: [], pages: 0 };
+  /* v1.8.2: 不再"满 dur[0] 给全套"。改按在外时长指数衰减 —— 5 分钟也有收获,
+   * 30 分钟接近满载, 48 小时封顶。材料份数按 travelYield 缩放。 */
+  const y = travelYield(awaySec);
   for (const m of (z.mats || [])) {
     if (Math.random() < (m.c || 0)) {
-      const q = (m.a || 1) + Math.floor(Math.random() * Math.max(1, (m.b || 1) - (m.a || 1) + 1));
-      out.mats.push({ id: m.id, q });
+      const base = (m.a || 1) + Math.floor(Math.random() * Math.max(1, (m.b || 1) - (m.a || 1) + 1));
+      out.mats.push({ id: m.id, q: travelAmount(base, y) });
     }
   }
-  if (Math.random() < PAGE_RATE) out.pages = 1;
+  /* 残页同样衰减: 保底 15% 基础上按 yield 折算(避免 5 分钟就能稳定刷页) */
+  if (Math.random() < PAGE_RATE * y) out.pages = 1;
   return out;
 }
 function recallTravel() {
@@ -3823,6 +3864,8 @@ function recallTravel() {
   const l = locById(tv.loc);
   const z = zoneOfLoc(tv.loc);
   const awaySec = Math.max(0, Math.floor((srvNow() - tv.since) / 1000));
+  /* v1.8.2: 不再有"空手而归"。只要出过门(≥1 分钟)就按 travelYield 给保底产出,
+   * 拿多拿少看在外多久。z.dur[0] 仅用于文案提示"满载所需时长"。 */
   const enough = !!(z && awaySec >= z.dur[0]);
   /* v1.8.1: 云端可用时走服务端权威结算(推荐路径) —— 不本地清 travel,
    * 由 settle 的归来事件清, 保证"账本只有一份"。断网/未就绪才本地兜底。 */
@@ -3834,18 +3877,17 @@ function recallTravel() {
   }
   /* —— 本地兜底(断网) —— */
   state.travel = null;
-  if (!enough) {
-    pushMsg("main", `你掐诀召化身回山。它往<span class="r">${l ? l.n : "远方"}</span>去得不久，此番空手而归，只在门口抖了抖衣上尘土。`);
-    pushMsg("avatar", `阿青迎到山门口｜化身归来，此行无获`);
-  } else {
-    const gain = recallRollZone(z);
+  /* v1.8.2: 一律给产出, 按在外时长衰减(不再有"空手而归"分支) */
+  {
+    const gain = recallRollZone(z, awaySec);
     const matTxt = gain.mats.map(x => `${MATS[x.id].n}×${x.q}`).join("、");
     (gain.mats || []).forEach(x => { state.mats[x.id] = (state.mats[x.id] || 0) + x.q; });
     if (gain.pages) {
-      const b = "b" + (state.realmIdx || 0);
+      const b = "b" + (z ? z.big : bigIdx());
       state.pages[b] = (state.pages[b] || 0) + gain.pages;
     }
-    pushMsg("main", `你掐诀召化身回山。它在<span class="r">${l ? l.n : "远方"}</span>走了一遭，带回 <b>${matTxt || "一囊清风"}</b>${gain.pages ? " ｜ <b>丹方残页×1</b>" : ""}。`);
+    const durTxt2 = durTxt(awaySec);
+    pushMsg("main", `你掐诀召化身回山。它在<span class="r">${l ? l.n : "远方"}</span>走了一遭（${durTxt2}），带回 <b>${matTxt || "一囊清风"}</b>${gain.pages ? " ｜ <b>丹方残页×1</b>" : ""}。`);
     pushMsg("avatar", `阿青迎到山门口｜化身自${l ? l.n : "远方"}归来`);
   }
   travelBtnLbl(); traceRefresh(); updateHUD(); updateRealmUI(); save();
@@ -3879,29 +3921,26 @@ async function recallViaCloud(tv, l, z, enough) {
     state._cloudTs = j.ts || Date.now();
     cld.lastOkTs = Date.now(); cld.dirty = false; cld.ready = true;
     cldUI("on");
-    /* 归来叙事(数值已由服务端入账) */
+    /* 归来叙事(数值已由服务端入账) —— v1.8.2: 不再有"空手而归", 一律按在外时长给产出 */
     const where = l ? l.n : "远方";
     const matTxt = (back.mats || []).map(x => `${MATS[x.id] ? MATS[x.id].n : x.id}×${x.q}`).join("、");
-    if (back.early || !enough) {
-      pushMsg("main", `你掐诀召化身回山。它往<span class="r">${where}</span>去得不久，此番空手而归，只在门口抖了抖衣上尘土。`);
-      pushMsg("avatar", `阿青迎到山门口｜化身归来，此行无获`);
-    } else {
-      pushMsg("main", `你掐诀召化身回山。它在<span class="r">${where}</span>走了一遭，带回 <b>${matTxt || "一囊清风"}</b>${back.pages ? " ｜ <b>丹方残页×1</b>" : ""}。`);
-      pushMsg("avatar", `阿青迎到山门口｜化身自${where}归来`);
-    }
+    const awayTxt = durTxt(Math.max(0, Math.floor((Date.now() - (tv.since || Date.now())) / 1000)));
+    pushMsg("main", `你掐诀召化身回山。它在<span class="r">${where}</span>走了一遭（${awayTxt}），带回 <b>${matTxt || "一囊清风"}</b>${back.pages ? " ｜ <b>丹方残页×1</b>" : ""}。`);
+    pushMsg("avatar", `阿青迎到山门口｜化身自${where}归来`);
     travelBtnLbl(); traceRefresh(); updateHUD(); updateRealmUI(); save();
   } catch (e) {
     clearTimeout(tm);
     /* 云端不可达 → 本地兜底, 不让玩法卡死 */
     state.travel = null;
-    if (!enough) {
-      pushMsg("main", `你掐诀召化身回山。它往<span class="r">${l ? l.n : "远方"}</span>去得不久，此番空手而归。`);
-    } else {
-      const gain = recallRollZone(z);
-      const matTxt = gain.mats.map(x => `${MATS[x.id].n}×${x.q}`).join("、");
-      (gain.mats || []).forEach(x => { state.mats[x.id] = (state.mats[x.id] || 0) + x.q; });
-      pushMsg("main", `你掐诀召化身回山。它在<span class="r">${l ? l.n : "远方"}</span>走了一遭，带回 <b>${matTxt || "一囊清风"}</b>。`);
+    const awaySec2 = Math.max(0, Math.floor((Date.now() - (tv.since || Date.now())) / 1000));
+    const gain = recallRollZone(z, awaySec2);
+    const matTxt = gain.mats.map(x => `${MATS[x.id].n}×${x.q}`).join("、");
+    (gain.mats || []).forEach(x => { state.mats[x.id] = (state.mats[x.id] || 0) + x.q; });
+    if (gain.pages) {
+      const b = "b" + (z ? z.big : bigIdx());
+      state.pages[b] = (state.pages[b] || 0) + gain.pages;
     }
+    pushMsg("main", `你掐诀召化身回山。它在<span class="r">${l ? l.n : "远方"}</span>走了一遭，带回 <b>${matTxt || "一囊清风"}</b>${gain.pages ? " ｜ <b>丹方残页×1</b>" : ""}。`);
     pushMsg("avatar", `阿青迎到山门口｜化身归来`);
     travelBtnLbl(); traceRefresh(); updateHUD(); updateRealmUI(); save();
   }
@@ -3935,7 +3974,7 @@ mailDot();
 
 /* ==================== P1 炼丹炉（v2 丹方体系） ==================== */
 /* ==================== v0.8.0 丹方残页 ==================== */
-const PAGE_RATE = 0.15;      // 每趟云游带回残页概率(前后端一致)
+const PAGE_RATE = 0.25;      // 每趟云游带回残页概率(前后端一致)
 function pagesOf(bi) { return (state.pages && state.pages["b" + bi]) || 0; }
 function hiddenUnlocked(bi) { return pagesOf(bi) >= PAGES_NEED[bi]; }
 const DAN_ZONE = ["凡尘", "炼气", "筑基", "结丹", "元婴", "化神", "炼虚", "合体", "大乘", "渡劫", "真仙", "天仙"];
@@ -4064,7 +4103,7 @@ async function stayMailCheck() {
   if (!window.fetch || !cld.id || !cld.ready) return;
   if (!state.travel || !state.travel.loc) return;          // 化身不在外无需寄包
   const now0 = Date.now();
-  if (now0 - _stayLast < 240000) return;                   // 4 分钟节流
+  if (now0 - _stayLast < 120000) return;                   // v1.8.2: 节流 4 分钟 → 2 分钟(配合寄信周期缩短)
   _stayLast = now0;
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), 7000);
@@ -4154,10 +4193,9 @@ function presentSettle(r) {
       if (dt > 7200 && loc.tale.length > 1) {
         taleLines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
       }
-      retTxt = tv.early
-        ? (matTxt ? `化身往${loc.n}走了一遭，时辰尚短便折返，只捎回 <b>${matTxt}</b>。阿青在门口迎它，嗅了嗅，又趴回去打盹。`
-                  : `化身往${loc.n}走了一遭，时辰尚短便折返，此行只带回一囊清风。阿青在门口等它，嗅了嗅空气，又趴回去打盹。`)
-        : `化身自<span class="num">${loc.n}</span>归来，带回 <b>${matTxt || "一囊清风"}</b>。阿青绕着你转了三圈，又嗅了嗅化身衣摆，才心满意足地回去守门。`;
+      /* v1.8.2: 不再有 early(空手)概念 —— 一律按在外时长给产出, 只区分"满载"与否 */
+      const awayH = Math.round((tv.away || 0) / 3600 * 10) / 10;
+      retTxt = `化身自<span class="num">${loc.n}</span>归来，带回 <b>${matTxt || "一囊清风"}</b>。阿青绕着你转了三圈，又嗅了嗅化身衣摆，才心满意足地回去守门。`;
       retTxt += " 见闻：" + taleLines.join("｜");
       if (taleLines.length) {
         addJournal({ key: "tr-" + Date.now(), big: realm().big, kind: "游历",
@@ -4319,6 +4357,10 @@ function mailGoodsTxt(mail) {
 function renderMailBox() {
   const box = $("mailBody"); if (!box) return;
   const ml = (state.mails || []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  /* v1.8.2 一键收取: 信匣有条数时显示批量条 */
+  const bar = $("mailBulkBar"), cnt = $("mailBulkCount");
+  if (bar) bar.style.display = ml.length ? "" : "none";
+  if (cnt) cnt.textContent = ml.length ? `共 ${ml.length} 封` : "";
   if (!ml.length) {
     box.innerHTML = `<div class="mail-empty">信匣空空。<br>遣化身出门远行，它自会托雁足捎信回来——<br>到时候，记得拆开看看。</div>`;
     return;
@@ -4341,6 +4383,33 @@ function renderMailBox() {
       </div>
     </div>`;
   }).join("");
+}
+/* v1.8.2 一键收取: 把信匣内全部信件一次入账。
+ * 设计: 复用单封的入账逻辑, 汇总成一条消息(不敢信匣轰炸聊天窗), 末尾一次性落盘。 */
+function collectAllMail() {
+  const ml = state.mails || [];
+  if (!ml.length) return;
+  const total = {};
+  let pages = 0, n = 0;
+  for (const m of ml) {
+    for (const mk of (m.mats || [])) {
+      if (!MATS[mk.id]) continue;
+      state.mats[mk.id] = (state.mats[mk.id] || 0) + mk.q;
+      total[mk.id] = (total[mk.id] || 0) + mk.q;
+    }
+    if (m.page) {
+      const z = zoneOfLoc(m.loc);
+      if (z) { state.pages["b" + z.big] = (state.pages["b" + z.big] || 0) + 1; pages++; }
+    }
+    n++;
+  }
+  state.mails = [];
+  const gotTxt = Object.keys(total).map(id => MATS[id].n + "×" + total[id]).join("、");
+  pushMsg("main", `你一并拆开 <b>${n}</b> 封雁书，收下 <span class="r">${gotTxt || "数纸见闻"}</span>`
+    + (pages ? `，另得 <b>丹方残页×${pages}</b>` : "") + "。");
+  pushMsg("avatar", `展信收取 · 共 ${n} 封`);
+  renderMailBox(); mailDot(); updateHUD();
+  save(); cloudSoon();
 }
 function collectMail(id) {
   const ml = state.mails || [];

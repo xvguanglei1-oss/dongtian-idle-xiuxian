@@ -353,6 +353,11 @@
   .btn.seal{padding:2px 8px;font-size:11px;min-height:0;flex:none}
   .btn.seal .label{min-height:16px;gap:0}
   .mail-empty{text-align:center;color:#8b94a8;font-size:12.5px;padding:28px 8px;line-height:2.2}
+  /* v1.8.2 一键收取: 信匣顶部的批量条(墨线分隔, 与手札风一致) */
+  .mail-bulkbar{display:flex;justify-content:space-between;align-items:center;gap:10px;
+    padding:0 6px 10px;margin-bottom:2px;border-bottom:1px dashed rgba(201,168,106,.22)}
+  .mail-bulkbar .mb-count{font-size:11.5px;color:#8b94a8;letter-spacing:.06em}
+  .mail-bulkbar .btn{padding:3px 14px;font-size:12px;flex:none}
 
 
 /* ============ v0.9.0 化身行迹 · 云游斗法 ============ */
