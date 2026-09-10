@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.52";
+const GAME_VER = "v1.7.53";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -75,8 +75,8 @@ const SND = (function () {
   }
   function _armBgm() {
     try {
-      bgmEl = new Audio("assets/music/bgm.mp3");
-      bgmEl.loop = true; bgmEl.volume = 0.32; bgmEl.preload = "auto";
+      bgmEl = new Audio("assets/music/bgm.mp3?v=1.7.53");   // v1.7.53: 素材已响度归一化, 带版本参数强刷缓存
+      bgmEl.loop = true; bgmEl.volume = 0.9; bgmEl.preload = "auto";   // v1.7.53: 0.32→0.9(手机最大音量仍偏小的反馈)
       bgmEl.addEventListener("error", () => {          // 文件不存在/解码失败: 放弃, 不反复打扰
         bgmEl = null;
         document.removeEventListener("pointerdown", _armOnce);
