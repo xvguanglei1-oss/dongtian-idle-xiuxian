@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.8.0";
+const GAME_VER = "v1.8.1";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3720,17 +3720,27 @@ function travelAvatarHTML() {
   if (state.travel) {
     const l = locById(state.travel.loc);
     const z = zoneOfLoc(state.travel.loc);
-    const sinceMin = Math.floor((Date.now() - state.travel.since) / 60000);
+    const awaySec = Math.max(0, Math.floor((srvNow() - state.travel.since) / 1000));
+    const sinceMin = Math.floor(awaySec / 60);
+    /* v1.8.1: 召回 —— 随时可唤回, 按已游历时长结算。已达该地界最短时长才有实收,
+     * 不足则视作"匆匆折返"(见 recallTravel)。 */
+    const minSec = z ? z.dur[0] : 0;
+    const ready = awaySec >= minSec;
+    const hint = ready
+      ? `已游历 ${durTxt(awaySec)}，此时召回，所得归山。`
+      : `已游历 ${durTxt(awaySec)}；满 ${durTxt(minSec)} 方有所获，此刻召回恐空手而归。`;
     return `<div style="text-align:center;padding:14px 4px">
         <div style="font-family:var(--font-brush);font-size:18px;color:#d8b06a;letter-spacing:.12em">化身在${l ? l.n : "远方"} · ${Math.max(0, sinceMin)}分钟</div>
-        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">山高路远，人在外头是唤不回的。<br>${z ? "这一带传闻归期" + durTxt(z.dur[1]) + "上下。" : ""}<br>化身在外会不时<b style="color:#c9b98a">寄回手札</b>，捎来的药草、灵石与丹方残页都进了丹房行囊。<br>真见了大世面才肯回来。</p>
+        <p style="color:#a7b0c4;margin-top:10px;line-height:1.9">化身在外游历，<b style="color:#c9b98a">可随时召回</b>。<br>${z ? "这一带走一遭，约摸 " + durTxt(z.dur[0]) + " 到 " + durTxt(z.dur[1]) + "。" : ""}<br>游历间会不时<b style="color:#c9b98a">寄回手札</b>，捎来的药草、灵石与丹方残页都进了丹房行囊。</p>
+        <p style="color:${ready ? "#8fd8bd" : "#8b94a8"};font-size:11.5px;margin-top:8px;line-height:1.7">${hint}</p>
+        <button class="btn ${ready ? "ready" : ""}" style="margin-top:12px" onclick="recallTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">↩ 召回化身</span></button>
         <div style="font-size:10.5px;color:#6d7688;margin-top:8px">开炉炼丹与服丹，请去左上角 <b style="color:#a98a5a">丹</b> 房。</div></div>`;
   }
   const z = zoneOfBig(bigIdx());
   const placeNames = z.locs.map(x => x.n).join("、");
   return `<div style="padding:10px 4px 14px;text-align:center;border-bottom:1px dashed rgba(201,168,106,.16)">
       <div style="font-family:var(--font-brush);font-size:16px;color:#d8b06a;letter-spacing:.06em">${z.name}</div>
-      <p style="color:#8b94a8;font-size:11.5px;margin-top:6px;line-height:1.9">化身会顺着自己的心意，在 ${placeNames} 一带游历。<br>归期大约 ${durTxt(z.dur[0])} 到 ${durTxt(z.dur[1])}，无需盘缠。</p>
+      <p style="color:#8b94a8;font-size:11.5px;margin-top:6px;line-height:1.9">化身会顺着自己的心意，在 ${placeNames} 一带游历。<br>一去约 ${durTxt(z.dur[0])} 到 ${durTxt(z.dur[1])}，无需盘缠，<b style="color:#a98a5a">中途也可召回</b>。</p>
       <button class="btn" style="margin-top:10px" onclick="startTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">遣化身出门</span></button>
     </div>
     <div style="font-size:10.5px;color:#6d7688;text-align:center;padding:10px 4px;line-height:1.8">拾得的药草与丹方残页会进<b style="color:#a98a5a">丹房</b>行囊，随时可开炉炼丹。</div>`;
@@ -3773,14 +3783,128 @@ function refreshOpenPanel() {
 }
 function closeTravel() { const m = $("travelModal"); if (m) m.classList.remove("show"); }
 function startTravel() {
-  if (state.travel) { pushMsg("main", "化身尚在云游，归期未至"); closeTravel(); return; }
+  if (state.travel) { pushMsg("main", "化身尚在云游，可点「召回」唤它回山"); closeTravel(); return; }
   const { l } = pickLoc();
   state.travel = { loc: l.id, since: Date.now() };
   _encNext = autoHuntOn() ? Date.now() + searchMs() : 0;   // 重置巡猎: 自动斗法开则重新起算搜寻
   pushMsg("main", `你为化身备好行囊。它往<span class="r">${l.n}</span>的方向去了，阿青蹲在门口目送，尾巴搭在你脚边。`);
   pushMsg("avatar", `阿青送化身到山门口，回来在你蒲团边卧下`);
-  travelBtnLbl(); traceRefresh(); updateHUD(); save(); cloudFlush();   // v1.5.0: 立刻刷行迹, 别再挂着"遣它下山?"  v1.5.1: 云游派发是关键节点 → 立即上云
+  /* v1.8.1: 派发不再立即 cloudFlush。
+   * 原因: 服务端旧逻辑「收到 travel 即判归来」会在回包里把 travel 清成 null,
+   * 刚派发的云游被第一个同步抹掉(这就是"派发不出去"的根因)。
+   * 改为只标脏(cloudSoon), 交给 90s 心跳合并上传; 派发状态由 adoptKeep 兜底保护。 */
+  travelBtnLbl(); traceRefresh(); updateHUD(); save(); cloudSoon();
   closeTravel();
+}
+/* ==================== v1.8.1 召回化身 ====================
+ * 需求: 以前"人在外头唤不回", 现在随时可召回, 按已游历时长结算。
+ * 分工(与服务端 game-core v1.8.1 同源):
+ *   · 召回 = 玩家显式动作, 优先级高于"抖动保护", 服务端立即判归来。
+ *   · 已游历 ≥ 该地界最短时长 dur[0] → 给产出(材料/残页)。
+ *   · 不足最短时长 → 空手而归(匆匆折返), 不给产出。
+ *   · 未召回且未满时长 → 服务端原样保留 travel, 继续在外游历。
+ * 结算走服务端权威账本(core.settle + ?recall=1); 断网时服务端不可达,
+ * 则退化为本地结算 —— 保证玩法在任何网络下都不卡死。
+ */
+function recallRollZone(z) {              // 一趟云游的产出(材料 + 残页), 与后端同式
+  const out = { mats: [], pages: 0 };
+  for (const m of (z.mats || [])) {
+    if (Math.random() < (m.c || 0)) {
+      const q = (m.a || 1) + Math.floor(Math.random() * Math.max(1, (m.b || 1) - (m.a || 1) + 1));
+      out.mats.push({ id: m.id, q });
+    }
+  }
+  if (Math.random() < PAGE_RATE) out.pages = 1;
+  return out;
+}
+function recallTravel() {
+  if (!state.travel) { closeTravel(); return; }
+  const tv = state.travel;
+  const l = locById(tv.loc);
+  const z = zoneOfLoc(tv.loc);
+  const awaySec = Math.max(0, Math.floor((srvNow() - tv.since) / 1000));
+  const enough = !!(z && awaySec >= z.dur[0]);
+  /* v1.8.1: 云端可用时走服务端权威结算(推荐路径) —— 不本地清 travel,
+   * 由 settle 的归来事件清, 保证"账本只有一份"。断网/未就绪才本地兜底。 */
+  if (cld.ready && window.fetch) {
+    pushMsg("main", `你掐诀召回化身……`);
+    recallViaCloud(tv, l, z, enough);
+    closeTravel();
+    return;
+  }
+  /* —— 本地兜底(断网) —— */
+  state.travel = null;
+  if (!enough) {
+    pushMsg("main", `你掐诀召化身回山。它往<span class="r">${l ? l.n : "远方"}</span>去得不久，此番空手而归，只在门口抖了抖衣上尘土。`);
+    pushMsg("avatar", `阿青迎到山门口｜化身归来，此行无获`);
+  } else {
+    const gain = recallRollZone(z);
+    const matTxt = gain.mats.map(x => `${MATS[x.id].n}×${x.q}`).join("、");
+    (gain.mats || []).forEach(x => { state.mats[x.id] = (state.mats[x.id] || 0) + x.q; });
+    if (gain.pages) {
+      const b = "b" + (state.realmIdx || 0);
+      state.pages[b] = (state.pages[b] || 0) + gain.pages;
+    }
+    pushMsg("main", `你掐诀召化身回山。它在<span class="r">${l ? l.n : "远方"}</span>走了一遭，带回 <b>${matTxt || "一囊清风"}</b>${gain.pages ? " ｜ <b>丹方残页×1</b>" : ""}。`);
+    pushMsg("avatar", `阿青迎到山门口｜化身自${l ? l.n : "远方"}归来`);
+  }
+  travelBtnLbl(); traceRefresh(); updateHUD(); updateRealmUI(); save();
+  closeTravel();
+}
+/* 召回 · 云端权威结算: PUT ?settle=1&recall=1, 服务端立即判归来并回传新账本 */
+async function recallViaCloud(tv, l, z, enough) {
+  const ctl = new AbortController();
+  const tm = setTimeout(() => ctl.abort(), 8000);
+  try {
+    const snap = cloudSnap(JSON.parse(JSON.stringify(state)));
+    const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&settle=1&recall=1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ __z: zPack(snap) }),
+      signal: ctl.signal,
+    });
+    clearTimeout(tm);
+    if (!r.ok) throw new Error("http" + r.status);
+    const j = await r.json();
+    if (!(j && j.ok && j.data)) throw new Error("bad_resp");
+    if (typeof j.serverTime === "number") _srvOffset = j.serverTime - Date.now();
+    if (j.rate) _rate = { exp: +j.rate.exp || 0, spirit: +j.rate.spirit || 0 };
+    const g = j.gains || {};
+    const back = g.travel || {};
+    _travelReturned = !!g.travel;                       // 认可这是"真归来"
+    if (!adoptKeep(zUnpack(j.data))) throw new Error("adopt_fail");
+    _travelReturned = false;
+    _pred.exp = 0; _pred.spirit = 0;
+    state._lastTs0 = Date.now(); state._settledTs = Date.now();
+    state._cloudTs = j.ts || Date.now();
+    cld.lastOkTs = Date.now(); cld.dirty = false; cld.ready = true;
+    cldUI("on");
+    /* 归来叙事(数值已由服务端入账) */
+    const where = l ? l.n : "远方";
+    const matTxt = (back.mats || []).map(x => `${MATS[x.id] ? MATS[x.id].n : x.id}×${x.q}`).join("、");
+    if (back.early || !enough) {
+      pushMsg("main", `你掐诀召化身回山。它往<span class="r">${where}</span>去得不久，此番空手而归，只在门口抖了抖衣上尘土。`);
+      pushMsg("avatar", `阿青迎到山门口｜化身归来，此行无获`);
+    } else {
+      pushMsg("main", `你掐诀召化身回山。它在<span class="r">${where}</span>走了一遭，带回 <b>${matTxt || "一囊清风"}</b>${back.pages ? " ｜ <b>丹方残页×1</b>" : ""}。`);
+      pushMsg("avatar", `阿青迎到山门口｜化身自${where}归来`);
+    }
+    travelBtnLbl(); traceRefresh(); updateHUD(); updateRealmUI(); save();
+  } catch (e) {
+    clearTimeout(tm);
+    /* 云端不可达 → 本地兜底, 不让玩法卡死 */
+    state.travel = null;
+    if (!enough) {
+      pushMsg("main", `你掐诀召化身回山。它往<span class="r">${l ? l.n : "远方"}</span>去得不久，此番空手而归。`);
+    } else {
+      const gain = recallRollZone(z);
+      const matTxt = gain.mats.map(x => `${MATS[x.id].n}×${x.q}`).join("、");
+      (gain.mats || []).forEach(x => { state.mats[x.id] = (state.mats[x.id] || 0) + x.q; });
+      pushMsg("main", `你掐诀召化身回山。它在<span class="r">${l ? l.n : "远方"}</span>走了一遭，带回 <b>${matTxt || "一囊清风"}</b>。`);
+    }
+    pushMsg("avatar", `阿青迎到山门口｜化身归来`);
+    travelBtnLbl(); traceRefresh(); updateHUD(); updateRealmUI(); save();
+  }
 }
 function consumePill(id) {
   const rp = RECIPES[id]; if (!rp) return;
@@ -3893,13 +4017,24 @@ function cloudSnap(src) {
   if (_pred.spirit) out.spirit = Math.max(0, (out.spirit || 0) - _pred.spirit);
   return out;
 }
-/* ==================== v0.8.1 在线寄包: 化身不归, 周期寄回手札 ==================== */
+/* ==================== v0.8.1 在线寄包: 化身在外, 周期寄回手札 ==================== */
 let _stayLast = 0;
+/* v1.8.1: 本轮 settle 是否真的发生了「化身归来」。只有在服务端明确给出归来事件时,
+ * adoptKeep 才允许清空本地 travel —— 否则刚派发的云游会被无端抹掉。 */
+let _travelReturned = false;
 function adoptKeep(st) {          // 采用结算后的存档, 但本地叙事(非云端净化)不回退
   const keep = (state.journal || []).slice();
+  const hadTravel = state.travel;          // v1.8.1: 采纳前的本地云游状态
   const c = adopt(st);
   if (!c) return false;
   c.journal = keep.length >= (c.journal || []).length ? keep : c.journal;
+  /* v1.8.1 派发竞态保护: 服务端旧逻辑「收到 travel 即判归来」会立刻回 null,
+   * 把刚派发的云游在第一个心跳里抹掉(表现为"派发不出去"/"刚派发又变回云游")。
+   * 这里保留本地 travel —— 只有当服务端明确返回了「化身归来」事件(gains.travel)时,
+   * 才认可清空(那是真的结算归来)。其余情况一律不让本地派发被无端回退。 */
+  if (hadTravel && !c.travel && !_travelReturned) {
+    c.travel = hadTravel;
+  }
   state = c;
   try { localStorage.setItem(SAVE_KEY, zPack(state)); } catch (e) {}
   travelBtnLbl();            // 云端结算可能清 travel(化身归来) → 按钮文字同步
@@ -3980,8 +4115,11 @@ async function cloudSettle() {
          之后 srvNow() 就是可信的服务端时间, 所有时间显示/判断都用它, 不再用 Date.now()。 */
       if (typeof j.serverTime === "number") _srvOffset = j.serverTime - (t0 + (t1 - t0) / 2);
       if (j.rate) _rate = { exp: +j.rate.exp || 0, spirit: +j.rate.spirit || 0 };
+      /* v1.8.1: 先判定本轮是否「真归来」, 再 adopt —— adoptKeep 据此决定是否保留本地 travel */
+      _travelReturned = !!(j.gains && j.gains.travel);
       const j0 = zUnpack(j.data);
       if (!adoptKeep(j0)) return null;
+      _travelReturned = false;
       _pred.exp = 0; _pred.spirit = 0;     // 账本已被服务端权威值覆盖 → 本地预测清零, 从新账本重新开始
       state._lastTs0 = Date.now(); state._settledTs = Date.now();
       mailDot();
@@ -4725,7 +4863,7 @@ function traceRefresh() {
     }
     const s = _tracePool.shift(); _tracePool.push(s);
     el.className = "trace travel";
-    el.innerHTML = `<span class="t-row"><span class="t-ic">迹</span><span class="t-txt">化身在 <b>${where}</b>：${s}</span></span>`;
+    el.innerHTML = `<span class="t-row"><span class="t-ic">迹</span><span class="t-txt">化身在 <b>${where}</b>：${s}</span><button class="trace-go" onclick="event.stopPropagation();openTravel()">召回</button></span>`;
     return;
   }
   if (el.dataset.k === "idle") return;
