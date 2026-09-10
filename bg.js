@@ -168,6 +168,7 @@ function initDeepSpace(canvas) {
   let W = 0, H = 0, dpr = 1;
   let stars = [], neb = [], moon = null;
   let t = 0, last = performance.now(), raf = 0, running = true;
+  let userPaused = false;   // v1.7.60 黑屏挂机: 用户主动暂停(与 document.hidden 的暂停分开)
   /* v1.7.56 省电: 背景是极缓动画(雾霭漂移/星点闪烁), 30fps 观感无损 → 主线程占用减半 */
   let _lastPaint = 0;
   const FRAME_MS = 33;   // ≈30fps
@@ -343,10 +344,21 @@ function initDeepSpace(canvas) {
   function onVis() {
     if (document.hidden) {
       running = false; cancelAnimationFrame(raf);
-    } else if (!running) {
+    } else if (!running && !userPaused) {
       running = true; last = performance.now();
       raf = requestAnimationFrame(tick);
     }
+  }
+
+  /* v1.7.60 黑屏挂机: 停掉背景动画, 省电 */
+  function pause() {
+    userPaused = true;
+    running = false; cancelAnimationFrame(raf);
+  }
+  function resume() {
+    if (!userPaused) return;
+    userPaused = false;
+    if (!document.hidden) { running = true; last = performance.now(); raf = requestAnimationFrame(tick); }
   }
   function onReduced(e) {
     if (e.matches) { staticFrame(); }
@@ -377,8 +389,11 @@ function initDeepSpace(canvas) {
   } catch (e) { raf = requestAnimationFrame(tick); }
 
   return {
+    pause,
+    resume,
     destroy() {
       running = false;
+      userPaused = false;
       cancelAnimationFrame(raf);
       document.removeEventListener("visibilitychange", onVis);
       if (rmq) { try { rmq.removeEventListener("change", onReduced); } catch (e) {} }

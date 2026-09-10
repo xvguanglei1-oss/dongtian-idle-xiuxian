@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.59";
+const GAME_VER = "v1.7.60";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -12,7 +12,19 @@ const GAME_VER = "v1.7.59";
  *   出场即静音/横幅隐藏则无音 —— 杜绝"听得到打斗、看不到演出"。
  * BGM: assets/music/bgm.mp3 存在即循环(低音量), 素材未就绪时自动回退为合成音。 */
 const SND = (function () {
-  let ctx = null, enabled = localStorage.getItem("dt_snd") !== "0";
+  /* v1.7.60: 音乐与音效拆成两个独立开关。
+   * 旧版只有一个 dt_snd, 首次升级时音乐沿用它的值, 不改变玩家原有感受。 */
+  let ctx = null;
+  const LS_BGM = "dt_bgm", LS_SFX = "dt_snd";
+  function lsOn(key, fallbackKey) {
+    try {
+      let v = localStorage.getItem(key);
+      if (v === null && fallbackKey) v = localStorage.getItem(fallbackKey);
+      return v !== "0";
+    } catch (e) { return true; }
+  }
+  let bgmOn = lsOn(LS_BGM, LS_SFX);
+  let sfxOn = lsOn(LS_SFX);
   const SFX_V = "9";                 // 音效缓存戳: 换素材后递增, 强制重新拉取
   const files = { hit: 1, crit: 1, hurt: 1, alert: 1, swing: 1, myst: 1, win: 1, lose: 1 };
   const vol = { hit: 0.5, crit: 0.55, hurt: 0.42, alert: 0.6, swing: 0.42, myst: 0.5, win: 0.6, lose: 0.5 };
@@ -32,7 +44,7 @@ const SND = (function () {
     return stage === 1;
   }
   function tone(f, dur, type, v, when, slideTo) {
-    const c = ac(); if (!c || !enabled || !sfxAudible()) return;
+    const c = ac(); if (!c || !sfxOn || !sfxAudible()) return;
     const t0 = c.currentTime + (when || 0), o = c.createOscillator(), g = c.createGain();
     o.type = type || "triangle"; o.frequency.setValueAtTime(f, t0);
     if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), t0 + dur);
@@ -50,7 +62,7 @@ const SND = (function () {
     lose: () => { tone(220, .6, "sine", .26, 0, 98); },
   };
   function play(name, at) {
-    if (!enabled || !sfxAudible()) return;
+    if (!sfxOn || !sfxAudible()) return;
     const c = ac(); if (!c) return;
     const t0 = c.currentTime + (at || 0);
     if (buf[name] instanceof AudioBuffer) {
@@ -69,9 +81,21 @@ const SND = (function () {
       buf[name] = await c.decodeAudioData(ab).catch(() => null);
     } catch (e) { buf[name] = null; }
   }
+  /* v1.7.60: 页面不可见时不播 BGM —— 修掉"切到后台音乐还在响" */
   function _bgmPlay() {
-    if (!enabled || !bgmEl) return;
+    if (!bgmOn || !bgmEl) return;
+    try { if (document.hidden) return; } catch (e) {}
     const p = bgmEl.play(); if (p && p.catch) p.catch(() => {});
+  }
+  /* 切后台: 停 BGM + 挂起音频上下文(音效一并静音); 回前台: 恢复 */
+  function suspendAll() {
+    if (bgmEl) { try { bgmEl.pause(); } catch (e) {} }
+    if (ctx && ctx.state === "running") { try { ctx.suspend(); } catch (e) {} }
+  }
+  function resumeAll() {
+    if (document.hidden) return;
+    ac();
+    if (bgmOn) _bgmPlay();
   }
   function _armBgm() {
     try {
@@ -85,7 +109,7 @@ const SND = (function () {
       /* v1.7.45 兜底: 个别安卓 WebView 对 HTMLAudio.loop 支持不严, 播完即停 →
        * ended 时手动归零重播; loop 正常工作的浏览器不会触发 ended, 二者互不干扰 */
       bgmEl.addEventListener("ended", () => {
-        if (!enabled || !bgmEl) return;
+        if (!bgmOn || !bgmEl) return;
         try { bgmEl.currentTime = 0; const p = bgmEl.play(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
       });
     } catch (e) { return; }
@@ -95,12 +119,16 @@ const SND = (function () {
     _bgmPlay();                                        // 立即尝试; 浏览器允许则无需任何点击
   }
   return {
-    get enabled() { return enabled; },
-    setEnabled(v) { enabled = !!v; localStorage.setItem("dt_snd", enabled ? "1" : "0");
-      const b = document.getElementById("btnSnd"); if (b) b.textContent = enabled ? "🔊" : "🔇";
-      if (enabled) { ac(); _bgmPlay(); }
-      else if (bgmEl) { try { bgmEl.pause(); } catch (e) {} } },
-    toggle() { this.setEnabled(!enabled); },
+    get bgmOn() { return bgmOn; },
+    get sfxOn() { return sfxOn; },
+    setBgm(v) {
+      bgmOn = !!v; try { localStorage.setItem(LS_BGM, bgmOn ? "1" : "0"); } catch (e) {}
+      if (bgmOn) { ac(); _bgmPlay(); }
+      else if (bgmEl) { try { bgmEl.pause(); } catch (e) {} }
+    },
+    setSfx(v) { sfxOn = !!v; try { localStorage.setItem(LS_SFX, sfxOn ? "1" : "0"); } catch (e) {} },
+    suspend() { suspendAll(); },                 // 供原生层 / 黑屏挂机调用
+    resume() { resumeAll(); },
     setStage(v) { stage = v ? 1 : 0; },          // 横幅上台/收台 由 warStart/warEnd 驱动
     hit() { playLayers("hit"); }, crit() { playLayers("crit"); }, hurt() { playLayers("hurt"); },
     swing() { playLayers("swing"); },
@@ -118,12 +146,18 @@ const SND = (function () {
         const wake = () => { ac(); };
         ["pointerdown", "keydown", "touchstart"].forEach(ev =>
           document.addEventListener(ev, wake, { passive: true }));
-        document.addEventListener("visibilitychange", () => { if (!document.hidden) wake(); });
+        /* v1.7.60: 切后台停音乐(修"最小化还在响"), 回前台恢复 */
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) suspendAll(); else resumeAll();
+        });
+        window.addEventListener("pagehide", suspendAll);
       } catch (e) {}
     },
   };
 })();
-(function initSndUI() { const b = document.getElementById("btnSnd"); if (b) b.textContent = SND.enabled ? "🔊" : "🔇"; })();
+/* v1.7.60: 给原生层留的钩子 —— Activity.onPause/onResume 时可直接调, 双保险 */
+window.__sndSuspend = () => { try { SND.suspend(); } catch (e) {} };
+window.__sndResume = () => { try { SND.resume(); } catch (e) {} };
 SND.initFiles();
 
 /* ============ 境界体系(凡人修仙传风) ============
@@ -3569,7 +3603,7 @@ async function initBg() {
 /* v1.7.20: bg.js 已重写为纯 Canvas 2D(无 WebGL/无 Three), 移动端低端机更稳 */
 async function initBg2D() {
   const canvas = $("bg");
-  const mod = await import("./bg.js?v=1.7.56");
+  const mod = await import("./bg.js?v=1.7.60");
   window.__bgCtrl = await mod.initDeepSpace(canvas);
 }
 /* v1.7.20 PERF-2: 渲染 DPR 自适应 —— 触屏/小内存低端设备收敛到 1.5(帧缓冲像素约 -44%), 桌面保留 2 */
@@ -4069,6 +4103,47 @@ function openMail() {
   m.classList.add("show");
 }
 function closeMail() { const m = $("mailModal"); if (m) m.classList.remove("show"); }
+
+/* ==================== v1.7.60 设置面板 ====================
+ * 原来只有一个"声音开关"按钮, 现在收进设置: 音乐 / 音效 独立开关 + 黑屏挂机。 */
+function openSettings() {
+  const m = $("setModal"); if (!m) return;
+  renderSettings();
+  m.classList.add("show");
+}
+function closeSettings() { const m = $("setModal"); if (m) m.classList.remove("show"); }
+function renderSettings() {
+  for (const [id, on] of [["setBgm", SND.bgmOn], ["setSfx", SND.sfxOn]]) {
+    const r = $(id); if (!r) continue;
+    r.classList.toggle("off", !on);
+    const st = r.querySelector(".set-st"); if (st) st.textContent = on ? "开" : "关";
+  }
+}
+function toggleBgm() { SND.setBgm(!SND.bgmOn); renderSettings(); }
+function toggleSfx() { SND.setSfx(!SND.sfxOn); renderSettings(); }
+
+/* 黑屏挂机: 纯黑遮罩 + 停背景动画省电; 游戏逻辑照常跑, 轻触唤醒 */
+let _dimTimer = 0;
+function enterDim() {
+  closeSettings();
+  const d = $("dimScreen"); if (!d) return;
+  d.classList.add("show");
+  document.body.classList.add("dimmed");
+  try { if (window.__bgCtrl && window.__bgCtrl.pause) window.__bgCtrl.pause(); } catch (e) {}
+  const h = d.querySelector(".dim-hint");
+  if (h) {
+    h.style.transition = "none"; h.style.opacity = "1";
+    clearTimeout(_dimTimer);
+    _dimTimer = setTimeout(() => { h.style.transition = "opacity 1.6s ease"; h.style.opacity = "0"; }, 2000);
+  }
+}
+function exitDim() {
+  const d = $("dimScreen"); if (!d) return;
+  d.classList.remove("show");
+  document.body.classList.remove("dimmed");
+  clearTimeout(_dimTimer);
+  try { if (window.__bgCtrl && window.__bgCtrl.resume) window.__bgCtrl.resume(); } catch (e) {}
+}
 function mailGoodsTxt(mail) {
   const g = [];
   for (const mk of (mail.mats || [])) if (MATS[mk.id]) g.push(`${MATS[mk.id].n}×${mk.q}`);
