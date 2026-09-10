@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.1";
+const GAME_VER = "v1.9.2";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1395,11 +1395,24 @@ function zUnpack(s) {
   if (s.startsWith("z1:")) { try { return JSON.parse(LZString.decompressFromBase64(s.slice(3))); } catch (e) { return null; } }
   try { return JSON.parse(s); } catch (e) { return s; }      // 旧版未压缩 JSON
 }
-const JRN_CAP = 300;   // 修行录叙事有界: 超出丢弃最旧, 防存档无限膨胀
-function trimJournal() {
-  if (Array.isArray(state.journal) && state.journal.length > JRN_CAP) {
-    state.journal = state.journal.slice(-JRN_CAP);
+const JRN_CAP = 300;   // 修行录总量上限(保险丝); 实际有界靠 trimJournal 的分流裁剪
+/* v1.9.2 日志瘦身: 旧逻辑按条数一刀切, 而斗法/纪事每十来秒就写一条带全文的叙事,
+ * 上限很快滚满 —— 实测线上最大档 88% 字节是这类文本, 且最老的主线剧情(sid)
+ * 会被挤掉, 剧情判重失效。改为: 主线全保留(判重要用), 其余叙事只留最近 30 条。 */
+const JRN_TAIL = 30;
+function trimJr(list) {
+  if (!Array.isArray(list) || list.length <= JRN_TAIL) return list;
+  const keep = [];
+  let tail = 0;
+  for (let i = list.length - 1; i >= 0; i--) {
+    const j = list[i];
+    if (j && j.sid) { keep.unshift(j); continue; }   // 主线: 判重依据, 永不裁
+    if (++tail <= JRN_TAIL) keep.unshift(j);         // 叙事: 只留最近 30 条
   }
+  return keep;
+}
+function trimJournal() {
+  if (Array.isArray(state.journal)) state.journal = trimJr(state.journal);
 }
 function save() {
   state.lastTs = Date.now();
@@ -3231,7 +3244,7 @@ function addJournal(entry) {
     entry.ts = Date.now();
     state.journal.push(entry);
   }
-  if (state.journal.length > 80) state.journal.shift();
+  if (state.journal.length > JRN_CAP) trimJournal();   // v1.9.2: 分流裁剪, 不再 shift 挤掉主线
   save();
 }
 /* 剧情推进器: 触发当前大境卷内所有"已达小层且未经历"的节点 */
@@ -4096,7 +4109,7 @@ function craftPill(id) {
 function cloudSnap(src) {
   const s = src || state;
   const out = Object.assign({}, s);
-  out.journal = (s.journal || []).filter(j => !(j && !j.sid && j.kind === "游历"));
+  out.journal = trimJr((s.journal || []).filter(j => !(j && !j.sid && j.kind === "游历")));
   /* v1.7.26: 未定道号(_named=0)不上传名字与本地临时名 → 服务器/风云榜只见定名者 */
   if (!out._named) { delete out.name; delete out._pn; }
   /* v1.8.0: 上传「账本值」而不是「预测值」—— 本地预测只是显示, 若把预测一起传上去,
