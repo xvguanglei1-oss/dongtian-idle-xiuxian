@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.53";
+const GAME_VER = "v1.7.54";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -4914,3 +4914,34 @@ function genMonster(big, lv) {                   // 妖兽: 基础线性 + 词�
   return m;
 }
 function hashRand(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
+
+/* ==================== v1.7.54 开屏页控制 ====================
+ * 目的: ① 展示健康游戏忠告(合规惯例) ② 遮住首屏资源加载/渲染, 缓存完成即淡出
+ * 结束条件: window load 完成且已展示 MIN_MS 以上; 或用户轻触跳过; 或 8s 兜底 */
+(function initSplash() {
+  const sp = document.getElementById("splash");
+  if (!sp) return;
+  const bar = document.getElementById("spBar");
+  const t0 = Date.now(), MIN_MS = 1800;
+  let p = 0, finished = false;
+  const timer = setInterval(() => {
+    p = Math.min(90, p + 3 + Math.random() * 8);
+    if (bar) bar.style.width = p.toFixed(0) + "%";
+  }, 150);
+  function finish() {
+    if (finished) return;
+    finished = true;
+    clearInterval(timer);
+    if (bar) bar.style.width = "100%";
+    setTimeout(() => {
+      sp.classList.add("sp-out");
+      setTimeout(() => { try { sp.remove(); } catch (e) {} }, 600);
+    }, 240);
+  }
+  const onReady = () => setTimeout(finish, Math.max(0, MIN_MS - (Date.now() - t0)));
+  if (document.readyState === "complete") onReady();
+  else window.addEventListener("load", onReady, { once: true });
+  sp.addEventListener("pointerdown", finish);
+  sp.addEventListener("click", finish);
+  setTimeout(finish, 8000);
+})();
