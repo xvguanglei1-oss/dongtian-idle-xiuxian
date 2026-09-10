@@ -5058,22 +5058,30 @@ function artCtx() {
     hpRef: Math.max(320, 100 + 330 * lv + fh),
   };
 }
-function artScore(a) {
-  let sc = (a.a || 0) + 3 * (a.d || 0) + (a.h || 0) / 30;
+function artScore(a) {                    /* v1.9.6 品质锚定: 星品主导、浮分封顶, 低星数学上永不越高星 */
+  const lv = (state.realmIdx || 0) + 1;
+  let base = (a.a || 0) + 3 * (a.d || 0) + (a.h || 0) / 30;   // 斗法三维(实战权重不变)
   const c = artCtx();
+  let fx = 0;
   for (const f of (a.fx || [])) {
     const p = f.v / 100;
-    if (f.k === "atk") sc += p * c.atkRef;
-    else if (f.k === "hp") sc += p * c.hpRef / 30;
-    else if (f.k === "dfn") sc += p * c.defRef * 3;
-    else if (f.k === "crit") sc += p * c.atkRef * 0.55;
-    else if (f.k === "critB") sc += p * c.atkRef * 1.0;
-    else if (f.k === "critD") sc += p * c.atkRef * 0.15;
-    else if (f.k === "pen") sc += p * c.atkRef * 0.35;
-    else if (f.k === "dodge") sc += p * c.defRef * 1.4;
-    else if (f.k === "life") sc += p * c.atkRef * 0.5;
+    if (f.k === "atk") fx += p * c.atkRef;
+    else if (f.k === "hp") fx += p * c.hpRef / 30;
+    else if (f.k === "dfn") fx += p * c.defRef * 3;
+    else if (f.k === "crit") fx += p * c.atkRef * 0.55;
+    else if (f.k === "critB") fx += p * c.atkRef * 1.0;
+    else if (f.k === "critD") fx += p * c.atkRef * 0.15;
+    else if (f.k === "pen") fx += p * c.atkRef * 0.35;
+    else if (f.k === "dodge") fx += p * c.defRef * 1.4;
+    else if (f.k === "life") fx += p * c.atkRef * 0.5;
   }
-  return sc;
+  /* 星级锚: 相邻星差 ×境界逐级放宽; 三维+词条压缩成浮分且封顶在本档步长内
+     → 同星内比 roll 肥瘦, 跨星看锚差 —— 2星防血装 roll 再肥也压不过 4星古宝,
+     阿青择优(smartEquip/keepArtQuiet 同用此分)恢复"品质优先, 同品质比养成"的直觉 */
+  const STEP = [32, 38, 44, 50, 56, 62];
+  const q = Math.max(0, Math.min(5, a.q | 0));
+  const anchor = lv * STEP.slice(0, q).reduce((s, x) => s + x, 0);
+  return Math.round(anchor + Math.min(lv * STEP[q], (base + fx) * 0.32));
 }
 let _eqRecycle = [];
 function equipBonus() {                 // 装备数值加总 + 词条聚合(v1.7.13)

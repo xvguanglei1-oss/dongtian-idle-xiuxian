@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>闲人修仙 v1.9.5</title>
+<title>闲人修仙 v1.9.6</title>
 <meta name="description" content="闲人修仙：主身巡猎斗法、分身云游寻宝，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -253,7 +253,7 @@
   .card h3{color:var(--gold);font-size:18px;letter-spacing:.14em;margin-bottom:12px}
   .card p{font-size:13px;color:var(--dim);line-height:1.8}
   .card .num{color:#7fe0c3;font-weight:800;font-size:17px}
-  .card .btn{margin-top:16px;width:100%}
+  .card .btn{margin-top:16px;width:auto;min-width:176px;max-width:86%;padding-left:38px;padding-right:38px}
 
   /* 剧情纲目弹层 */
   .story-card{max-width:440px;width:94%;height:min(88vh,780px);display:flex;flex-direction:column;
@@ -271,7 +271,7 @@
   .story-body h4{color:var(--gold);font-size:13px;letter-spacing:.05em;margin:0 0 6px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
   .story-body h4 .vol{font-size:9.5px;color:#9fc3ff;font-weight:600;letter-spacing:.06em}
   .story-body p{font-size:12px;color:#cdd6e6;line-height:1.85;margin:0 0 9px;text-align:justify}
-  .story-close{width:100%;margin-top:10px;flex:none}
+  .story-close{width:auto;min-width:176px;max-width:86%;margin:10px auto 0;flex:none}
   .story-sum{font-size:11px;color:#9fc3ff;margin:0 0 10px;line-height:1.7}
   .story-sum b{color:#e8c56b}
   .j-card{position:relative;margin:0 0 10px;padding:10px 12px;border-radius:11px;background:rgba(255,255,255,.04);
@@ -404,7 +404,7 @@
     box-shadow:0 2px 10px rgba(0,0,0,.55);cursor:grab;touch-action:none}
   .dim-knob svg{width:20px;height:20px;display:block}
 </style>
-<link rel="stylesheet" href="dt-theme.css?v=1.9.5">
+<link rel="stylesheet" href="dt-theme.css?v=v1.9.6">
 </head>
 <body>
 <!-- v1.7.58 开屏页: 品牌 + 进度 + 健康游戏忠告(load 完成或点击后淡出) -->
@@ -427,7 +427,7 @@
     <p>合理安排时间，享受健康生活。</p>
   </div>
 
-  <div class="sp-foot"><span id="spVer">v1.9.5</span></div>
+  <div class="sp-foot"><span id="spVer">v1.9.6</span></div>
 </div>
 
 <!-- v1.8.0 连接中断遮罩: 心跳连续失败时盖住 —— 不让玩家在已经和服务端脱节的账本上继续玩 -->
@@ -513,7 +513,7 @@
   <button class="btn" id="btnTravel" onclick="openTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">云游</span></button>
 </div>
 
-<div class="ver-float"><span class="ver-tag" id="verTag">v1.9.5</span></div>
+<div class="ver-float"><span class="ver-tag" id="verTag">v1.9.6</span></div>
 
 <canvas id="burst"></canvas>
 <div class="flash" id="flash"></div>
@@ -674,7 +674,7 @@
 </div>
 
 <script src="assets/lz-string.min.js"></script>
-<script src="game.js?v=1.9.5"></script>
+<script src="game.js?v=v1.9.6"></script>
 
 </body>
 </html>
