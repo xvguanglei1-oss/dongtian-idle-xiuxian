@@ -1,7 +1,7 @@
 /* 洞天 · 挂机修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.51";
+const GAME_VER = "v1.7.52";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1648,6 +1648,11 @@ function updateHUD() {
   /* 聚灵阵: 灵石 / 下一级所需(满级满格); 突破: 修为 / 所需(need=∞ 视为满格) */
   setProg("arrFill", state.arrayLv >= ARRAY_MAX_LV ? 1 : (arrayCostNow() > 0 ? state.spirit / arrayCostNow() : 0));
   setProg("brkFill", (r.need === Infinity || !r.need) ? 1 : state.exp / r.need);   // 用真实修为(非缓动值), 进度与"能否渡劫"严格一致
+  /* v1.7.52 按钮下方数字进度 */
+  const arrNumEl = $("arrNum");
+  if (arrNumEl) arrNumEl.textContent = state.arrayLv >= ARRAY_MAX_LV ? "已圆满" : fmt(state.spirit) + "/" + fmt(arrayCostNow());
+  const brkNumEl = $("brkNum");
+  if (brkNumEl) brkNumEl.textContent = (r.need === Infinity || !r.need) ? "∞" : fmt(state.exp) + "/" + fmt(r.need);
   $("spirit").textContent = fmt(_dsp.spirit);
   $("rateText").textContent = fmt(rateNow());
   $("arrayLv").textContent = state.arrayLv;

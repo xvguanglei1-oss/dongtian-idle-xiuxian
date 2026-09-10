@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>洞天 · 挂机修仙 · 墨线夜谈 v1.7.51</title>
+<title>洞天 · 挂机修仙 · 墨线夜谈 v1.7.52</title>
 <meta name="description" content="洞天挂机修仙：主身巡猎斗法、分身云游寻宝，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -120,11 +120,16 @@
   @keyframes cultGlow{0%,100%{filter:drop-shadow(0 0 2px var(--rg,rgba(232,197,107,.32))) drop-shadow(0 0 8px var(--rg,rgba(232,197,107,.32)))}50%{filter:drop-shadow(0 0 6px var(--rg,rgba(232,197,107,.32))) drop-shadow(0 0 20px var(--rg,rgba(232,197,107,.32)))}}
 
   /* 中央按钮 */
-  .actions{position:fixed;left:0;right:0;bottom:18px;z-index:10;display:flex;justify-content:center;gap:10px;padding:0 14px}  /* v1.7.46: 底部进度条移除 → 按钮下移填满 */
+  .actions{position:fixed;left:0;right:0;bottom:24px;z-index:10;display:flex;justify-content:center;gap:10px;padding:0 14px}  /* v1.7.52: 上移 6px 给按钮下方数字进度留位 */
   /* v1.7.46 按钮内进度: SVG clipPath 复用墨形, 填充宽度即进度(聚灵阵=灵石/升级价, 突破=修为/所需) */
   .btn .prog{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;
     mix-blend-mode:multiply;isolation:isolate}   /* v1.7.49: 与按钮底色相乘 → 恒为"本色加深", 任何状态(金/红/禁用灰调)都不割裂 */
   .ver-float{position:fixed;right:9px;bottom:4px;z-index:10;pointer-events:none}
+  /* v1.7.52 按钮正下方数字进度(灵石/升级价, 修为/所需) */
+  .btn .pnum{position:absolute;left:0;right:0;bottom:-14px;text-align:center;white-space:nowrap;
+    font-size:9.5px;font-family:ui-monospace,SFMono-Regular,monospace;letter-spacing:.02em;
+    color:rgba(232,197,107,.66);pointer-events:none;z-index:3;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  .btn.primary .pnum{color:rgba(255,200,180,.70)}
   .btn{pointer-events:auto;border:0;background:transparent;color:var(--gold);border-radius:0;padding:13px 24px;
     font-size:14px;font-weight:600;letter-spacing:.06em;cursor:pointer;transition:transform .12s;
     box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;-webkit-appearance:none;appearance:none;outline:none}
@@ -282,7 +287,7 @@
   @keyframes glowEmberInk{0%,100%{filter:drop-shadow(0 0 1px rgba(255,150,110,.2))}50%{filter:drop-shadow(0 0 6px rgba(255,150,110,.95)) drop-shadow(0 0 13px rgba(255,120,80,.5))}}
   .glow-ember{animation:glowEmberInk .75s ease-in-out infinite}
 </style>
-<link rel="stylesheet" href="dt-theme.css?v=1.7.51">
+<link rel="stylesheet" href="dt-theme.css?v=1.7.52">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -360,12 +365,12 @@
 <div class="feed feed-avatar" id="avatarFeed"></div>
 <div class="feed feed-main" id="mainFeed"></div>
 <div class="actions">
-  <button class="btn" id="btnArray" onclick="tapArray()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><svg class="prog" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="arrFillClip"><path d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></clipPath></defs><rect id="arrFill" x="0" y="0" width="0" height="60" fill="url(#progGreen)" clip-path="url(#arrFillClip)"/></svg><span class="label">聚灵阵 Lv.<span id="arrayLv">1</span></span></button>
-  <button class="btn primary" id="btnBreak" onclick="manualBreak()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M14 7 C30 2 40 12 56 6 C72 1 84 9 100 6 C118 3 132 8 150 5 C166 3 184 6 194 12 C199 20 196 28 197 36 C198 44 194 50 180 52 C166 54 150 49 136 53 C120 57 104 50 90 54 C76 58 62 52 48 55 C34 57 20 52 10 53 C2 52 3 44 4 36 C5 27 3 19 6 14 C7 11 10 9 14 7 Z"/></svg><svg class="prog" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="brkFillClip"><path d="M14 7 C30 2 40 12 56 6 C72 1 84 9 100 6 C118 3 132 8 150 5 C166 3 184 6 194 12 C199 20 196 28 197 36 C198 44 194 50 180 52 C166 54 150 49 136 53 C120 57 104 50 90 54 C76 58 62 52 48 55 C34 57 20 52 10 53 C2 52 3 44 4 36 C5 27 3 19 6 14 C7 11 10 9 14 7 Z"/></clipPath></defs><rect id="brkFill" x="0" y="0" width="0" height="60" fill="url(#progJade)" clip-path="url(#brkFillClip)"/></svg><span class="label">☯ 立即突破
+  <button class="btn" id="btnArray" onclick="tapArray()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><svg class="prog" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="arrFillClip"><path d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></clipPath></defs><rect id="arrFill" x="0" y="0" width="0" height="60" fill="url(#progGreen)" clip-path="url(#arrFillClip)"/></svg><span class="label">聚灵阵 Lv.<span id="arrayLv">1</span></span><i class="pnum" id="arrNum"></i></button>
+  <button class="btn primary" id="btnBreak" onclick="manualBreak()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M14 7 C30 2 40 12 56 6 C72 1 84 9 100 6 C118 3 132 8 150 5 C166 3 184 6 194 12 C199 20 196 28 197 36 C198 44 194 50 180 52 C166 54 150 49 136 53 C120 57 104 50 90 54 C76 58 62 52 48 55 C34 57 20 52 10 53 C2 52 3 44 4 36 C5 27 3 19 6 14 C7 11 10 9 14 7 Z"/></svg><svg class="prog" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><defs><clipPath id="brkFillClip"><path d="M14 7 C30 2 40 12 56 6 C72 1 84 9 100 6 C118 3 132 8 150 5 C166 3 184 6 194 12 C199 20 196 28 197 36 C198 44 194 50 180 52 C166 54 150 49 136 53 C120 57 104 50 90 54 C76 58 62 52 48 55 C34 57 20 52 10 53 C2 52 3 44 4 36 C5 27 3 19 6 14 C7 11 10 9 14 7 Z"/></clipPath></defs><rect id="brkFill" x="0" y="0" width="0" height="60" fill="url(#progJade)" clip-path="url(#brkFillClip)"/></svg><span class="label">☯ 立即突破</span><i class="pnum" id="brkNum"></i></button>
   <button class="btn" id="btnTravel" onclick="openTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">云游</span></button>
 </div>
 
-<div class="ver-float"><span class="ver-tag" id="verTag">v1.7.51</span></div>
+<div class="ver-float"><span class="ver-tag" id="verTag">v1.7.52</span></div>
 
 <canvas id="burst"></canvas>
 <div class="flash" id="flash"></div>
@@ -486,7 +491,7 @@
 </div>
 
 <script src="assets/lz-string.min.js"></script>
-<script src="game.js?v=1.7.51"></script>
+<script src="game.js?v=1.7.52"></script>
 
 </body>
 </html>
