@@ -1,5 +1,5 @@
 /* ============================================================
-   洞天·挂机修仙 —— 设计语言主题层  dt-theme.css
+   闲人修仙 —— 设计语言主题层  dt-theme.css
    版本: 0.2.0   (每次视觉改版 bump 此号 + index.html 引用参数)
    语言: 「墨线夜谈」手绘墨迹 × 纸墨色彩纪律
    参照: messenger.abeto.co 的 imperfect/outline 基因
@@ -36,7 +36,7 @@
     background-size:100% 100%;background-repeat:no-repeat;
     filter:drop-shadow(0 6px 16px rgba(0,0,0,.55))}
   /* 徽章右下角一枚小朱砂印 —— 手绘"盖印"意象 */
-  .realm-badge::after{content:"洞天";position:absolute;right:5px;bottom:4px;
+  .realm-badge::after{content:"闲人";position:absolute;right:5px;bottom:4px;
     font-family:var(--font-brush);font-size:7px;color:rgba(176,56,42,.75);
     border:1px solid rgba(176,56,42,.5);padding:0 2px;border-radius:2px;transform:rotate(-4deg);
     letter-spacing:.1em}
