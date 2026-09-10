@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.65";
+const GAME_VER = "v1.8.0";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1371,7 +1371,7 @@ function load() {
     if (c) {
       state = c; trimJournal();
       /* v1.3.0 修: 启动瞬间 save() 会无条件把 lastTs 刷成「现在」, 把真实离线段吞掉,
-         导致 applyOffline 算出 dt≈0、云端 settle 也按 0 结算 —— 离线收益形同虚设。
+         导致离线结算算出 dt≈0, 离线收益形同虚设。
          载入时先把存档里的原始 lastTs 存进 _lastTs0, 离线结算以它为基准。 */
       state._lastTs0 = (s && s.lastTs) || c.lastTs || 0;
     }
@@ -1394,6 +1394,44 @@ const CLD_API = cldApiBase();
 const CLD_KEY = "dongtian_cloud_id";
 const CLD_ALPH = "abcdefghjkmnpqrstuvwxyz23456789";
 const cld = { id: "", ready: false, dirty: false, lastOkTs: 0, lastOkLocal: 0, lastPushTs: 0, lastErr: "" };
+
+/* ==================== v1.8.0 服务端唯一账本 ====================
+ * 第一性原理: 游戏状态是「时间」的函数, 而唯一可信的时间只有服务端的钟。
+ * 于是分工收敛成两件事 ——
+ *   服务端: 唯一账本。每次交互都做同一件事: 把状态从「上次写入时刻」推进到「服务端现在」。
+ *   客户端: ① 预测(两次心跳之间按服务端下发的速率本地累加, 只为看着数字在涨)
+ *           ② 呈现(播动画/渲染)
+ * 每次心跳/启动门禁, 服务端返回权威 state, 直接覆盖本地预测。
+ * 本地时钟只用来算「距上次同步过了多久」, 不参与任何收益计算 —— 改钟偷不到东西。
+ * 服务端结算区间 = [ 自己记录的上次写入时刻 , serverNow ]:
+ *   区间 ≤ 180s → 在线(满速率);  > 180s → 离线(0.6/0.7 折 + 巡猎)。判定全在服务端。 */
+let _srvOffset = 0;                    // serverNow = Date.now() + _srvOffset
+let _rate = { exp: 0, spirit: 0 };     // 服务端下发的速率(每秒), 供本地插值
+let _syncAt = 0;                       // 上次同步时刻(serverNow), 用于时间显示
+let _pred = { exp: 0, spirit: 0 };     // 自上次同步以来本地预测累加的量 —— 上传时要扣掉, 否则服务端会重复发
+function srvNow() { return Date.now() + _srvOffset; }
+function startHeartbeat() {
+  setInterval(async () => {
+    if (document.hidden) return;       // 后台不心跳(回前台会走强制刷新)
+    const r = await cloudSettle();
+    if (!r) { hbFail(); return; }
+    hbOk();
+    if (r.settled && r.gains && r.gains.mode === "away") presentSettle(r);
+  }, 90000);
+}
+/* 心跳失败: 前两次静默(弱网抖动很常见), 连续 3 次才盖一层"连接中断"遮罩并停手 ——
+ * 不让玩家在"假账本"上继续玩(那时候本地预测已经和服务端脱节了)。 */
+let _hbFails = 0;
+function hbOk() {
+  _hbFails = 0;
+  const ov = document.getElementById("netOverlay");
+  if (ov) ov.classList.remove("show");
+}
+function hbFail() {
+  if (++_hbFails < 3) return;
+  const ov = document.getElementById("netOverlay");
+  if (ov) ov.classList.add("show");
+}
 function cldFail(e) {
   let msg = "";
   if (!e) msg = "unknown";
@@ -1467,19 +1505,11 @@ function cldAdoptCloud(s) {
   return true;
 }
 async function cldPush() {
-  state.lastTs = Date.now();
-  trimJournal();
-  try {
-    const r = await cldApi("PUT", { __z: zPack(cloudSnap(state)) });
-    state._cloudTs = r.ts || Date.now();
-    save();
-    cld.ready = true; cld.lastOkTs = Date.now(); cld.lastOkLocal = state.lastTs;
-    cld.lastPushTs = Date.now();
-    cldUI("on");
-    cld.lastErr = "";
-    const hint = $("cloudErr"); if (hint) hint.textContent = "";
-    return true;
-  } catch (e) { cldFail(e); return false; }
+  /* v1.8.0: 服务端只有一种写操作 —— 结算。
+   * 普通 PUT 会推进结算锚却不发那段时间的收益, 等于把那段收益吃掉;
+   * 所以"上传进度"也一律走 settle: 结算本身就是最好的上传。 */
+  const r = await cloudSettle();
+  return !!r;
 }
 async function cldPull(forceImport) {        // v1.7.29 forceImport: 用户主动绑定玩家码=导入云端档(以云为权威, 防新设备本地空档覆盖云端)
   if (!window.fetch) { cldUI("off"); return; }
@@ -1494,7 +1524,7 @@ async function cldPull(forceImport) {        // v1.7.29 forceImport: 用户主�
       if (forceImport || cs > ls) {
         /* 云端比本地同步点新(或用户主动导入) → 采用云端档(冲突安全方向: 云新优先, 防旧档覆盖新云)。
          * 不在此立刻推送/调 save() —— 它们会把 lastTs 刷成"现在", 吞掉随后的离线结算;
-         * 改为直写本地保留云端 lastTs, 离线收益由启动的 applyOffline 统一结算后再回写 */
+         * 改为直写本地保留云端 lastTs, 离线收益由启动门禁里的服务端结算统一处理 */
         let hadLocal = false;
         try { hadLocal = !!localStorage.getItem(SAVE_KEY); } catch (e) {}
         const adopted = cldAdoptCloud(r.data);
@@ -1580,37 +1610,26 @@ function cloudInit() {
   });
   cldUI("sync");
   addEventListener("online", () => {                                  // 断网恢复后自动补同步
-    if (!cld.ready) cldPull();
-    if (state && state._awayPending) flushAwayPending();               // v1.7.65: 补算挂起的离线收益
+    if (!cld.ready) cldPull(); else cloudSettle();
   });
-  bootCloud();           // 首次: 先同步云端, 再统一结算一次离线收益
-  /* v1.7.63 兜底: 云端迟迟不回(弱网/超时)也要能接管"回到前台补结算", 不能一直不武装 */
-  setTimeout(() => { _awayArmed = true; }, 10000);
-  /* 低频兜底上传: 每 60s 检查一次, 仅在"有未同步进度"且"距上次成功上传 ≥5 分钟"时才传,
-   * 避免高频轮询; 关键节点(突破/升阵/离线结算/切后台)另行即时上传 */
-  setInterval(() => {   // v1.5.1: 每 60s 检查, 有未同步进度且距上次成功推 ≥5 分钟才推(合并窗口内所有高频进度)
-    if (!cld.ready) return;
-    if (cld.dirty && Date.now() - cld.lastPushTs > CLOUD_PUSH_MIN) { cld.dirty = false; cloudPushNow(); }
-  }, 60000);
+  /* v1.8.0: 启动结算已交给门禁(bootCloud), 周期同步已交给心跳(见 startHeartbeat)。
+     这里只保留面板交互与"断网恢复"。 */
 }
 
 /* 启动流程: 先尝试拉云端(网络失败静默, 本地照常可玩),
  * 再以"最终采用的存档"的基准(lastTs/_settledTs 取大)结算一次离线收益,
  * 保证换设备/清缓存也不会漏发或重发。 */
+/* v1.8.0 启动门禁: 拉云端档 → 请服务端权威结算一次 → 返回是否通过。
+ * 返回 false 表示连不上服务器 —— 调用方必须停在失败页, 不得进入游戏。 */
 async function bootCloud() {
   await cldPull();
-  /* 后端权威结算优先: 上传"不推进 lastTs"的快照 → 服务端按服务器时间结算离线区间与云游归来。
-   * 成功 → 采纳返回的已结算档并展示; 云端不可用/非 settle 后端 → 本地 applyOffline 兜底(本地永远可玩)。 */
   let sr = null;
   try { sr = await cloudSettle(); } catch (e) { sr = null; }
-  if (sr && sr.settled) presentSettle(sr);
-  else if (!sr) applyOffline();
-  cloudFlush();   // v1.5.1: 启动结算后尽快把建档/离线收益上云
-  /* v1.7.65: 冷启动这一次已把整个离线窗口结清(云端成功→cloudSettle 内已清; 云端失败→applyOffline 本地兜底),
-     所以上次遗留的欠账在此一并销掉, 免得联网后又被补算一次(重复发钱)。 */
-  clearAwayPending();
+  if (!sr) return false;                       // 门禁不通过
+  if (sr.settled && sr.gains && sr.gains.mode === "away") presentSettle(sr);
+  cloudFlush();                                // 启动结算后尽快把建档/离线收益上云
   updateRealmUI(); updateHUD(); updateArts(); realmPlot();
-  _awayArmed = true;   // v1.7.63: 启动结算已完成, 之后才允许 settleAway 接管
+  return true;
 }
 
 /* ============ 数值 ============ */
@@ -3429,32 +3448,6 @@ function offlineFightWin(big) {
     if (round > 300) return hphp > mhp;
   }
 }
-function huntOffline(dtSec) {
-  const H = { waves: 0, fights: 0, wins: 0, loses: 0, mysts: 0, exp: 0, spirit: 0, kept: 0, keptName: "", melted: 0, meltSp: 0 };
-  const waves = Math.floor((dtSec || 0) / ENC_PERIOD);
-  if (waves <= 0) return H;
-  H.waves = waves;
-  const rate = rateNow(), spr = spiritRate();
-  for (let i = 0; i < waves; i++) {
-    if (Math.random() < HUNT_FIGHT_RATE) {
-      H.fights++;
-      if (!offlineFightWin(bigIdx())) { H.loses++; continue; }
-      H.wins++;
-      const ge = Math.round(rate * FIGHT_EXP_W * 0.6), gs = Math.round(spr * FIGHT_SP_W * 0.7);
-      state.exp += ge; state.spirit += gs; H.exp += ge; H.spirit += gs;
-      const a = makeArt();
-      if (keepArtQuiet(a)) { H.kept++; if (!H.keptName) H.keptName = a.name; }
-      else { H.melted++; H.meltSp += Math.round(40 * Math.pow(1.5, a.q)); }
-    } else {
-      H.mysts++;
-      const k = Math.random();
-      if (k < 0.45) { const gs = Math.round(spr * MYST_W * 1.2 * 0.7); state.spirit += gs; H.spirit += gs; }
-      else if (k < 0.8) { const ge = Math.round(rate * MYST_W * 0.6); state.exp += ge; H.exp += ge; }
-    }
-  }
-  H.equipped = (state.arts || []).length;
-  return H;
-}
 function huntTxtOf(H) {                 // 离线巡猎纪要(云端 gains.hunt / 本地兜底 共用)
   if (!H || !H.waves) return "";
   const kN = H.keptCount != null ? H.keptCount : (Array.isArray(H.kept) ? H.kept.length : (H.kept || 0));
@@ -3464,214 +3457,7 @@ function huntTxtOf(H) {                 // 离线巡猎纪要(云端 gains.hunt 
     (kN ? `<br>阿青收下 <b>${kN}</b> 件新宝${kName ? `（${kName} 等）` : ""}，藏宝阁在架 ${H.equipped || kN} 件` : "") +
     (H.melted ? `；余下 <b>${H.melted}</b> 件不入眼，尽数投炉熔作灵石 +<span class="num"> ${fmt(H.meltSp || 0)}</span>` : "");
 }
-/* 修为修满即自动精进小境界; 大境界圆满前停 —— 大境界渡劫留待亲手, 剧情绝不越卷 */
-function autoAdvanceSegs() {
-  let jg = 0;
-  while (jg++ < 60) {
-    const r0 = realm();
-    if (r0.isBigEnd) break;
-    if (state.realmIdx >= TOTAL_SEGS - 1) break;
-    if (state.exp >= r0.need) { state.exp -= r0.need; state.realmIdx++; }
-    else break;
-  }
-}
 
-/* ==================== v1.7.63 回到前台补结算 ====================
- * 背景: Android WebView 切后台只是暂停、不销毁页面, 所以"最小化再回来"不会走冷启动,
- *       而主循环的 dt 被夹在 0.1s —— 这段离开时间原本是白丢的。
- * 做法(业界通行: 切后台存时间戳 → 回前台算差值补发):
- *   < AWAY_SILENT(30s)  静默补, 按在线速率, 不弹面板也不惊动云端(玩家只是切出去看了一眼)
- *   ≥ AWAY_SILENT       交给服务端权威结算(服务器时间), 弹离线面板
- * v1.7.65 改: ≥30s 遇到断网时不再本地兜底, 改为记账等联网 —— 本地兜底用设备时钟, 不可信,
- *   会留下"改时钟刷收益"的口子。联网后带 end(回到前台时刻)请服务端按指定区间补算。 */
-const AWAY_SILENT = 30;
-let _awayArmed = false;     // 启动结算跑完前不接管, 免得和 bootCloud 重复结算
-
-function settleAway() {
-  if (!state || !_awayArmed) return;
-  if (state._awayPending) { flushAwayPending(); return; }   // v1.7.65: 有欠账先补, 本次不另起一笔
-  const now = Date.now();
-  const base = Math.max(state.lastTs || 0, state._settledTs || 0);
-  let away = (now - base) / 1000;
-  if (!(away > 3)) return;                    // 正常切帧/抖动, 不管
-
-  if (away < AWAY_SILENT) {
-    /* 短时离开: 视同"没走", 按在线速率补, 静默 */
-    away = Math.min(away, AWAY_SILENT);
-    const gE = rateNow() * away, gS = spiritRate() * away;
-    state.exp = Math.max(0, fin(state.exp + gE, state.exp));
-    state.spirit = Math.max(0, fin(state.spirit + gS, state.spirit));
-    autoAdvanceSegs();
-    state.lastTs = now; state._settledTs = now;
-    updateRealmUI(); updateHUD(); realmPlot();
-    save();
-    try { console.log(`[away] 短时离开 ${away.toFixed(1)}s, 修为+${Math.round(gE)} 灵石+${Math.round(gS)}`); } catch (e) {}
-    return;
-  }
-
-  /* 长时离开: 优先交给服务端结算。
-   * 服务端不信任客户端报的 lastTs —— 它会与「自己记录的最后同步时间」取 max,
-   * 所以往回改时钟刷不动(实测: 谎报 30 天前, 服务端给 0 秒)。
-   * 本地 applyOffline 用的是设备时钟, 不可信, 只作真断网时的兜底。 */
-  try { console.log(`[away] 离开 ${Math.round(away / 60)} 分钟, 走云端结算`); } catch (e) {}
-  settleAwayCloud(base, now);
-}
-
-/* v1.7.65 断网不再本地兜底:
- * 本地兜底用的是设备时钟, 不可信 —— 既留下"改时钟就能刷收益"的口子, 也和服务端已有的防篡改锚打架。
- * 改成「记账等联网」: 把离开区间存下来, 联网后由服务端按指定区间(带 end)权威结算。 */
-async function settleAwayCloud(base, endTs) {
-  let r = null;
-  try { r = await cloudSettle(base, endTs); } catch (e) { r = null; }
-  if (!r) {
-    /* 第一次没通(弱网常见) → 再试一次, 给个短窗口 */
-    try { await new Promise(s => setTimeout(s, 2500)); } catch (e) {}
-    try { r = await cloudSettle(base, endTs); } catch (e) { r = null; }
-  }
-  if (r) {
-    /* 服务端有应答就以它为准: settled=true → 已入账并采纳; false → 服务端认为无需结算 */
-    if (r.settled) { presentSettle(r); }
-    else { state._settledTs = Date.now(); state.lastTs = Date.now(); save(); }
-    return;
-  }
-  /* 真断网: 记账等联网补算, 不本地发钱 */
-  try { console.log(`[away] 云端不可达 → 记账待补 (离开 ${Math.round((endTs - base) / 60000)} 分钟)`); } catch (e) {}
-  markAwayPending(base, endTs);
-}
-
-/* ---- v1.7.65 离线欠账: 断网时挂起, 联网后由服务端按指定区间补算 ---- */
-function markAwayPending(base, endTs) {
-  const prev = state._awayPending;
-  state._awayPending = {
-    base: (prev && prev.base) || base || 0,      // 首次欠账的基准(服务端另有自己的锚, 此值仅兜底)
-    end: endTs || Date.now(),                    // 区间终点 = 回到前台的时刻
-    ts: Date.now(),
-  };
-  state.lastTs = Date.now(); state._settledTs = Date.now();   // 本地推进, 免得主循环重复算这一段
-  save();
-  pushMsg("main", `<span class="y">离线收益待结算</span>：当前网络不可用，联网后会自动到账。`);
-}
-function clearAwayPending() {
-  if (state && state._awayPending) { state._awayPending = null; save(); }
-}
-let _awayFlushBusy = false;
-async function flushAwayPending() {
-  const p = state && state._awayPending;
-  if (!p || _awayFlushBusy) return;
-  try { if (navigator.onLine === false) return; } catch (e) {}
-  _awayFlushBusy = true;
-  try {
-    const r = await cloudSettle(p.base, p.end);   // 成功路径内部会 clearAwayPending()
-    if (r && r.settled) presentSettle(r);
-  } catch (e) {} finally { _awayFlushBusy = false; }
-}
-
-function applyOffline(baseOverride, capOverride) {
-  const now = Date.now();
-  /* v1.7.20 P0-1 时钟加固: 结算基准若明显落在"未来"(本地时钟被回拨过),
-     不做倒贴也不重结, 将基准校正回当前并计数取证; 每次离线收益仍受 OFFLINE_CAP 限制。
-     注意: 纯前端没有权威时间源, 无法根除"持续拨快时钟"预支收益 —— 彻底防护需后端时钟校准。 */
-  if ((state._settledTs || 0) > now + 60000 || (state._lastTs0 || 0) > now + 60000) {
-    state._warp = (Number(state._warp) || 0) + 1;
-    state._settledTs = now; state._lastTs0 = now;
-    save();
-    return;
-  }
-  /* 结算基准 = 载入时的原始 lastTs(_lastTs0) 与上次结算推进点取大 → 多设备/换档不重不漏
-     (不能用 state.lastTs —— 它已被启动瞬间的 save() 刷成现在, 见 load 处注释)
-     v1.7.63: 支持外部传入基准 —— "回到前台"补结算时基准是离开时刻(state.lastTs)。 */
-  const base = baseOverride != null
-    ? baseOverride
-    : Math.max(state._lastTs0 || state.lastTs || 0, state._settledTs || 0);
-  let dt = (now - base) / 1000;
-  if (dt < 30) return;
-  dt = Math.min(dt, capOverride != null ? capOverride : OFFLINE_CAP);
-  // 洗髓丹: 12时辰内离线收益+30%
-  const offBoost = Date.now() < (state.offlineBoostUntil || 0) ? 1.3 : 1;
-  const gainExp = rateNow() * dt * 0.6 * offBoost;
-  const gainSpirit = spiritRate() * dt * 0.7;
-  // 修复: 离线收益真正入账(此前版本只显示未累加); 写回前兜底为有限非负值, 杜绝 NaN/负数入账
-  state.exp = Math.max(0, fin(state.exp + gainExp, state.exp));
-  state.spirit = Math.max(0, fin(state.spirit + gainSpirit, state.spirit));
-  // 离线自动精进(与在线 loop / 后端 settle 一致): 推过已修满的小境界段,
-  // 大境界圆满前停——大境界渡劫留待亲手, 剧情绝不越卷
-  autoAdvanceSegs();
-  /* v1.3.0 离线巡猎: 与在线同一波次模型(dt ÷ 180s 一波)，本地兜底(云端结算走后端 huntSettle) */
-  const HUNT = huntOffline(dt);
-  if (HUNT.waves) { updateArts(false); }
-  state._settledTs = now;   // 结算推进点(防跨会话重复领取)
-  /* —— 化身归来结算：外出的化身带回材料与见闻 —— */
-  let retTxt = "";
-  if (state.travel) {
-    const loc = locById(state.travel.loc);
-    if (loc) {
-      const z = zoneOfLoc(loc.id);
-      const dur = Math.min(dt, (Date.now() - state.travel.since) / 1000);
-      const early = dur < (z ? z.dur[0] : 120);
-      const ret = { mats: {}, lines: [] };
-      const pool = z ? z.mats : [];
-      if (early) {
-        // 时辰尚短：不空手，但只捋回零星一点
-        for (const dp of pool) {
-          if (Math.random() < dp.c * 0.3) { ret.mats[dp.id] = 1; break; }
-        }
-      } else {
-        for (const dp of pool) {
-          if (Math.random() < dp.c) {
-            const q = dp.a + Math.floor(Math.random() * (dp.b - dp.a + 1));
-            if (q > 0) ret.mats[dp.id] = (ret.mats[dp.id] || 0) + q;
-          }
-        }
-      }
-      ret.lines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
-      if (dur > 7200 && loc.tale.length > 1) ret.lines.push(loc.tale[Math.floor(Math.random() * loc.tale.length)]);
-      for (const k in ret.mats) state.mats[k] = (state.mats[k] || 0) + ret.mats[k];
-      if (z && Math.random() < PAGE_RATE) {
-        if (!state.pages || typeof state.pages !== "object") state.pages = {};
-        state.pages["b" + z.big] = (state.pages["b" + z.big] || 0) + 1;
-        ret.page = true;
-      }
-      const matTxt = Object.keys(ret.mats).map(k => `${MATS[k].n}×${ret.mats[k]}`).join("、");
-      retTxt = (early ? (matTxt
-                      ? `化身往${loc.n}走了一遭，时辰尚短便折返，只捋回 <b>${matTxt}</b>。阿青在门口迎它，嗅了嗅，又趴回去打盹。`
-                      : `化身往${loc.n}走了一遭，时辰尚短便折返，此行只带回一囊清风。阿青在门口等它，嗅了嗅空气，又趴回去打盹。`)
-                      : `化身自<span class="num">${loc.n}</span>归来，带回 <b>${matTxt || "一囊清风"}</b>。阿青绕着你转了三圈，又嗅了嗅化身衣摆，才心满意足地回去守门。`);
-      if (ret.page) retTxt += " ｜ 行囊里多出一页<b>丹方残页</b>";
-      retTxt += " 见闻：" + ret.lines.join("｜");
-      if (ret.lines.length) {
-        addJournal({ key: "tr-" + Date.now(), big: realm().big, kind: "游历",
-          title: "云游·" + loc.n, text: ret.lines.join(" ") });
-      }
-      pushMsg("avatar", `阿青迎到山门口｜化身自${loc.n}归来`);
-      state.travel = null;
-    } else state.travel = null;
-  }
-  travelBtnLbl(); traceRefresh();            // 本地兜底化身归来 → 云游按钮与行迹立刻复位
-  // 离线面板正文(主身闭关 + 灵石 + 化身归来) —— 修复: 历史版本此段在重构中丢失
-  const hh = Math.floor(dt / 3600), mm = Math.floor((dt % 3600) / 60);
-  $("offlineText").innerHTML =
-    `你于洞天闭关打坐 <b>${hh ? hh + " 小时 " : ""}${mm ? mm + " 分钟" : "片刻"}</b>。<br>` +
-    `主身周天自行运转，修为 +<span class="num"> ${fmt(gainExp)}</span><br>聚灵阵凝出灵石 +<span class="num"> ${fmt(gainSpirit)}</span>` +
-    huntTxtOf(HUNT) +
-    (retTxt ? `<br><br>${retTxt}` : "");
-  // 离线际遇: 与在线同样的叙事池, 随离线时长缓慢累积(每满一小时左右一段, 至多3段)
-  const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
-  const bigName = realm().big;
-  const cnt = Math.min(3, Math.max(1, Math.floor(dt / 3600)));
-  const lines = [];
-  for (let i = 0; i < cnt; i++) {
-    const line = pickNoRepeat(MAIN_STORY[bi], "off" + bi);
-    lines.push(line);
-    addJournal({ key: "off-" + Date.now() + "-" + i, big: bigName, kind: "游历", title: "洞天游历", text: line });
-  }
-  const taleEl = $("offlineTale");
-  if (taleEl && lines.length) {
-    taleEl.style.display = "block";
-    taleEl.innerHTML = `<b>离线际遇</b>${lines.map(x => `<br>· ${x}`).join("")}`;
-  }
-  $("offlineModal").classList.add("show");
-  updateRealmUI(); updateHUD();
-}
 function closeOffline() { $("offlineModal").classList.remove("show"); }
 
 /* ============ 背景与特效层 ============ */
@@ -3785,7 +3571,10 @@ function mainMoment() {
 let _hudAcc = 0;   // v1.7.20 PERF-1: HUD 刷新累计, ≥100ms 才刷一次; 事件触发仍即时刷新
 function loop(dt) {
   if (!breaking) {
-    state.exp += rateNow() * dt;
+    /* v1.8.0: 本地这一笔是「预测」—— 只为了让数字看着在涨。计入 _pred, 上传时会被扣掉,
+       真正的账由服务端按自己的钟结算。 */
+    const _g = rateNow() * dt;
+    state.exp += _g; _pred.exp += _g;
     // 小层/同大境自动精进; 每轮重取 realm() —— 修为只可升小段, 遇'圆满'必须停手等手动渡劫(防大额增益一次越过跨大境门槛)
     let guard = 0;
     while (!breaking && state.realmIdx < TOTAL_SEGS - 1 && guard++ < 8) {
@@ -3809,43 +3598,92 @@ function loop(dt) {
 }
 
 /* ============ 启动 ============ */
-load();                       // 先本地存档
-updateRealmUI();
-renderPName();                // v1.7.26 道号显示(默认 6 位数字)
-_dsp.spirit = state.spirit; _dsp.exp = state.exp;
-_floatPrev.spirit = state.spirit; _floatPrev.exp = state.exp;
-updateHUD();
-updateArts();
-realmPlot(); // 启动即按当前境界推进已及剧情
-{
-  const o0 = PLOT[0] && PLOT[0][0];
-  if (o0 && state.journal.length && !journalHasKey(o0) && bigIdx() > 0) {
-    addJournal({ key: o0.key, big: o0.big, kind: o0.kind, title: o0.title, text: o0.text }); // 老档补记起点
+load();                       // 先读本地存档(只为拿到玩家码与本地档, 画面仍被开屏盖住)
+
+/* v1.8.0 启动门禁:
+ *   打开 → 本地渲染开屏 → 校验联网(顺便请服务端权威结算一次)
+ *        成功 → 进游戏;  失败 → 停在失败页, 不进入游戏
+ * 只有一条时间线: 服务端。客户端不自己算账, 也不在断网时发钱。 */
+async function bootGate() {
+  const wait = [0, 1000, 2000, 4000, 8000];
+  for (let i = 0; i < wait.length; i++) {
+    if (wait[i]) await new Promise(s => setTimeout(s, wait[i]));
+    splashStat(i ? `正在重连服务器…（第 ${i} 次）` : "正在连接服务器…");
+    let ok = false;
+    try { ok = await bootCloud(); } catch (e) { ok = false; }
+    if (ok) return true;
   }
+  return false;
 }
-setInterval(save, 8000);
-addEventListener("pagehide", () => { save(); cloudFlush(); });
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") { save(); cloudFlush(); }  // 切后台/关页即同步"最后活跃"(关页时刻必须立刻推, 不能等节流窗口)
-  else if (document.visibilityState === "visible") settleAway();        // v1.7.63 回到前台补结算
-});
-cloudInit();       // 云存档: 先拉云端 → 统一结算离线收益 → 回写(本地永远可玩, 云失败静默)
-setInterval(stayMailCheck, 60000);   // 在线寄包: iOS 常驻标签页也能收到化身手札
-initAura();
-initBg();
-initFxDiag();
-initFxLayer();
-let lastLoop = performance.now();
-(function main() {
-  const now = performance.now();
-  const dt = Math.min(.1, (now - lastLoop) / 1000); lastLoop = now;
-  loop(dt);
-  requestAnimationFrame(main);
-})();
+
+let _hiddenAt = 0;
+
+function startGame() {
+  updateRealmUI();
+  renderPName();                // v1.7.26 道号显示(默认 6 位数字)
+  _dsp.spirit = state.spirit; _dsp.exp = state.exp;
+  _floatPrev.spirit = state.spirit; _floatPrev.exp = state.exp;
+  updateHUD();
+  updateArts();
+  realmPlot(); // 按当前境界推进已及剧情
+  {
+    const o0 = PLOT[0] && PLOT[0][0];
+    if (o0 && state.journal.length && !journalHasKey(o0) && bigIdx() > 0) {
+      addJournal({ key: o0.key, big: o0.big, kind: o0.kind, title: o0.title, text: o0.text }); // 老档补记起点
+    }
+  }
+  setInterval(save, 8000);
+  addEventListener("pagehide", () => { save(); cloudFlush(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      _hiddenAt = srvNow();
+      save(); cloudFlush();     // 记下"我在场", 并同步一次
+    } else if (_hiddenAt && srvNow() - _hiddenAt > 30000) {
+      /* v1.8.0 切后台超 30 秒 → 一律当离线, 回前台强制刷新。
+       * 刷新后重走门禁, 服务端按 [上次写入时刻, now] 结算离线收益并弹面板。
+       * 好处: 客户端不需要维护任何"欠账 / 区间 / 基准"状态, 整条链路只剩一条线。 */
+      location.reload();
+    } else {
+      cloudSettle();            // 短时切走: 补一次结算即可(服务端按 ≤180s 判为在线, 满速率)
+    }
+  });
+  cloudInit();                  // 云存档面板交互 + 断网恢复
+  startHeartbeat();             // v1.8.0 周期心跳(90s)
+  setInterval(stayMailCheck, 60000);   // 在线寄包: iOS 常驻标签页也能收到化身手札
+  initAura();
+  initBg();
+  initFxDiag();
+  initFxLayer();
+  let lastLoop = performance.now();
+  (function main() {
+    const now = performance.now();
+    const dt = Math.min(.1, (now - lastLoop) / 1000); lastLoop = now;
+    loop(dt);
+    requestAnimationFrame(main);
+  })();
+}
+
+async function boot() {
+  let passed = false;
+  try { passed = await bootGate(); } catch (e) { passed = false; }
+  if (!passed) { splashFail(); return; }   // 连不通 → 停在失败页, 不进入游戏
+  splashFinish();
+  startGame();
+}
+setTimeout(boot, 0);   // 放到下一 tick: 等开屏控制函数(splashStat/Finish/Fail)就位
 
 /* 调试句柄(便于测试/调参) */
 window.__game = {
   get state() { return state; },
+  /* v1.8.0 调试句柄 */
+  get srvOffset() { return _srvOffset; },
+  get rate() { return _rate; },
+  get pred() { return _pred; },
+  get syncAt() { return _syncAt; },
+  srvNow: () => srvNow(),
+  settle: () => cloudSettle(),
+  hbFail: () => hbFail(),
+  hbOk: () => hbOk(),
   setRealm: i => { state.realmIdx = i; state.exp = 0; updateRealmUI(); updateHUD(); },
   giveExp: n => { state.exp += n; updateHUD(); },
   giveSpirit: n => { state.spirit += n; updateHUD(); },
@@ -3853,7 +3691,6 @@ window.__game = {
   mainMoment: () => mainMoment(),
   makeArt: () => makeArt(),
   updateArts: h => updateArts(h),
-  applyOffline: () => applyOffline(),
   realmPlot: () => realmPlot(),
   openStory, pushMsg, save, load,
 };
@@ -4050,7 +3887,10 @@ function cloudSnap(src) {
   out.journal = (s.journal || []).filter(j => !(j && !j.sid && j.kind === "游历"));
   /* v1.7.26: 未定道号(_named=0)不上传名字与本地临时名 → 服务器/风云榜只见定名者 */
   if (!out._named) { delete out.name; delete out._pn; }
-  delete out._awayPending;    // v1.7.65: 纯客户端欠账标记, 不上云(免得跨设备/换档带出脏数据)
+  /* v1.8.0: 上传「账本值」而不是「预测值」—— 本地预测只是显示, 若把预测一起传上去,
+     服务端会在预测值之上再发一次同一段时间的收益, 造成双倍。把预测量扣掉即可。 */
+  if (_pred.exp) out.exp = Math.max(0, (out.exp || 0) - _pred.exp);
+  if (_pred.spirit) out.spirit = Math.max(0, (out.spirit || 0) - _pred.spirit);
   return out;
 }
 /* ==================== v0.8.1 在线寄包: 化身不归, 周期寄回手札 ==================== */
@@ -4114,30 +3954,18 @@ async function stayMailCheck() {
   } catch (e) { clearTimeout(tm); }
 }
 /* ==================== v0.8.0 丹方残页(Cloud Settle) 辅助 ==================== */
-async function cloudSettle(baseOverride, endOverride) {
+async function cloudSettle() {
   if (!window.fetch || !cld.id) return null;
   cldUI("sync");
-  // 上传“原样快照”，绝不刷新 state.lastTs —— 后端才能看到真实离线区间
+  const t0 = Date.now();
+  /* v1.8.0: 客户端不再报"离线基准"、也不再指定区间终点 —— 区间完全由服务端自己的两次写入间隔决定。
+     这里只需要上传账本快照(见 cloudSnap: 已扣掉本地预测)。 */
   let snap = null;
   try { snap = cloudSnap(JSON.parse(JSON.stringify(state))); } catch (e) { return null; }
-  /* 上传快照必须以「载入时原始 lastTs」为基准(state.lastTs 已被启动的 save() 刷成现在),
-     后端 settle 取 max(lastTs, _settledAt) 才能算出完整离线区间。
-     v1.7.64: 支持外部传入基准 —— 回前台补结算时, 基准是「离开时刻」。
-     注意: 服务端并不全信这个值, 它会与自己记录的最后同步时间取 max, 所以往回改时钟刷不动。 */
-  const b0 = baseOverride != null
-    ? baseOverride
-    : Math.max(state._lastTs0 || 0, state._settledTs || 0);
-  snap.lastTs = b0 || snap.lastTs || 0;
-  snap._settledAt = state._settledTs || 0;
-  /* v1.7.65 指定区间结算: end = 离线区间终点(回到前台的时刻)。
-   * 服务端会把它夹在 [anchor, now] 内 —— 只能提前、不能延后, 所以刷不动收益。
-   * 断网补算时必须带上它: 否则服务端按"联网那一刻"结算, 会把回来之后在线玩的时间也算成离线, 重复发钱。 */
-  const endQ = (typeof endOverride === "number" && endOverride > 0)
-    ? "&end=" + Math.floor(endOverride) : "";
   const ctl = new AbortController();
   const tm = setTimeout(() => ctl.abort(), 8000);
   try {
-    const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&settle=1" + endQ, {
+    const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&settle=1", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ __z: zPack(snap) }),
@@ -4147,16 +3975,21 @@ async function cloudSettle(baseOverride, endOverride) {
     if (!r.ok) throw new Error("http" + r.status);
     const j = await r.json();
     if (j && j.ok && j.data) {
+      const t1 = Date.now();
+      /* 时钟校准(NTP 式): 用往返中点估计服务端"此刻"的时间, 抵消一半网络延迟。
+         之后 srvNow() 就是可信的服务端时间, 所有时间显示/判断都用它, 不再用 Date.now()。 */
+      if (typeof j.serverTime === "number") _srvOffset = j.serverTime - (t0 + (t1 - t0) / 2);
+      if (j.rate) _rate = { exp: +j.rate.exp || 0, spirit: +j.rate.spirit || 0 };
       const j0 = zUnpack(j.data);
       if (!adoptKeep(j0)) return null;
-      state._lastTs0 = Date.now(); state._settledTs = Date.now();   // 云端已结算 → 基准推进, 防重复领取
-      clearAwayPending();                                           // v1.7.65: 服务端已结清 → 欠账清零
+      _pred.exp = 0; _pred.spirit = 0;     // 账本已被服务端权威值覆盖 → 本地预测清零, 从新账本重新开始
+      state._lastTs0 = Date.now(); state._settledTs = Date.now();
       mailDot();
       state._cloudTs = j.ts || Date.now();
       cld.ready = true; cld.lastOkTs = Date.now(); cld.lastOkLocal = state.lastTs;
       cld.lastPushTs = Date.now();
       cldUI("on");
-      return j;               // { settled, gains, data }
+      return j;               // { settled, gains, mode, serverTime, rate, data }
     }
     return null;
   } catch (e) {
@@ -5190,39 +5023,56 @@ function genMonster(big, lv) {                   // 妖兽: 基础线性 + 词�
 }
 function hashRand(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; }
 
-/* ==================== v1.7.54 开屏页控制 ====================
- * 目的: ① 展示健康游戏忠告(合规惯例) ② 遮住首屏资源加载/渲染, 缓存完成即淡出
- * 结束条件: window load 完成且已展示 MIN_MS 以上; 或用户轻触跳过; 或 8s 兜底 */
+/* ==================== v1.8.0 开屏 = 启动门禁 UI ====================
+ * 开屏页不再"资源加载完就淡出", 而是等门禁通过才淡出 —— 这样连不通服务器时
+ * 玩家看到的是明确的失败页, 而不是一片白屏或半截游戏画面。
+ * 三个出口: splashStat(改状态文字) / splashFinish(门禁通过, 淡出) / splashFail(门禁失败, 停住) */
 (function initSplash() {
   const sp = document.getElementById("splash");
-  if (!sp) return;
-  const bar = document.getElementById("spBar");
-  const pctEl = document.getElementById("spPct");
-  const statEl = document.getElementById("spStat");
-  const t0 = Date.now(), MIN_MS = 1800;
-  let p = 0, finished = false;
-  const timer = setInterval(() => {
-    p = Math.min(92, p + 3 + Math.random() * 8);
+  const bar = sp && document.getElementById("spBar");
+  const pctEl = sp && document.getElementById("spPct");
+  const statEl = sp && document.getElementById("spStat");
+  let p = 0, done = false;
+  const timer = setInterval(() => {                 // 只涨到 88%, 剩下 12% 留给"门禁通过"
+    if (done) return;
+    p = Math.min(88, p + 2 + Math.random() * 6);
     if (bar) bar.style.width = p.toFixed(0) + "%";
     if (pctEl) pctEl.textContent = p.toFixed(0) + "%";
-    if (statEl) statEl.textContent = p < 40 ? "正在加载资源…" : (p < 78 ? "正在初始化…" : "正在入定…");
   }, 150);
-  function finish() {
-    if (finished) return;
-    finished = true;
-    clearInterval(timer);
+
+  window.splashStat = function (txt) {
+    if (done || !statEl) return;
+    statEl.textContent = txt;
+  };
+
+  window.splashFinish = function () {
+    if (done) return;
+    done = true; clearInterval(timer);
     if (bar) bar.style.width = "100%";
     if (pctEl) pctEl.textContent = "100%";
     if (statEl) statEl.textContent = "即将进入";
     setTimeout(() => {
+      if (!sp) return;
       sp.classList.add("sp-out");
       setTimeout(() => { try { sp.remove(); } catch (e) {} }, 600);
     }, 240);
-  }
-  const onReady = () => setTimeout(finish, Math.max(0, MIN_MS - (Date.now() - t0)));
-  if (document.readyState === "complete") onReady();
-  else window.addEventListener("load", onReady, { once: true });
-  sp.addEventListener("pointerdown", finish);
-  sp.addEventListener("click", finish);
-  setTimeout(finish, 8000);
+  };
+
+  /* 门禁失败: 停在失败页, 不进入游戏。自动重试已在 bootGate 里退避跑完, 这里给手动重试 */
+  window.splashFail = function () {
+    if (done && !sp) return;
+    done = true; clearInterval(timer);
+    if (!sp) return;
+    if (bar) bar.style.width = "100%";
+    if (pctEl) pctEl.textContent = "—";
+    sp.style.cursor = "default";
+    sp.innerHTML =
+      '<div class="sp-fail">' +
+        '<div class="sp-fail-t">无法连接服务器</div>' +
+        '<div class="sp-fail-d">本游戏需要联网校验存档。<br>请检查网络后重试。</div>' +
+        '<button class="sp-fail-b" type="button">重试</button>' +
+      '</div>';
+    const btn = sp.querySelector(".sp-fail-b");
+    if (btn) btn.addEventListener("click", () => location.reload());
+  };
 })();
