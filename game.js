@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.7.60";
+const GAME_VER = "v1.7.61";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -4122,28 +4122,94 @@ function renderSettings() {
 function toggleBgm() { SND.setBgm(!SND.bgmOn); renderSettings(); }
 function toggleSfx() { SND.setSfx(!SND.sfxOn); renderSettings(); }
 
-/* 黑屏挂机: 纯黑遮罩 + 停背景动画省电; 游戏逻辑照常跑, 轻触唤醒 */
-let _dimTimer = 0;
+/* ==================== v1.7.61 黑屏挂机 ====================
+ * 进入即静音(音乐+音效), 只留一块低亮度战绩: 打了多少场、掉了什么。
+ * 退出必须滑动解锁条 —— 防误触, 单点屏幕不会进游戏。 */
+const DIMSTAT = { on: false, battles: 0, win: 0, spirit: 0, exp: 0, loot: [] };
+
+function dimRender() {
+  const b = $("dimBattles"); if (b) b.textContent = DIMSTAT.battles;
+  const s = $("dimSpirit"); if (s) s.textContent = fmt(DIMSTAT.spirit);
+  const e = $("dimExp"); if (e) e.textContent = fmt(DIMSTAT.exp);
+  const l = $("dimLoot"); if (!l) return;
+  if (!DIMSTAT.loot.length) {
+    l.innerHTML = '<div class="li empty">尚未拾获物什</div>';
+    return;
+  }
+  l.innerHTML = DIMSTAT.loot.slice(-8).map(x =>
+    `<div class="li q${x.q || 0}">拾获 <b>「${x.n}」</b> ${x.qn}·${x.slot}</div>`).join("");
+}
+/* 战斗结算时调用(btlWin / btlLose) */
+function dimNoteWin(g, ge, drop) {
+  if (!DIMSTAT.on) return;
+  DIMSTAT.battles++; DIMSTAT.win++;
+  DIMSTAT.spirit += g; DIMSTAT.exp += ge;
+  if (drop) DIMSTAT.loot.push(drop);
+  dimRender();
+}
+function dimNoteLose() {
+  if (!DIMSTAT.on) return;
+  DIMSTAT.battles++;
+  dimRender();
+}
+
+function resetDimKnob() {
+  const k = $("dimKnob");
+  if (k) { k.style.transition = "left .22s ease"; k.style.left = "4px"; }
+}
+
 function enterDim() {
   closeSettings();
   const d = $("dimScreen"); if (!d) return;
   d.classList.add("show");
   document.body.classList.add("dimmed");
+  DIMSTAT.on = true;
+  DIMSTAT.battles = 0; DIMSTAT.win = 0; DIMSTAT.spirit = 0; DIMSTAT.exp = 0; DIMSTAT.loot = [];
+  dimRender();
+  SND.suspend();                                   // 音乐 + 音效 全关
   try { if (window.__bgCtrl && window.__bgCtrl.pause) window.__bgCtrl.pause(); } catch (e) {}
-  const h = d.querySelector(".dim-hint");
-  if (h) {
-    h.style.transition = "none"; h.style.opacity = "1";
-    clearTimeout(_dimTimer);
-    _dimTimer = setTimeout(() => { h.style.transition = "opacity 1.6s ease"; h.style.opacity = "0"; }, 2000);
-  }
+  resetDimKnob();
 }
+
 function exitDim() {
   const d = $("dimScreen"); if (!d) return;
   d.classList.remove("show");
   document.body.classList.remove("dimmed");
-  clearTimeout(_dimTimer);
+  DIMSTAT.on = false;
+  SND.resume();                                    // 按玩家原有开关恢复
   try { if (window.__bgCtrl && window.__bgCtrl.resume) window.__bgCtrl.resume(); } catch (e) {}
 }
+
+/* 滑动解锁: 拖到 88% 处松手才进游戏 */
+(function initDimSlide() {
+  const track = $("dimSlide"), knob = $("dimKnob");
+  if (!track || !knob) return;
+  let dragging = false, max = 0;
+  const xOf = e => (e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX);
+  const down = e => {
+    dragging = true;
+    max = Math.max(1, track.clientWidth - knob.offsetWidth - 8);
+    knob.style.transition = "none";
+    if (e.cancelable) e.preventDefault();
+  };
+  const move = e => {
+    if (!dragging) return;
+    const r = track.getBoundingClientRect();
+    let x = xOf(e) - r.left - knob.offsetWidth / 2;
+    x = Math.max(4, Math.min(max + 4, x));
+    knob.style.left = x + "px";
+    if (x - 4 >= max * 0.88) { dragging = false; resetDimKnob(); exitDim(); }
+    if (e.cancelable) e.preventDefault();
+  };
+  const up = () => { if (!dragging) return; dragging = false; resetDimKnob(); };
+  knob.addEventListener("pointerdown", down);
+  document.addEventListener("pointermove", move, { passive: false });
+  document.addEventListener("pointerup", up);
+  document.addEventListener("pointercancel", up);
+  knob.addEventListener("touchstart", down, { passive: false });
+  document.addEventListener("touchmove", move, { passive: false });
+  document.addEventListener("touchend", up);
+})();
 function mailGoodsTxt(mail) {
   const g = [];
   for (const mk of (mail.mats || [])) if (MATS[mk.id]) g.push(`${MATS[mk.id].n}×${mk.q}`);
@@ -4583,6 +4649,7 @@ function btlWin() {
   state.spirit += g; state.exp += ge;
   // 参考"每战必掉装备": 掉落一件同级法宝(品质概率), 走自动择优穿戴, 并在结算战报展示
   let dropInfo = "", dropCard = "", dropQ = -1;
+  let drName = "", drQ = 0, drQn = "", drSlot = "";     // v1.7.61 黑屏挂机记账用
   try {
     const dr = makeArt();
     const arts = state.arts || [];
@@ -4593,6 +4660,7 @@ function btlWin() {
     const now = (state.arts || [])[idx];
     const qn = (QUALITY[dr.q] || QUALITY[0]).name;
     const slotN = SLOT_TYPES[idx] ? SLOT_TYPES[idx].n : "";
+    drName = dr.name; drQ = dr.q; drQn = qn; drSlot = slotN;
     if (preLen < 4 && idx >= preLen || !before) dropInfo = `　拾获 <b class="r">「${dr.name}」</b>（${qn}·${slotN}）—— 阿青已替你收进藏宝阁。`;
     else if (now === dr) dropInfo = `　拾获 <b class="r">「${dr.name}」</b>（${qn}·${slotN}）胜过旧佩，自动换上。`;
     else dropInfo = `　拾获 <b class="r">「${dr.name}」</b>（${qn}·${slotN}）不及身上所佩，阿青熔作灵石。`;
@@ -4609,6 +4677,8 @@ function btlWin() {
         <div class="dt">${verdict}</div></div>`;
     }
   } catch (e) {}
+  /* v1.7.61 黑屏挂机记账: 场次 / 灵石 / 修为 / 掉落 */
+  dimNoteWin(g, ge, drName ? { n: drName, q: drQ, qn: drQn, slot: drSlot } : null);
   pushMsg("main", `你击退 <span class="r">${m.n}</span>，<span class="g">+${fmt(g)} 灵石</span>、修为+<span class="g">${fmt(ge)}</span>。`);
   addJournal({ key: "bt-" + Date.now(), big: realm().big, kind: "纪事", title: "斗法 · 退" + m.n,
     text: `你于${warZone().name}巡猎，遇 ${m.n} 拦路，施「${(SKILLS[BTL.big] || SKILLS[SKILLS.length - 1])[0]}」「${(SKILLS[BTL.big] || SKILLS[SKILLS.length - 1])[1]}」数合将其击退，捡得灵石 ${fmt(g)}。` });
@@ -4633,6 +4703,7 @@ function btlLose() {
   if (!BTL || BTL.ended) return; BTL.ended = true;
   SND.fail();                        // v1.7.3 落败低音
   const m = BTL.mon;
+  dimNoteLose();                     // v1.7.61 黑屏挂机: 败仗也计一场
   warEnd(`你力竭不支，被 ${m.n} 击倒在地 …… 败退 · 回洞天休养`, "lose");
   pushMsg("main", `<span class="r">你不敌 ${m.n}</span>，狼狈遁回洞天。阿青在旁呜咽，叼来药囊替你敷上。`);
   addJournal({ key: "bt-" + Date.now(), big: realm().big, kind: "纪事", title: "斗法 · 败于" + m.n,
