@@ -21,11 +21,11 @@
     "assets/sound/swing.mp3": "90d43e97f4c03c4578368fe927152d0dd587fbe7cd4d54963320c54d68609066",
     "assets/sound/win.mp3": "ffdf24c675745017a997f0d65686feb5eef373b42a44aab8747e3b7c79f1b0bc",
     "bg.js": "d61cf11f268274f8bcdbea5aac1da08eb3f58b59e82b650b0d1f178803343954",
-    "dt-theme.css": "d6c2f043819a31b51e9244eb091b89b40a5011d8e5c51307ace2e91539d8bb6f",
+    "dt-theme.css": "8a582858fb5be047e868a7b90ffc7aa17378657ee399902995ba16fb642a2bbc",
     "fx2d.js": "dbb9540db9984ac06f08d75490099497c9ce1d59dfe5de91ee32b0d5a6db0670",
-    "game.js": "162f7b1990ccb6aa77d39d654bfe060a2ce43315a7c3e8a75438912b5213af0e",
-    "index.html": "4b687ec6962f112f3deeeccbff62ab2037cb3a1ded42adc2bf008b1da2c24f9e"
+    "game.js": "6d0c96c3e7e7fdaab419a53e59624c208f1d83ce03fe4c51e58028a18cc9bb07",
+    "index.html": "cd30e06ea8a2b63d8f15180e6693c6de859b82470bff7a59b992e40b9a9d131a"
   },
-  "rev": "937efcfe6e1a68ba",
-  "version": "1.9.4"
+  "rev": "7e40fecabc377377",
+  "version": "1.9.5"
 }
