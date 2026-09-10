@@ -4061,7 +4061,7 @@ function craftAreaHTML() {
         if (hiddenUnlocked(big)) html += recipeCardHTML(id);
         else {
           const got = pagesOf(big);
-          html += `<div class="al-secret"><div style="flex:1;min-width:0">
+          html += `<div class="al-secret"><div class="bd">
             <div class="qn">???.${DAN_ZONE[big]}古方残卷 <span class="pg">残页 ${got}/${PAGES_NEED[big]}</span></div>
             <div class="tip">云游${DAN_ZONE[big]}一带有机会拾得残页，凑齐自见丹方真容。</div></div></div>`;
         }
@@ -4246,17 +4246,36 @@ function presentSettle(r) {
   if (!gg || !gg.settled) return;
   const dt = gg.dt || 0;
   const hh = Math.floor(dt / 3600), mm = Math.floor((dt % 3600) / 60);
-  /* v1.9.0: 离线面板不含云游产出 —— 云游所得全在【鸿雁信匣】, 拆信才入账。
-   * 归来(满 8 封自行回山)是服务端在上线结算时判定的, 不在这里叙事。 */
-  const jumpTxt = (gg.jumps && gg.jumps > 0)
-    ? `<br><span style="color:#8fd8bd">修为精进，连破 ${gg.jumps} 个小境界</span>` : "";
-  /* v1.9.0: 化身在外期间的信都会进信匣; 若匣满则化身停笔。只提一句, 细节在云游面板。 */
+  /* v1.9.5: 面板结构化 —— 收益行(修为/灵石/巡猎) + 「机缘已收」朱印(CSS), 告别内联 style 拼串。
+   * 云游产出仍全在【鸿雁信匣】(v1.9.0 约定), 此处只字提示。 */
+  const icoExp = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.2 C13.8 2.6 16.6 5 17.4 8.4 C18.2 12.4 15.4 16.2 11.4 17.2 C10.9 17.3 10.4 17.3 10 17.2 C6 16.8 2.8 13.6 2.6 9.8 C2.4 6.2 5.2 3 9 2.3 C9.3 2.3 9.7 2.2 10 2.2 Z" fill="none" stroke="#d8b06a" stroke-width="1.5"/><circle cx="10" cy="10" r="3.1" fill="none" stroke="#d8b06a" stroke-width="1.3" opacity=".75"/><path d="M10 5.4 C11.8 5.9 13.2 7.2 13.6 9" fill="none" stroke="#d8b06a" stroke-width="1" stroke-linecap="round" opacity=".55"/></svg>';
+  const icoSpi = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.5 L18.5 10 L10 18.5 L1.5 10 Z" fill="#67c9ab"/><path d="M10 1.5 L10 18.5 L18.5 10 Z" fill="#b7ecda"/><path d="M10 1.5 L1.5 10 L10 10 Z" fill="#9de0c9"/></svg>';
+  const icoHunt = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.4 16.8 C6.8 12.4 11.2 8 16.2 3.6 C17 4.2 17.4 4.8 17.6 5.6 C13.4 10.6 8.8 14.8 4.4 17.6 C4 17.4 3.7 17.1 3.4 16.8 Z" fill="#c9a86a"/><path d="M2.6 13.8 C4.8 11.6 6.6 12.4 6.6 14.6" fill="none" stroke="#c9a86a" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  /* 巡猎行 + 细节小字(胜率/秘境/阿青收宝/熔炼) —— 原 huntTxtOf 的结构化替身 */
+  const H = gg.hunt;
+  let huntRows = "", huntExtra = "";
+  if (H && H.waves) {
+    const kN = H.keptCount != null ? H.keptCount : (Array.isArray(H.kept) ? H.kept.length : (H.kept || 0));
+    huntRows =
+      `<div class="off-row"><span class="o-ico">${icoHunt}</span><span class="ol">巡猎 ${H.waves} 波 · 修为</span><b class="ov">+${fmt(H.exp || 0)}</b></div>` +
+      `<div class="off-row"><span class="o-ico">${icoSpi}</span><span class="ol">巡猎斩获 · 灵石</span><b class="ov jade">+${fmt(H.spirit || 0)}</b></div>`;
+    const bits = [`斗法 ${H.fights} 场（胜 ${H.wins} · 负 ${H.loses}）`, `秘境 ${H.mysts} 处`];
+    if (kN) bits.push(`阿青收下 <b>${kN}</b> 件新宝${H.keptName ? `（${H.keptName} 等）` : ""}`);
+    if (H.melted) bits.push(`<b>${H.melted}</b> 件投炉熔作灵石 +${fmt(H.meltSp || 0)}`);
+    huntExtra = `<div class="off-hunt">${bits.join("；")}。</div>`;
+  }
+  const jumpRow = (gg.jumps && gg.jumps > 0)
+    ? `<div class="off-badge">修为精进 · 连破 ${gg.jumps} 境</div>` : "";
+  /* v1.9.0: 信匣满则化身停笔, 只提一句(细节在云游面板) */
   const bagTip = (state.travel && state.travel.loc && (state.mails || []).length >= MAIL_CAP)
-    ? `<br><span style="color:#a98a5a">鸿雁信匣已满 ${MAIL_CAP} 封，化身暂时停笔 —— 拆几封它便续上。</span>` : "";
+    ? `<div class="off-hunt" style="color:#a98a5a">鸿雁信匣已满 ${MAIL_CAP} 封，化身暂时停笔 —— 拆几封它便续上。</div>` : "";
   $("offlineText").innerHTML =
-    `你于洞天闭关打坐 <b>${hh ? hh + " 小时 " : ""}${mm ? mm + " 分钟" : "片刻"}</b>。<br>` +
-    `主身周天自行运转，修为 +<span class="num"> ${fmt(gg.exp)}</span><br>聚灵阵凝出灵石 +<span class="num"> ${fmt(gg.spirit)}</span>${jumpTxt}` +
-    huntTxtOf(gg.hunt) + bagTip;
+    `<div class="off-hero">闭关 <b>${hh ? hh + " 小时" + (mm ? " " : "") : ""}${mm ? mm + " 分钟" : (hh ? "" : "片刻")}</b></div>` +
+    `<div class="off-rows">` +
+    `<div class="off-row"><span class="o-ico">${icoExp}</span><span class="ol">周天运转 · 修为</span><b class="ov">+${fmt(gg.exp)}</b></div>` +
+    `<div class="off-row"><span class="o-ico">${icoSpi}</span><span class="ol">聚灵阵 · 灵石</span><b class="ov jade">+${fmt(gg.spirit)}</b></div>` +
+    huntRows +
+    `</div>` + jumpRow + huntExtra + bagTip;
   // 离线际遇叙事(每满 1 时辰一段, 至多 3 段; 纯叙事)
   const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
   const bigName = realm().big;
@@ -5104,12 +5123,12 @@ function renderEquip() {                 // v1.7.19 装备面板·去圆圈, 顶
   const eb = equipBonus();
   const arr = (state.arts || []).slice(-6);
   const SLOTN = SLOT_TYPES.map(t => t.n);
-  // 部位小图标(无圆圈, 16px 随品质色) 兵器/护体/灵佩/功法
+  // 部位小图标(无圆圈, 16px 随品质色) —— v1.9.5 手绘重画: 斜锋长剑/兽首圆盾/玉玦灵佩/云纹书卷
   const ICON = {
-    w: '<svg viewBox="0 0 32 32"><path d="M21 3 L25 7 L8.5 23.5 L5 27 L3 25 L6.5 21.5 Z" fill="currentColor"/><path d="M21 3 L25 7 L27 5 L23 1 Z" fill="currentColor" opacity=".85"/></svg>',
-    a: '<svg viewBox="0 0 32 32"><path d="M16 3 L27 8 V17 C27 23.5 22.5 28.5 16 30 C9.5 28.5 5 23.5 5 17 V8 Z" fill="currentColor"/><path d="M16 9 L22 12 V17 C22 20.5 19.5 23.5 16 24.5 C12.5 23.5 10 20.5 10 17 V12 Z" fill="rgba(0,0,0,.4)"/></svg>',
-    p: '<svg viewBox="0 0 32 32"><path d="M16 3 L26 11 V21 L16 30 L6 21 V11 Z" fill="currentColor"/><circle cx="16" cy="16" r="4" fill="rgba(255,255,255,.5)"/></svg>',
-    s: '<svg viewBox="0 0 32 32"><path d="M7 4 H25 C26 12 26 12 25 12 C24 14 18 15 16 14 C14 15 8 14 7 12 C6 12 6 12 7 4 Z" fill="currentColor"/><rect x="13" y="14" width="6" height="14" rx="1" fill="currentColor" opacity=".7"/></svg>',
+    w: '<svg viewBox="0 0 32 32"><path d="M23.6 2.6 C25.2 3.4 27 5.2 28 6.8 C22.4 13.6 15.6 20.2 9.4 24.8 C8.2 23.9 7.2 22.8 6.4 21.5 C11.7 15.2 17.4 8.8 23.6 2.6 Z" fill="currentColor"/><path d="M24.4 1.6 C25.6 2.2 26.8 3.2 27.8 4.4 C28.2 3.8 28.5 3 28.4 2.4 C27.5 1.6 26.3 1.2 25.2 1 Z" fill="currentColor" opacity=".8"/><path d="M7.2 20.8 C9.4 20.6 11.6 22.2 12.2 24.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6.6 23.8 C5.4 25.4 4.6 27.2 4.4 29.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8.2 25 C7.6 26.6 7.6 28.2 8.2 29.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".75"/></svg>',
+    a: '<svg viewBox="0 0 32 32"><path d="M16 2.6 C21 4.2 25.2 6 27.2 8.2 C28.2 14.2 26.8 20.8 23.2 25 C21 27.6 18.6 29.2 16 30.2 C13.2 29 10.6 27.2 8.4 24.4 C5.2 20.2 4 14 4.8 8.2 C7 6 11 4.2 16 2.6 Z" fill="currentColor"/><path d="M16 6.4 C16.1 13 16.1 20 16 26.4" stroke="rgba(8,12,20,.5)" stroke-width="1.7" fill="none" stroke-linecap="round"/><circle cx="10.6" cy="12.4" r="1.35" fill="rgba(8,12,20,.5)"/><circle cx="21.4" cy="12.4" r="1.35" fill="rgba(8,12,20,.5)"/></svg>',
+    p: '<svg viewBox="0 0 32 32"><path d="M17.8 3.4 C22.6 4.6 26 8.6 26.2 13.6 C26.4 19 22.6 23.6 17.4 24.6 C11.8 25.6 6.6 21.8 5.8 16.4 C5 11 8.8 6.2 14.2 5.2" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M13.6 3.4 C14.4 2 16.8 2 17.6 3.4 C18 4.2 17.6 5 16.6 5.2 L14.8 5.2 C13.8 5 13.4 4.2 13.6 3.4 Z" fill="currentColor"/><path d="M15.4 25.2 C15 27.2 15.2 29.2 16 31" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M12.8 24.6 C12 26.4 11.8 28.4 12.2 30.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".8"/></svg>',
+    s: '<svg viewBox="0 0 32 32"><path d="M9 4.6 C13.6 3 18.8 3 23.2 4.6 C24.8 6.2 24.8 8.8 23.2 10.3 C18.8 11.9 13.6 11.9 9 10.3 C7.4 8.8 7.4 6.2 9 4.6 Z" fill="currentColor" opacity=".95"/><path d="M9.6 11.4 C13.8 12.7 18.4 12.7 22.6 11.5 C23.8 17 23.7 22.6 22.4 27.9 C18.4 29.4 13.8 29.4 9.7 28 C8.4 22.5 8.4 17 9.6 11.4 Z" fill="currentColor" opacity=".5"/><path d="M12 20.2 C13.3 18.4 15.3 18.6 16.3 20 C17.6 18.5 19.7 18.7 20.7 20.3 C21.5 21.7 20.7 23.3 19.1 23.5 L13.3 23.5 C11.9 23.3 11.4 21.6 12 20.2 Z" fill="rgba(8,12,20,.55)"/></svg>',
   };
   const SLOTI = ["w", "a", "p", "s"];
   const starOf = (q) => {                              // q 颗实心 + 余下空心; q>5 不溢出

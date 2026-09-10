@@ -1,6 +1,6 @@
 /* ============================================================
    闲人修仙 —— 设计语言主题层  dt-theme.css
-   版本: 0.2.0   (每次视觉改版 bump 此号 + index.html 引用参数)
+   版本: 0.3.0   (每次视觉改版 bump 此号 + index.html 引用参数)
    语言: 「墨线夜谈」手绘墨迹 × 纸墨色彩纪律
    参照: messenger.abeto.co 的 imperfect/outline 基因
    ============================================================ */
@@ -1003,3 +1003,230 @@
   .hud .realm-badge{padding-right:30px !important}
   .hud .realm-badge .rb-rank{right:6px;width:18px;height:18px;font-size:10.5px}
 }
+
+
+/* ============================================================
+   v1.9.5 「墨形重铸」 —— 丹房 / 装备 / 离线 三面翻新
+   ------------------------------------------------------------
+   • 丹房: 丹方笺 · 材料墨条 · 朱砂开炉钮 · 丹药匣 全面上墨形皮,
+     清算 border-radius:8px/999px 与荧光绿开炉钮(旧 v1.7.25 违约)
+   • 装备: 卷轴笺卡 + 品质墨阶六档(淡墨→冷灰蓝→黛青→旧金→亮金→朱砂)
+     + 部位图标重画(剑/盾/玉玦/书卷) · 矩形 box-shadow 辉光改墨形轮廓光
+   • 离线: 结构化收益行 + 「机缘已收」朱砂印
+   • 境界牌拨乱反正: v1.7.28 曾以圆角矩形废掉墨简皮, 今换回 200x120 墨简
+   ============================================================ */
+
+/* ---------- 品质墨阶: 六档收敛进四色纪律 ---------- */
+/* qc0 凡=淡墨 / qc1 良=冷灰蓝(纸墨系) / qc2 灵=黛青 / qc3 玄=旧金
+   / qc4 地=亮金(旧金提亮一档) / qc5 天=朱砂(全界面唯一高饱和, 最高档专属) */
+.eq-card{--qc:#a49a84;--qcdim:rgba(164,154,132,.26);--qcglow:rgba(164,154,132,.10)}
+.eq-card.qc0{--qc:#a49a84;--qcdim:rgba(164,154,132,.26);--qcglow:rgba(164,154,132,.10)}
+.eq-card.qc1{--qc:#9db4d9;--qcdim:rgba(157,180,217,.30);--qcglow:rgba(157,180,217,.13)}
+.eq-card.qc2{--qc:#86b5a2;--qcdim:rgba(134,181,162,.32);--qcglow:rgba(134,181,162,.17)}
+.eq-card.qc3{--qc:#c9a86a;--qcdim:rgba(201,168,106,.38);--qcglow:rgba(201,168,106,.20)}
+.eq-card.qc4{--qc:#e8ce93;--qcdim:rgba(232,206,147,.44);--qcglow:rgba(232,206,147,.26)}
+.eq-card.qc5{--qc:#d9583f;--qcdim:rgba(217,88,63,.50);--qcglow:rgba(217,88,63,.30)}
+/* 掉落宝卡同阶映射 */
+.drop-in{--qc:#c9a86a;--qcdim:rgba(201,168,106,.5)}
+.drop-in.qc0{--qc:#a49a84;--qcdim:rgba(164,154,132,.4)}
+.drop-in.qc1{--qc:#9db4d9;--qcdim:rgba(157,180,217,.45)}
+.drop-in.qc2{--qc:#86b5a2;--qcdim:rgba(134,181,162,.48)}
+.drop-in.qc3{--qc:#c9a86a;--qcdim:rgba(201,168,106,.5)}
+.drop-in.qc4{--qc:#e8ce93;--qcdim:rgba(232,206,147,.55)}
+.drop-in.qc5{--qc:#d9583f;--qcdim:rgba(217,88,63,.6)}
+
+/* ---------- 装备卡: 圆角矩形 → 卷轴笺墨形 ---------- */
+.eq-card{
+  border-radius:0 !important;border:0 !important;
+  background:transparent !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 96%22 preserveAspectRatio=%22none%22><path d=%22M15 7 C42 2 76 11 110 5 C140 1 169 10 187 7 C195 6 198 11 197 18 C196 32 198 46 197 60 C196 73 198 83 195 88 C193 93 184 94 174 92 C143 97 108 88 74 93 C47 96 25 91 13 89 C5 87 2 81 3 73 C4 57 2 40 3 23 C2 13 7 8 15 7 Z%22 fill=%22rgba(15,20,34,.90)%22 stroke=%22rgba(201,168,106,.30)%22 stroke-width=%221.2%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  background-size:100% 100% !important;background-repeat:no-repeat !important;
+  filter:drop-shadow(0 3px 9px rgba(0,0,0,.42));
+  padding:10px 14px 11px !important;
+}
+/* 品质竖笔: 左缘一道由浓转淡的墨线(墨阶色), 替代旧顶部矩形光带 */
+.eq-glow{left:2px;right:auto;top:9px;bottom:9px;width:2.5px;height:auto;
+  background:linear-gradient(180deg,var(--qc) 0%,var(--qc) 30%,transparent 100%);
+  opacity:.85;border-radius:0;transform:none;animation:none}
+.qc5 .eq-glow{width:3.5px;height:auto;opacity:.95}
+.qc3 .eq-glow{animation:eqInkBreath 3.6s ease-in-out infinite}
+.qc4 .eq-glow{animation:eqInkBreath 3s ease-in-out infinite}
+.qc5 .eq-glow{animation:eqInkBreath 2.3s ease-in-out infinite}
+@keyframes eqInkBreath{0%,100%{opacity:.5}50%{opacity:1}}
+/* 高档位: 墨形轮廓光(drop-shadow 跟随墨形 alpha, 非矩形盒光) */
+.eq-card.qc3{animation:eqInkGlow 4s ease-in-out infinite}
+.eq-card.qc4{animation:eqInkGlow 3.4s ease-in-out infinite}
+.eq-card.qc5{animation:eqInkGlow 2.6s ease-in-out infinite}
+@keyframes eqInkGlow{0%,100%{filter:drop-shadow(0 3px 9px rgba(0,0,0,.42)) drop-shadow(0 0 1px var(--qcglow))}
+  50%{filter:drop-shadow(0 3px 9px rgba(0,0,0,.42)) drop-shadow(0 0 6px var(--qcglow)) drop-shadow(0 0 14px var(--qcglow))}}
+.eq-card.empty{animation:none;filter:none;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 96%22 preserveAspectRatio=%22none%22><path d=%22M15 7 C42 2 76 11 110 5 C140 1 169 10 187 7 C195 6 198 11 197 18 C196 32 198 46 197 60 C196 73 198 83 195 88 C193 93 184 94 174 92 C143 97 108 88 74 93 C47 96 25 91 13 89 C5 87 2 81 3 73 C4 57 2 40 3 23 C2 13 7 8 15 7 Z%22 fill=%22rgba(12,16,28,.30)%22 stroke=%22rgba(140,150,175,.22)%22 stroke-width=%221%22 stroke-dasharray=%225 4%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important}
+/* 天品卡: 笺纸底微染朱 */
+.eq-card.qc5{
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 96%22 preserveAspectRatio=%22none%22><path d=%22M15 7 C42 2 76 11 110 5 C140 1 169 10 187 7 C195 6 198 11 197 18 C196 32 198 46 197 60 C196 73 198 83 195 88 C193 93 184 94 174 92 C143 97 108 88 74 93 C47 96 25 91 13 89 C5 87 2 81 3 73 C4 57 2 40 3 23 C2 13 7 8 15 7 Z%22 fill=%22rgba(34,15,13,.92)%22 stroke=%22rgba(217,120,95,.45)%22 stroke-width=%221.3%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important}
+/* 熄墨态空槽文字与旧紫色熔炼近记归位 */
+.eq-card.empty .eq-name.dim{color:#5a6478}
+.eq-rec{border:0 !important;border-radius:0 !important;
+  background:transparent !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(18,23,38,.55)%22 stroke=%22rgba(201,168,106,.22)%22 stroke-width=%221%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  background-size:100% 100% !important;background-repeat:no-repeat !important;
+  padding:9px 14px !important}
+.eq-rec .rh{color:#a49a84 !important;text-shadow:none !important}
+.eq-rec .rl::before{color:#c9a86a}
+/* 品质小字/战力字色重映射(原紫红霓虹残留清零) */
+.eq-card.qc4 .eq-star,.eq-card.qc4 .eq-power .p-v{color:#e8ce93;text-shadow:0 0 6px rgba(232,206,147,.5)}
+.eq-card.qc5 .eq-star,.eq-card.qc5 .eq-power .p-v{color:#e8927c;text-shadow:0 0 6px rgba(217,88,63,.5)}
+.eq-card.qc5 .eq-name{color:#f0d5c8;text-shadow:0 0 12px rgba(217,88,63,.35),0 1px 6px rgba(0,0,0,.75)}
+.eq-card.qc5 .pill{border-color:rgba(217,120,95,.3);background:rgba(40,16,14,.6)}
+.eq-card.qc4 .pill{border-color:rgba(232,206,147,.3);background:rgba(36,30,18,.6)}
+
+/* ---------- 部位图标重画: 手绘曲线 32x32(剑/盾/玉玦/书卷) ---------- */
+.eq-ico svg{width:17px;height:17px}
+/* 兵器: 斜锋长剑 —— 曲刃 + 弧形护手 + 缠柄 + 双穗 */
+.eq-ico .i-w .blade{fill:currentColor}
+.eq-ico .i-w .guard,.eq-ico .i-w .tassel{fill:none;stroke:currentColor;stroke-linecap:round}
+/* (图标本体由 game.js ICON 内联 path 提供, 此处只做比例微调) */
+
+/* ---------- 词条药丸: 正圆胶囊 → 小墨条 ---------- */
+.pill{border-radius:0 !important;
+  background:transparent !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(18,24,40,.55)%22 stroke=%22rgba(201,168,106,.20)%22 stroke-width=%221%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  background-size:100% 100% !important;background-repeat:no-repeat !important;
+  padding:1.5px 10px 1.5px 8px !important;border:0 !important}
+
+/* ============================================================
+   丹房 v1.9.5: 丹方笺 + 墨条 + 朱砂开炉钮
+   ============================================================ */
+/* 丹方笺: 横向手绘笺纸(200x64), can=暖金染笺 / 平=冷墨 */
+.al-card{border-radius:0 !important;border:0 !important;
+  background:transparent !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 64%22 preserveAspectRatio=%22none%22><path d=%22M11 8 C30 2 56 13 86 6 C114 1 146 12 173 5 C186 2 196 9 197 18 C198 30 195 42 196 51 C195 58 187 62 174 60 C146 64 114 55 86 61 C56 65 30 57 13 59 C5 57 2 50 3 41 C2 29 4 15 11 8 Z%22 fill=%22rgba(15,21,36,.82)%22 stroke=%22rgba(140,152,178,.24)%22 stroke-width=%221.1%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  background-size:100% 100% !important;background-repeat:no-repeat !important;
+  filter:drop-shadow(0 2px 7px rgba(0,0,0,.32));
+  padding:11px 14px 12px !important;position:relative}
+.al-card::before{content:"";position:absolute;left:5px;top:12px;bottom:12px;width:2px;
+  background:linear-gradient(180deg,transparent,rgba(140,152,178,.4) 40%,rgba(140,152,178,.4) 60%,transparent)}
+.al-card.can{background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 64%22 preserveAspectRatio=%22none%22><path d=%22M11 8 C30 2 56 13 86 6 C114 1 146 12 173 5 C186 2 196 9 197 18 C198 30 195 42 196 51 C195 58 187 62 174 60 C146 64 114 55 86 61 C56 65 30 57 13 59 C5 57 2 50 3 41 C2 29 4 15 11 8 Z%22 fill=%22rgba(38,33,18,.86)%22 stroke=%22rgba(201,168,106,.55)%22 stroke-width=%221.3%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important}
+.al-card.can::before{background:linear-gradient(180deg,transparent,rgba(201,168,106,.65) 40%,rgba(201,168,106,.65) 60%,transparent)}
+.al-card .nm{font-family:var(--font-brush)}
+.al-card.can .nm{color:#eedfae}
+.al-card.can .ds{color:#a49a84}
+/* 材料 chip: 墨条小签, ok=黛青 / no=暗朱 */
+.al-chip{border-radius:0 !important;background:transparent !important;border:0 !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(20,26,42,.5)%22 stroke=%22rgba(140,152,178,.20)%22 stroke-width=%221%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  background-size:100% 100% !important;background-repeat:no-repeat !important;
+  padding:2px 11px !important;color:#93a0b4}
+.al-chip.ok{color:#9fd0be !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(22,38,32,.55)%22 stroke=%22rgba(134,181,162,.5)%22 stroke-width=%221%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important}
+.al-chip.no{color:#c99d8c !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(36,24,20,.5)%22 stroke=%22rgba(180,110,85,.35)%22 stroke-width=%221%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important}
+/* 行囊 chip: 金系墨条 */
+.al-bagchip{border-radius:0 !important;border:0 !important;background:transparent !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(34,28,16,.5)%22 stroke=%22rgba(201,168,106,.38)%22 stroke-width=%221%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  background-size:100% 100% !important;background-repeat:no-repeat !important;
+  padding:2.5px 11px !important}
+/* 开炉钮: 手绘墨块按钮 —— 可开=朱砂(唯一高饱和) / 材料不足=可见熄墨 */
+.al-craft{border-radius:0 !important;border:0 !important;
+  background:transparent !important;box-shadow:none;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 60%22 preserveAspectRatio=%22none%22><path d=%22M14 7 C30 2 40 12 56 6 C72 1 84 9 100 6 C118 3 132 8 150 5 C166 3 184 6 194 12 C199 20 196 28 197 36 C198 44 194 50 180 52 C166 54 150 49 136 53 C120 57 104 50 90 54 C76 58 62 52 48 55 C34 57 20 52 10 53 C2 52 3 44 4 36 C5 27 3 19 6 14 C7 11 10 9 14 7 Z%22 fill=%22rgba(71,81,124,.45)%22 stroke=%22rgba(170,190,235,.4)%22 stroke-width=%221.2%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  background-size:100% 100% !important;background-repeat:no-repeat !important;
+  color:#bcc6de !important;padding:8px 16px 9px !important;
+  filter:drop-shadow(0 2px 5px rgba(0,0,0,.35))}
+.al-craft.on{color:#fff0e2 !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 60%22 preserveAspectRatio=%22none%22><path d=%22M14 7 C30 2 40 12 56 6 C72 1 84 9 100 6 C118 3 132 8 150 5 C166 3 184 6 194 12 C199 20 196 28 197 36 C198 44 194 50 180 52 C166 54 150 49 136 53 C120 57 104 50 90 54 C76 58 62 52 48 55 C34 57 20 52 10 53 C2 52 3 44 4 36 C5 27 3 19 6 14 C7 11 10 9 14 7 Z%22 fill=%22rgba(178,50,35,.55)%22 stroke=%22rgba(255,190,160,.65)%22 stroke-width=%221.3%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  animation:craftEmber 2.2s ease-in-out infinite}
+@keyframes craftEmber{0%,100%{filter:drop-shadow(0 2px 5px rgba(0,0,0,.35)) drop-shadow(0 0 1px rgba(217,88,63,0))}
+  50%{filter:drop-shadow(0 2px 5px rgba(0,0,0,.35)) drop-shadow(0 0 7px rgba(217,88,63,.6))}}
+.al-craft.on:active{transform:rotate(-.6deg) scale(.93)}
+/* 丹药匣: 金墨条 + 朱砂服丹小钮 */
+.al-pill{border-radius:0 !important;border:0 !important;background:transparent !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(34,28,16,.55)%22 stroke=%22rgba(201,168,106,.42)%22 stroke-width=%221.1%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  background-size:100% 100% !important;background-repeat:no-repeat !important;
+  padding:3.5px 7px 3.5px 13px !important}
+.al-pill .take{border-radius:0 !important;border:0 !important;
+  background:transparent !important;color:#ffd9c4 !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(178,50,35,.45)%22 stroke=%22rgba(255,170,140,.5)%22 stroke-width=%221%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  background-size:100% 100% !important;background-repeat:no-repeat !important;
+  padding:2px 11px !important;font-family:var(--font-brush)}
+.al-pill .take:active{transform:scale(.9)}
+/* 残卷卡: 冷墨虚笺(紫系归位为灰墨) */
+.al-secret{border-radius:0 !important;border:0 !important;
+  background:transparent !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 64%22 preserveAspectRatio=%22none%22><path d=%22M11 8 C30 2 56 13 86 6 C114 1 146 12 173 5 C186 2 196 9 197 18 C198 30 195 42 196 51 C195 58 187 62 174 60 C146 64 114 55 86 61 C56 65 30 57 13 59 C5 57 2 50 3 41 C2 29 4 15 11 8 Z%22 fill=%22rgba(20,22,34,.72)%22 stroke=%22rgba(160,152,180,.30)%22 stroke-width=%221%22 stroke-dasharray=%226 4%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  background-size:100% 100% !important;background-repeat:no-repeat !important;
+  padding:11px 14px !important}
+.al-secret .qn{color:#9a94ad}
+.al-secret .bd{flex:1;min-width:0}
+
+/* ============================================================
+   离线收益: 结构化收益行 + 朱砂「机缘」印
+   ============================================================ */
+#offlineModal .card{position:relative}
+#offlineModal .card::after{content:"机缘已收";position:absolute;right:14px;top:12px;
+  font-family:var(--font-brush);font-size:10px;color:rgba(191,60,42,.8);
+  border:1.5px solid rgba(191,60,42,.55);border-radius:2px;padding:2px 4px;
+  transform:rotate(6deg);letter-spacing:.18em;line-height:1.5;pointer-events:none;
+  box-shadow:inset 0 0 6px rgba(191,60,42,.18);opacity:.92}
+.off-hero{font-family:var(--font-brush);font-size:15px;color:#e2c98f;letter-spacing:.1em;margin:6px 0 10px}
+.off-hero b{color:#eedfae;text-shadow:0 0 10px rgba(232,206,147,.3)}
+.off-rows{display:flex;flex-direction:column;gap:0;margin:2px 0 4px}
+.off-row{display:flex;align-items:center;gap:9px;padding:7px 4px;position:relative;text-align:left}
+.off-row + .off-row::before{content:"";position:absolute;left:6px;right:6px;top:0;height:1px;
+  background:linear-gradient(90deg,rgba(201,168,106,0),rgba(201,168,106,.28) 18%,rgba(201,168,106,.28) 82%,rgba(201,168,106,0))}
+.off-row .o-ico{width:17px;height:17px;flex:none;display:flex;align-items:center;justify-content:center}
+.off-row .o-ico svg{width:17px;height:17px;display:block}
+.off-row .ol{font-size:12px;color:#a49a84;letter-spacing:.04em}
+.off-row .ov{margin-left:auto;font-family:var(--font-brush);font-size:16px;font-weight:700;
+  color:#eedfae;letter-spacing:.02em;text-shadow:0 0 8px rgba(232,206,147,.25)}
+.off-row .ov.jade{color:#9fd0be;text-shadow:0 0 8px rgba(134,181,162,.3)}
+.off-badge{display:inline-block;margin:8px auto 2px;padding:2.5px 14px;font-size:11px;
+  font-family:var(--font-brush);letter-spacing:.2em;color:#9fd0be;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 44%22 preserveAspectRatio=%22none%22><path d=%22M12 6 C60 -2 120 10 170 3 C188 2 198 8 196 16 C198 26 190 36 172 36 C130 42 80 30 34 36 C16 38 4 34 2 24 C0 16 6 8 12 6 Z%22 fill=%22rgba(22,38,32,.5)%22 stroke=%22rgba(134,181,162,.45)%22 stroke-width=%221%22 vector-effect=%22non-scaling-stroke%22/></svg>');
+  background-size:100% 100%;background-repeat:no-repeat}
+.off-hunt{font-size:10.5px;color:#8b94a8;line-height:1.9;margin-top:8px;letter-spacing:.02em;
+  overflow-wrap:anywhere}
+.off-hunt b{color:#c9b98a;font-weight:600}
+#offlineModal .off-tale{text-align:left;margin-top:10px}
+#offlineModal .off-tale b{color:#d8b06a;font-family:var(--font-brush);font-weight:500;letter-spacing:.1em}
+
+/* ============================================================
+   境界牌拨乱反正: 废弃 v1.7.28 圆角矩形, 回归 200x120 墨简
+   ============================================================ */
+.realm-badge{
+  background-color:transparent !important;
+  border:0 !important;border-radius:0 !important;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 120%22 preserveAspectRatio=%22none%22><path d=%22M6 14 C30 2 60 26 100 6 C130 -6 170 20 194 10 C200 22 196 40 196 60 C198 76 194 96 194 106 C190 114 170 116 150 112 C120 120 90 106 60 114 C40 118 16 114 8 106 C2 98 4 80 6 62 C4 42 2 24 6 14 Z%22 fill=%22rgba(13,17,26,.92)%22 stroke=%22rgba(201,168,106,.40)%22 stroke-width=%221.3%22 vector-effect=%22non-scaling-stroke%22/></svg>') !important;
+  background-size:100% 100% !important;background-repeat:no-repeat !important;
+  box-shadow:none !important;
+  filter:drop-shadow(0 5px 14px rgba(0,0,0,.5));
+  width:158px !important;max-width:100% !important;min-width:0 !important;
+  box-sizing:border-box !important;
+  padding:8px 13px 9px !important;
+  display:flex !important;flex-direction:column !important;
+  align-items:center !important;justify-content:center !important;
+  gap:1px !important;text-align:center !important}
+/* 「闲人」朱印复位(左下, 与右中"榜"印呼应) */
+.realm-badge::after{display:block !important;content:"闲人";left:7px !important;right:auto !important;
+  bottom:5px !important;top:auto !important;
+  font-family:var(--font-brush);font-size:7px;color:rgba(191,60,42,.75);
+  border:1px solid rgba(191,60,42,.5);padding:0 2px;border-radius:2px;
+  transform:rotate(-5deg);letter-spacing:.1em;line-height:1.3;pointer-events:none}
+
+/* ---------- 模态按钮补皮: 无 inline skin 的 .btn 统一给手绘墨形底 ---------- */
+.btn:not(:has(> .skin)){background-color:transparent;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 60%22 preserveAspectRatio=%22none%22><path d=%22M14 7 C30 2 40 12 56 6 C72 1 84 9 100 6 C118 3 132 8 150 5 C166 3 184 6 194 12 C199 20 196 28 197 36 C198 44 194 50 180 52 C166 54 150 49 136 53 C120 57 104 50 90 54 C76 58 62 52 48 55 C34 57 20 52 10 53 C2 52 3 44 4 36 C5 27 3 19 6 14 C7 11 10 9 14 7 Z%22 fill=%22rgba(143,111,56,.5)%22 stroke=%22rgba(235,205,140,.8)%22 stroke-width=%221.4%22 vector-effect=%22non-scaling-stroke%22/></svg>');
+  background-size:100% 100%;background-repeat:no-repeat}
+.btn.primary:not(:has(> .skin)){color:#fff3e0;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 60%22 preserveAspectRatio=%22none%22><path d=%22M14 7 C30 2 40 12 56 6 C72 1 84 9 100 6 C118 3 132 8 150 5 C166 3 184 6 194 12 C199 20 196 28 197 36 C198 44 194 50 180 52 C166 54 150 49 136 53 C120 57 104 50 90 54 C76 58 62 52 48 55 C34 57 20 52 10 53 C2 52 3 44 4 36 C5 27 3 19 6 14 C7 11 10 9 14 7 Z%22 fill=%22rgba(178,50,35,.5)%22 stroke=%22rgba(255,190,160,.62)%22 stroke-width=%221.5%22 vector-effect=%22non-scaling-stroke%22/></svg>')}
+.btn:not(:has(> .skin)):active{transform:rotate(-.6deg) scale(.95)}
+/* HUD 徽章: 右缘为「榜」印留位(v1.7.62 既有约定, 墨简块后重申) */
+.hud .realm-badge{padding-right:36px !important}
+
+/* ---------- 面板滚动条: 原生白条 → 一线淡金 ---------- */
+.story-body::-webkit-scrollbar{width:4px}
+.story-body::-webkit-scrollbar-thumb{background:rgba(201,168,106,.28);border-radius:2px}
+.story-body::-webkit-scrollbar-track{background:transparent}
+.story-body{scrollbar-width:thin;scrollbar-color:rgba(201,168,106,.28) transparent}
+
+/* ---------- 印章落纸: 微调进墨形纸面内 ---------- */
+#offlineModal .card::after{top:26px;right:16px}
