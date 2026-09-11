@@ -13,9 +13,9 @@
     "assets/modals/art-offline.webp": "accced6a67c6381fbe866104d971a05d1ba0ff661cc9ba35562fbb9ff4f794d7",
     "assets/modals/art-story.webp": "2ac96d0b92beb64bc3d5a4f5fb8bb2348eefbe44312773ceca4004b33fbd366d",
     "assets/modals/art-travel.webp": "c81127c18f55cd5ea4d4b7fff48540fb2c1809e6c3e1f45ca4bde18d3ddc69fc",
-    "assets/modals/bg-equip.webp": "d2bed60b86f0f3b9050bbcf32180ad08c2fa81be146590b22d14eccacde04cca",
-    "assets/modals/bg-mail.webp": "76bbf8a982eec1c118ed1c4b11a34226679c8e6d92d87aefd05fe2b54351d59f",
-    "assets/modals/bg-travel.webp": "3df78dced060a84961412a2206ccd7c2498474255473ccf79163dee5f6218a70",
+    "assets/modals/bg-equip.webp": "955a630f6eed55a8045379778ba9cfc1253bc78a19c0a815905bdcffdf1a1c2f",
+    "assets/modals/bg-mail.webp": "880b6225a01aec5c81a463d74e16eee72da50cef5057e7bf715b7350baca6c4a",
+    "assets/modals/bg-travel.webp": "7d14b290cb677b143c5a8a2593c24c6a62ec2b0c501d3245af36068e68297b74",
     "assets/monsters/m0_wolf.png": "6789c303957e665440519b98aa680a7f9308f960dcd5bca0576a3552e8bafbe8",
     "assets/monsters/m1_shanyao.png": "0d7c9b8b9b2517d6755c94d0ca9a79d151ade5d7ab9bcc82bb8fbc5169ca4e06",
     "assets/monsters/m2_xiongpi.png": "86f588d45ece7630b92f029163ac68e23180821d145879389eca08245b3ab510",
@@ -32,11 +32,11 @@
     "assets/sound/swing.mp3": "90d43e97f4c03c4578368fe927152d0dd587fbe7cd4d54963320c54d68609066",
     "assets/sound/win.mp3": "ffdf24c675745017a997f0d65686feb5eef373b42a44aab8747e3b7c79f1b0bc",
     "bg.js": "d61cf11f268274f8bcdbea5aac1da08eb3f58b59e82b650b0d1f178803343954",
-    "dt-theme.css": "2aad23e451dcf0d3e4739c680ab5a4362c5f77bc314fb3f4039835e76518165b",
+    "dt-theme.css": "12eddd5a73315b4ee7459acaf3d4aaccab2a7b227f4dca7830922638e6725de6",
     "fx2d.js": "dbb9540db9984ac06f08d75490099497c9ce1d59dfe5de91ee32b0d5a6db0670",
-    "game.js": "065b876d7f4751cfa9ff6196b180fdbed19c77e15e26d800ed5d8625f74bf07d",
+    "game.js": "0d04ce17c49c6eec5c495d53b91e4bd2773ed737a25f24285cc17cf9b87d37f5",
     "index.html": "dab6e804ea4b4dc8b9171e1f006e2c6ed67ec77160927d2e472757ec52ea987c"
   },
-  "rev": "707ed7b2e127cc2d",
+  "rev": "b097d0d107165653",
   "version": "1.9.8"
 }
