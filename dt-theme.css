@@ -1380,7 +1380,7 @@
   .gx-grid em{display:block;font-style:normal;font-size:8px;color:#5a6377;letter-spacing:1px}
   .gx-grid b{font-size:10.5px;color:#e9e2d0;font-weight:normal}
   .gx-cross{position:relative;width:236px;height:236px;margin:4px auto 8px}
-  .gx-cell{position:absolute;width:64px;height:64px;border-radius:12px;cursor:pointer;overflow:hidden;
+  .gx-cell{position:absolute;width:64px;height:64px;border-radius:12px;cursor:pointer;
     border:1px solid rgba(201,168,106,.22);background:rgba(10,13,22,.5);
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
   .gx-cell:active{transform:scale(.94)}
@@ -1391,7 +1391,12 @@
   .gx-cell.sel{outline:1px solid rgba(233,226,208,.55);outline-offset:2px;filter:brightness(1.14)}
   .gx-cell .ico{width:44px;height:44px;border-radius:9px;color:inherit}
   .gx-cell .ico svg{width:28px;height:28px}
-  .gx-cell em{font-style:normal;font-size:8px;color:#5a6377;letter-spacing:2px}
+  .gx-cell em{position:absolute;font-style:normal;font-size:8px;color:#5a6377;letter-spacing:2px;line-height:1;white-space:nowrap}
+  /* 部位名甩出格子(图标回归正中): 借格子与核心间 22px 缝隙, up/down 横排 left/right 竖排 */
+  .gx-cell.up em{top:calc(100% + 7px);left:50%;transform:translateX(-50%)}
+  .gx-cell.down em{bottom:calc(100% + 7px);left:50%;transform:translateX(-50%)}
+  .gx-cell.left em{left:calc(100% + 6px);top:50%;transform:translateY(-50%);writing-mode:vertical-rl}
+  .gx-cell.right em{right:calc(100% + 6px);top:50%;transform:translateY(-50%);writing-mode:vertical-rl}
   .gx-cell .st{position:absolute;right:3px;top:2px;font-size:8px;letter-spacing:0}
   .gx-core{position:absolute;top:86px;left:86px;width:64px;height:64px;border-radius:50%;
     border:1px solid rgba(216,176,106,.4);background:rgba(216,176,106,.07);
