@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.8";
+const GAME_VER = "v1.9.8d";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3864,7 +3864,7 @@ function pillCabinetHTML() {
   if (!pk.length) return `<div class="al-sec">丹药匣</div><div class="al-empty">尚无丹药——材料齐了即可开炉。</div>`;
   const row = pk.map(id => {
     const rp = RECIPES[id];
-    return `<span class="al-pill" title="${rp.d}">${rp.n}<b>×${state.pills[id]}</b><button class="take" onclick="consumePill('${id}')">服</button></span>`;
+    return `<span class="al-pill" title="${rp.d}">${pillIco(id, 24)}${rp.n}<b>×${state.pills[id]}</b><button class="take" onclick="consumePill('${id}')">服</button></span>`;
   }).join("");
   return `<div class="al-sec">丹药匣 <i>点“服”即用</i></div><div class="al-grid">${row}</div>`;
 }
@@ -3884,6 +3884,8 @@ const alHave = m => (state.mats || {})[m] || 0;
 const alInFurn = m => cauldron[m] || 0;
 const alIcoCls = t => t === "兽材" ? "beast" : (t === "灵液" || t === "仙泉" || t === "仙晶") ? "liquid" : "plant";
 const alIco = (m, sz) => `<span class="ico ${alIcoCls(MATS[m].t)}"${sz ? ` style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px"` : ""}><img class="icoim" src="assets/modals/ico/${m}.webp" alt="" onerror="this.remove()">${MATS[m].n[0]}</span>`;
+/* v1.9.8d 成品丹图片图标: 39 味丹药全量 webp(首字色块兜底), pillbg 棕金底与丹房同源 */
+const pillIco = (id, sz) => `<span class="ico pillbg"${sz ? ` style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px"` : ""}><img class="icoim" src="assets/modals/ico/${id}.webp" alt="" onerror="this.remove()">${RECIPES[id].n[RECIPES[id].n.length - 2] || "丹"}</span>`;
 const recipeCan = id => Object.keys(RECIPES[id].need).every(m => alHave(m) >= RECIPES[id].need[m]);
 function renderFurn() {
   const el = $("furnSlots"); if (!el) return;
@@ -3917,7 +3919,7 @@ function renderRecipes() {
     const need = Object.keys(rp.need).map(m => `${MATS[m].n}${rp.need[m]}`).join(" · ");
     const fn = rp.d.split("：").pop();                    // 只展示功能: 取「:」后段
     return `<div class="rp-card${selRecipe === id ? " sel" : ""}" title="${rp.n} · ${rp.d}｜需 ${need}" onclick="loadRecipe('${id}')">
-      <div class="rp-ico">${rp.n[rp.n.length - 2] || "丹"}</div>
+      <div class="rp-ico"><img class="icoim" src="assets/modals/ico/${id}.webp" alt="" onerror="this.remove()">${rp.n[rp.n.length - 2] || "丹"}</div>
       <div class="rp-bd"><span class="nm">${rp.n}</span><span class="ds">${fn}</span></div>
       <div class="rp-arrow">${selRecipe === id ? "在炉" : "入炉"}</div></div>`;
   }).join("") : `<div class="al-empty" style="border:1px dashed rgba(201,168,106,.16);border-radius:10px;padding:13px;text-align:center;font-style:normal">
@@ -3930,7 +3932,7 @@ function renderCabinet() {
   el.innerHTML = pk.map(id => {
     const rp = RECIPES[id];
     return `<div class="pillb" title="${rp.d}" onclick="consumePill('${id}')">
-      <span class="ico pillbg">${rp.n[rp.n.length - 2] || "丹"}</span><b>×${state.pills[id]}</b><em>服</em></div>`;
+      ${pillIco(id)}<b>×${state.pills[id]}</b><em>服</em></div>`;
   }).join("");
 }
 function fitsRecipe() {
