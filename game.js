@@ -3888,7 +3888,7 @@ function renderFurn() {
   const el = $("furnSlots"); if (!el) return;
   const mids = Object.keys(cauldron).filter(m => cauldron[m] > 0);
   let h = mids.map(m => `<div class="slot" title="${MATS[m].n} · 点之退回" onclick="takeMat('${m}')">
-      ${alIco(m, 24)}<b>×${cauldron[m]}</b></div>`).join("");
+      ${alIco(m, 34)}<b>×${cauldron[m]}</b></div>`).join("");
   for (let i = mids.length; i < 3; i++) h += `<div class="slot"><em>空</em></div>`;
   el.innerHTML = h;
 }
