@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.9b";
+const GAME_VER = "v1.9.9c";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -5228,9 +5228,9 @@ function openEquip() {
   m.classList.add("show");
 }
 function closeEquip() { const m = $("equipModal"); if (m) m.classList.remove("show"); }
-/* v1.9.9b 十字格共享常量 + 执照卡轻量切换 —— pickArt/closeLic 不再整窗重绘:
-   原实现每次点击 innerHTML 全量重建 → 44px 图标重载/品质呼吸动画重播/列表闪跳, 十分不丝滑;
-   现只切 licOn 类 + sel 类 + lic 卡增删, CSS 过渡平滑接管; 点弹窗任意空白处亦可关闭 */
+/* v1.9.9c 十字格共享常量 + 执照卡静态骨架 —— pickArt/closeLic 点击路径零 DOM 重建:
+   只切 licOn/sel 类 + textContent 直改, 图标预载叠层, CSS transition 平滑接管;
+   点弹窗任意空白处关闭执照卡 */
 const EQUI_SLOTI = ["w", "a", "p", "s"];
 /* 方位映射: 左=兵器(惯用手) 上=护体(衣) 右=功法(典) 下=灵佩(佩) —— 与模板定稿一致 */
 const EQUI_CELLPOS = [{ pos: "left", i: 0 }, { pos: "up", i: 1 }, { pos: "right", i: 3 }, { pos: "down", i: 2 }];
@@ -5240,21 +5240,31 @@ const EQUI_ICON = {
   p: '<svg viewBox="0 0 32 32"><path d="M17.8 3.4 C22.6 4.6 26 8.6 26.2 13.6 C26.4 19 22.6 23.6 17.4 24.6 C11.8 25.6 6.6 21.8 5.8 16.4 C5 11 8.8 6.2 14.2 5.2" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M13.6 3.4 C14.4 2 16.8 2 17.6 3.4 C18 4.2 17.6 5 16.6 5.2 L14.8 5.2 C13.8 5 13.4 4.2 13.6 3.4 Z" fill="currentColor"/><path d="M15.4 25.2 C15 27.2 15.2 29.2 16 31" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M12.8 24.6 C12 26.4 11.8 28.4 12.2 30.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".8"/></svg>',
   s: '<svg viewBox="0 0 32 32"><path d="M9 4.6 C13.6 3 18.8 3 23.2 4.6 C24.8 6.2 24.8 8.8 23.2 10.3 C18.8 11.9 13.6 11.9 9 10.3 C7.4 8.8 7.4 6.2 9 4.6 Z" fill="currentColor" opacity=".95"/><path d="M9.6 11.4 C13.8 12.7 18.4 12.7 22.6 11.5 C23.8 17 23.7 22.6 22.4 27.9 C18.4 29.4 13.8 29.4 9.7 28 C8.4 22.5 8.4 17 9.6 11.4 Z" fill="rgba(8,12,20,.55)"/></svg>',
 };
-function licCardHTML(a, selIdx) {
-  const q = a.q, qn = (QUALITY[q] || QUALITY[0]).name;
-  const qcol = { 0: "#aab2c0", 1: "#6b9df5", 2: "#3fc9a2", 3: "#e0b45a", 4: "#c08af0", 5: "#ff5257" }[q] || "#e9e2d0";
-  const slotIdx = (typeof a.slot === "number" && a.slot < 4) ? a.slot : selIdx;
-  const si = EQUI_SLOTI[slotIdx] || "w";
-  return `
+const LIC_QCOL = { 0: "#aab2c0", 1: "#6b9df5", 2: "#3fc9a2", 3: "#e0b45a", 4: "#c08af0", 5: "#ff5257" };
+/* v1.9.9c 执照卡静态化重写 —— 点击路径零 DOM 重建:
+   旧法 lic.innerHTML 整卡重建 → img 新元素异步解码白闪 + licIn 动画重播中心瞬空(透出主页/闪一下/不丝滑);
+   现骨架只建一次: 每件装备图标预载叠放(切换只改 on 类, 零重载零解码等待),
+   文本字段 textContent 直改, 词条行为纯文本重建无解码成本, 显隐/入场全走 CSS transition 不重播 */
+function licBuild(cross, arr) {
+  const lic = document.createElement("div");
+  lic.className = "gx-lic";
+  const faces = arr.map((a, idx) => {
+    const slotIdx = (typeof (a && a.slot) === "number" && a.slot < 4) ? a.slot : idx;
+    const si = EQUI_SLOTI[slotIdx] || "w";
+    return `<img class="icoim" data-idx="${idx}" src="assets/modals/art-ico/${si}${a.q || 0}.webp" alt="" onerror="this.classList.remove('on')">`;
+  }).join("");
+  lic.innerHTML = `
     <div class="lclose" onclick="closeLic(event)">✕</div>
-    <div class="lh"><span class="ico" style="width:38px;height:38px;font-size:17px;flex:none"><img class="icoim" src="assets/modals/art-ico/${si}${q}.webp" alt="" onerror="this.remove()">${EQUI_ICON[si] || EQUI_ICON.w}</span><b style="color:${qcol}">${a.name}</b><i>${qn}·${EQUI_SLOTN[slotIdx]} ★${q + 1}${a.lv ? " lv" + a.lv : ""}</i></div>
-    <div class="lr"><span>攻</span><b>+${a.a || 0}</b></div>
-    <div class="lr"><span>防</span><b>+${a.d || 0}</b></div>
-    <div class="lr"><span>血</span><b>+${a.h || 0}</b></div>
-    ${(a.fx || []).map(f => `<div class="lr"><span>${FX_TXT[f.k] || f.k}</span><b class="teal">+${f.v}%</b></div>`).join("")}
-    <div class="lseal"><em>战力 ${Math.round(artScore(a))}</em></div>`;
+    <div class="lh"><span class="ico licface" style="width:38px;height:38px;flex:none"><span class="licsvg">${EQUI_ICON.w}</span>${faces}</span><b></b><i></i></div>
+    <div class="lr" data-k="a"><span>攻</span><b></b></div>
+    <div class="lr" data-k="d"><span>防</span><b></b></div>
+    <div class="lr" data-k="h"><span>血</span><b></b></div>
+    <div class="lfx"></div>
+    <div class="lseal"><em></em></div>`;
+  cross.appendChild(lic);
+  return lic;
 }
-function licRefresh() {
+function licSync() {
   const cross = document.querySelector(".gx-cross");
   if (!cross) return;
   const arr = (state.arts || []).slice(-6);
@@ -5262,11 +5272,25 @@ function licRefresh() {
   EQUI_CELLPOS.forEach(({ i }, idx) => { if (cells[idx]) cells[idx].classList.toggle("sel", _eqSel === i); });
   let lic = cross.querySelector(".gx-lic");
   const a = _eqSel >= 0 ? arr[_eqSel] : null;
-  if (!a) { cross.classList.remove("licOn"); if (lic) lic.remove(); return; }
+  if (!a) { cross.classList.remove("licOn"); return; }   // 骨架常驻, licOn 类显隐
+  if (!lic) {
+    lic = licBuild(cross, arr);
+    requestAnimationFrame(() => licSync());   // 新骨架下一帧再 licOn → 首次入场也走 transition
+    return;
+  }
   cross.classList.add("licOn");
-  if (!lic) { lic = document.createElement("div"); lic.className = "gx-lic"; cross.appendChild(lic); }
-  const html = licCardHTML(a, _eqSel);
-  if (lic.innerHTML !== html) { lic.innerHTML = html; }   // 内容变了(切选中/升级)才重建, 否则 38px 小图免重载
+  const slotIdx = (typeof a.slot === "number" && a.slot < 4) ? a.slot : _eqSel;
+  const qn = (QUALITY[a.q] || QUALITY[0]).name;
+  const nb = lic.querySelector(".lh b");
+  nb.textContent = a.name || "无名法宝";
+  nb.style.color = LIC_QCOL[a.q] || "#e9e2d0";
+  lic.querySelector(".lh i").textContent = `${qn}·${EQUI_SLOTN[slotIdx] || ""} ★${a.q + 1}${a.lv ? " lv" + a.lv : ""}`;
+  lic.querySelectorAll(".licface .icoim").forEach(im => im.classList.toggle("on", +im.dataset.idx === _eqSel));
+  lic.querySelector('.lr[data-k="a"] b').textContent = "+" + (a.a || 0);
+  lic.querySelector('.lr[data-k="d"] b').textContent = "+" + (a.d || 0);
+  lic.querySelector('.lr[data-k="h"] b').textContent = "+" + (a.h || 0);
+  lic.querySelector(".lfx").innerHTML = (a.fx || []).map(f => `<div class="lr"><span>${FX_TXT[f.k] || f.k}</span><b class="teal">+${f.v}%</b></div>`).join("");
+  lic.querySelector(".lseal em").textContent = "战力 " + Math.round(artScore(a));
 }
 function renderEquip() {                 // v1.9.8 十字格工作台: 四正方格上下左右 + 中央总战力, 点格显属性
   const box = $("equipBody"); if (!box) return;
@@ -5315,11 +5339,11 @@ function renderEquip() {                 // v1.9.8 十字格工作台: 四正方
     <div class="gx-cross">${cross}<div class="gx-core" onclick="closeLic(event)"><b>${total}</b><em>战 力</em></div></div>
     <div class="pane gx-detail">${detail}</div>`;
   box.onclick = closeLic;   // v1.9.9b 点弹窗任意空白处关闭执照卡(格子已 stopPropagation 转为切换)
-  licRefresh();
+  licSync();
 }
 let _eqSel = -1;                          // 当前查看的宝位(-1 无)
-function pickArt(i) { _eqSel = _eqSel === i ? -1 : i; licRefresh(); }
-function closeLic(e) { if (e) e.stopPropagation(); _eqSel = -1; licRefresh(); }
+function pickArt(i) { _eqSel = _eqSel === i ? -1 : i; licSync(); }
+function closeLic(e) { if (e) e.stopPropagation(); _eqSel = -1; licSync(); }
 
 
 /* ============ v1.0.2 数值整体重做(同尺+加法) ============ */
