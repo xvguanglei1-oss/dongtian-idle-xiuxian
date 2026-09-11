@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.9c";
+const GAME_VER = "v1.9.9d";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3711,6 +3711,16 @@ function startGame() {
     }
   }
   setInterval(save, 8000);
+  /* v1.9.9d 法宝图标空闲预热解码(4 部位×6 品质 24 张 webp):
+     安卓 WebView 首开法宝窗才现解码 4 张图, 与弹窗全卡首光栅化同帧挤爆 → 开窗卡死/掉帧闪屏;
+     启动低谷期逐张 decode() 预热, 开窗只剩合成 */
+  setTimeout(() => {
+    ["w", "a", "p", "s"].forEach(si => { for (let q = 0; q < 6; q++) {
+      const im = new Image();
+      im.src = "assets/modals/art-ico/" + si + q + ".webp";
+      try { im.decode && im.decode().catch(() => {}); } catch (e) {}
+    } });
+  }, 4000);
   addEventListener("pagehide", () => { save(); cloudFlush(); });
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") {
