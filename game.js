@@ -1560,6 +1560,7 @@ function cldAdoptCloud(s) {
   /* v1.5.0: 云端档可能没有 autoHunt / travel 字段(老档), 采纳后按钮与行迹要跟着重绘,
      否则会出现"state 已变、开关还停在旧态"的错看 */
   renderAutoHunt(); travelBtnLbl(); traceRefresh();
+  renderPillHints();            // v1.9.8c.2: 采纳云端档后药力行(丹力正盛/洗髓)要跟着重绘, 否则重开不显示
   renderPName();                // v1.7.26: 云端档自带道号 → 界面同步
   return true;
 }
@@ -4229,6 +4230,7 @@ function adoptKeep(st) {          // 采用结算后的存档, 但本地叙事(�
   state = c;
   try { localStorage.setItem(SAVE_KEY, zPack(state)); } catch (e) {}
   travelBtnLbl();            // 云端结算可能清 travel(化身归来) → 按钮文字同步
+  renderPillHints();         // v1.9.8c.2: 结算合并后药力过期段已被服务端清掉 → 药力行同步
   mailDot();
   return true;
 }
