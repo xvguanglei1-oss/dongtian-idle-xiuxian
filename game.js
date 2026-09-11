@@ -3864,7 +3864,8 @@ function pillCabinetHTML() {
   if (!pk.length) return `<div class="al-sec">丹药匣</div><div class="al-empty">尚无丹药——材料齐了即可开炉。</div>`;
   const row = pk.map(id => {
     const rp = RECIPES[id];
-    return `<span class="al-pill" title="${rp.d}">${pillIco(id, 24)}${rp.n}<b>×${state.pills[id]}</b><button class="take" onclick="consumePill('${id}')">服</button></span>`;
+    const fn = rp.d.split("：").pop();          // v1.9.8d: 服用信息(效果摘要), 图标下方两行截断
+    return `<span class="al-pill" title="${rp.d}">${pillIco(id, 44)}<span class="nm">${rp.n}</span><span class="fx">${fn}</span><b>×${state.pills[id]}</b><button class="take" onclick="consumePill('${id}')">服</button></span>`;
   }).join("");
   return `<div class="al-sec">丹药匣 <i>点“服”即用</i></div><div class="al-grid">${row}</div>`;
 }
@@ -3931,8 +3932,9 @@ function renderCabinet() {
   if (wrap) wrap.style.display = pk.length ? "" : "none";
   el.innerHTML = pk.map(id => {
     const rp = RECIPES[id];
+    const fn = rp.d.split("：").pop();          // v1.9.8d: 服用信息行
     return `<div class="pillb" title="${rp.d}" onclick="consumePill('${id}')">
-      ${pillIco(id)}<b>×${state.pills[id]}</b><em>服</em></div>`;
+      ${pillIco(id)}<span class="nm">${rp.n}</span><span class="fx">${fn}</span><b>×${state.pills[id]}</b><em>服</em></div>`;
   }).join("");
 }
 function fitsRecipe() {

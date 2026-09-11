@@ -1329,6 +1329,10 @@
   /* v1.9.8d 成品丹图片图标: 丹方笺 rp-ico 同样铺图(28px 小格, scale 1.12 裁留白) */
   .rp-ico{position:relative;overflow:hidden}
   .rp-ico .icoim{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:1;transform:scale(1.12)}
+  /* v1.9.8d 丹药图标放大 + 服用信息行(rp-ico/pillb 原地改, 此处只管 al-pill 同构) */
+  .al-pill .fx{font-size:8.5px;color:#8b94a8;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .al-pill .nm{font-size:11px;color:#e9e2d0;white-space:nowrap}
+  .al-grid .al-pill{min-height:0;padding:10px 5px 8px}
   .ico.plant{background:linear-gradient(160deg,#3d6b58,#24443a)}
   .ico.beast{background:linear-gradient(160deg,#7a4038,#4a2622)}
   .ico.liquid{background:linear-gradient(160deg,#6d5a33,#40331c)}
@@ -1341,21 +1345,24 @@
     background:rgba(24,30,46,.62);border:1px solid rgba(201,168,106,.14)}
   .rp-card:active{transform:scale(.985)}
   .rp-card.sel{border-color:rgba(216,176,106,.75);box-shadow:0 0 0 1px rgba(216,176,106,.35);background:rgba(48,39,24,.62)}
-  .rp-ico{width:28px;height:28px;border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;
-    font-size:13px;color:#f5edd8;text-shadow:0 1px 2px rgba(0,0,0,.55);
+  .rp-ico{width:40px;height:40px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;
+    font-size:16px;color:#f5edd8;text-shadow:0 1px 2px rgba(0,0,0,.55);
     background:linear-gradient(160deg,#54432a,#2e2415);border:1px solid rgba(216,176,106,.28)}
   .rp-bd{flex:1;min-width:0;display:flex;align-items:baseline;gap:7px}
   .rp-bd .nm{font-size:12px;color:#e9e2d0;letter-spacing:1px;flex:none;white-space:nowrap}
   .rp-bd .ds{font-size:9.5px;color:#8b94a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .rp-arrow{flex:none;font-size:9px;color:#5a6377;letter-spacing:2px;writing-mode:vertical-lr;line-height:1}
   .rp-card.sel .rp-arrow{color:#e0c084}
-/* ---- 丹药匣 ---- */
-  .cab-grid{display:grid;grid-template-columns:repeat(4,41px);gap:7px;justify-content:center}
-  .pillb{position:relative;width:41px;height:41px;border-radius:8px;border:1px solid rgba(201,168,106,.14);
-    background:rgba(15,20,33,.9);display:flex;align-items:center;justify-content:center;cursor:pointer}
-  .pillb .ico{width:22px;height:22px;font-size:11px;border-radius:5px}
-  .pillb b{position:absolute;right:2px;bottom:1px;font-size:8.5px;color:#e0c084;font-weight:normal}
-  .pillb em{position:absolute;left:2px;top:2px;font-style:normal;font-size:8px;color:#c96a5a}
+/* ---- 丹药匣(v1.9.8d: 44px 图 + 名 + 服用信息两行, 四列小格→三列竖条) ---- */
+  .cab-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .pillb{position:relative;border-radius:9px;border:1px solid rgba(201,168,106,.14);
+    background:rgba(15,20,33,.9);display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:9px 5px 15px;text-align:center;cursor:pointer}
+  .pillb .ico{width:44px;height:44px;font-size:19px;border-radius:9px}
+  .pillb .nm{font-size:10px;color:#e9e2d0;letter-spacing:.5px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pillb .fx{font-size:8.5px;color:#8b94a8;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .pillb b{position:absolute;right:3px;bottom:2px;font-size:9px;color:#e0c084;font-weight:normal;text-shadow:0 1px 2px rgba(0,0,0,.8)}
+  .pillb em{position:absolute;left:3px;top:2px;font-style:normal;font-size:8px;color:#c96a5a}
 /* ---- 主 CTA(炼制/收下机缘等) ---- */
   .cta{margin-top:11px;display:flex;justify-content:center}
   .cta button{width:min(62%,240px);padding:9px 0 10px;border-radius:10px;cursor:pointer;font-family:inherit;
