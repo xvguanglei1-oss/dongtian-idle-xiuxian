@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.9d";
+const GAME_VER = "v1.9.9e";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -4523,12 +4523,6 @@ function exitDim() {
   document.addEventListener("touchmove", move, { passive: false });
   document.addEventListener("touchend", up);
 })();
-function mailGoodsTxt(mail) {
-  const g = [];
-  for (const mk of (mail.mats || [])) if (MATS[mk.id]) g.push(`${MATS[mk.id].n}×${mk.q}`);
-  if (mail.page) g.push("丹方残页×1");
-  return g;
-}
 function renderMailBox() {
   const box = $("mailBody"); if (!box) return;
   const ml = (state.mails || []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
@@ -4545,16 +4539,26 @@ function renderMailBox() {
     const where = loc ? loc.n : "远方";
     const mins = Math.max(1, Math.round((Date.now() - (m.ts || Date.now())) / 60000));
     const ag = mins >= 60 ? (mins / 60 >= 24 ? Math.round(mins / 1440) + " 天前" : Math.round(mins / 60) + " 小时前") : mins + " 分钟前";
-    const g = mailGoodsTxt(m);
+    /* v1.9.9e 内附物品图标化: 缩小的 ico 物品图 + 名称 + 数量(图标库 assets/modals/ico/<id>.webp);
+       丹方残页无专属图, 用内联纸卷 SVG 兜底; 无附件显示平安信 */
+    const chips = [];
+    for (const mk of (m.mats || [])) if (MATS[mk.id]) {
+      chips.push(`<span class="mg" title="${MATS[mk.id].n}"><img src="assets/modals/ico/${mk.id}.webp" alt="" onerror="this.remove()"><em>${MATS[mk.id].n}</em><i>×${mk.q}</i></span>`);
+    }
+    if (m.page) chips.push(`<span class="mg" title="丹方残页"><svg viewBox="0 0 24 24"><path d="M7 3.5h7.2L18.5 8v12.5H7z" fill="#e8dcc0" stroke="rgba(140,110,60,.55)" stroke-width="1.1"/><path d="M14.2 3.5 18.5 8h-4.3z" fill="#c9b98f"/><path d="M9.2 11.5h6.4M9.2 14.2h6.4M9.2 16.9h4.2" stroke="rgba(120,95,55,.5)" stroke-width="1.1" stroke-linecap="round"/></svg><em>丹方残页</em><i>×1</i></span>`);
+    const goods = chips.length
+      ? `<span class="m-gl">内附</span>${chips.join("")}`
+      : `<span class="m-plain">一封平安信，无甚物什</span>`;
     return `<div class="mail-item">
       <div class="mail-head">
+        <span class="m-loc" title="${where}">${where.slice(0, 1)}</span>
         <span class="m-from">${where} · 化身亲笔</span>
         <span class="m-age">${ag}</span>
       </div>
       <p class="mail-txt">“${mailLine(m.loc, m.ts)}”</p>
       <div class="mail-foot">
-        <span class="m-goods">${g.length ? "内附 " + g.join("、") : "一封平安信，无甚物什"}</span>
-        <button class="btn primary seal" onclick="collectMail('${m.id}')"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="${MAIL_BTN_PATH}"/></svg><span class="label">收 取</span></button>
+        <span class="m-goods">${goods}</span>
+        <button class="btn primary seal" type="button" onclick="collectMail('${m.id}')"><span class="label">收 取</span></button>
       </div>
     </div>`;
   }).join("");

@@ -346,20 +346,39 @@
   .mail-item{position:relative;padding:13px 6px 11px}
   .mail-item::before{content:"";position:absolute;left:6px;right:6px;top:-1px;height:1px;
     background:linear-gradient(90deg,rgba(201,168,106,0),rgba(201,168,106,.4) 22%,rgba(201,168,106,.4) 78%,rgba(201,168,106,0))}
-  .mail-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-  .m-from{font-family:var(--font-brush);font-size:13.5px;color:#d8b06a;letter-spacing:.1em}
+  .mail-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  /* v1.9.9e 发信地首字圆徽(地点无专属图, 取首字金石徽) */
+  .m-loc{width:22px;height:22px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-brush);font-size:12.5px;color:#e8d6a4;letter-spacing:0;
+    background:linear-gradient(180deg,rgba(60,48,30,.85),rgba(36,30,20,.85));
+    border:1px solid rgba(201,168,106,.4)}
+  .m-from{font-family:var(--font-brush);font-size:13.5px;color:#d8b06a;letter-spacing:.1em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .m-age{font-size:10px;color:#76809a;flex:none}
   .mail-txt{margin:9px 2px 10px;font-size:13px;line-height:2;color:#d5dcea;letter-spacing:.02em}
   .mail-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
-  .m-goods{font-size:11px;color:#8fd8bd;letter-spacing:.02em}
-  .btn.seal{padding:2px 8px;font-size:11px;min-height:0;flex:none}
+  /* v1.9.9e 内附物品图标化: 20px 缩小真图标 + 名称 + 数量 chips */
+  .m-goods{display:flex;align-items:center;flex-wrap:wrap;gap:5px 7px;min-width:0}
+  .m-gl{font-size:10.5px;color:#6f7a92;letter-spacing:.2em;flex:none}
+  .mg{display:inline-flex;align-items:center;gap:4px;padding:2px 8px 2px 3px;border-radius:999px;
+    background:rgba(255,255,255,.045);border:1px solid rgba(201,168,106,.18)}
+  .mg img,.mg svg{width:20px;height:20px;border-radius:5px;flex:none;object-fit:cover}
+  .mg em{font-style:normal;font-size:10.5px;color:#c6cdd8;letter-spacing:.02em;white-space:nowrap}
+  .mg i{font-style:normal;font-size:10px;color:#8fd8bd;white-space:nowrap}
+  .m-plain{font-size:11px;color:#6f7a92;font-style:italic;letter-spacing:.04em}
+  /* v1.9.9e 收取按钮去 SVG 墨形, 换正经 CSS 实底按钮(单封/一键共用 .seal) */
+  .btn.seal{padding:4px 14px;font-size:11.5px;letter-spacing:.22em;min-height:0;flex:none;
+    background:linear-gradient(180deg,rgba(201,168,106,.16),rgba(201,168,106,.06));
+    border:1px solid rgba(201,168,106,.5);border-radius:8px;color:#e9d5a0;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+  .btn.primary.seal{background:linear-gradient(180deg,#8a5a2b,#614021);
+    border-color:rgba(255,222,150,.55);color:#ffe9b8}
+  .btn.seal:active{transform:scale(.94)}
   .btn.seal .label{min-height:16px;gap:0}
   .mail-empty{text-align:center;color:#8b94a8;font-size:12.5px;padding:28px 8px;line-height:2.2}
   /* v1.8.2 一键收取: 信匣顶部的批量条(墨线分隔, 与手札风一致) */
   .mail-bulkbar{display:flex;justify-content:space-between;align-items:center;gap:10px;
     padding:0 6px 10px;margin-bottom:2px;border-bottom:1px dashed rgba(201,168,106,.22)}
   .mail-bulkbar .mb-count{font-size:11.5px;color:#8b94a8;letter-spacing:.06em}
-  .mail-bulkbar .btn{padding:3px 14px;font-size:12px;flex:none}
+  .mail-bulkbar .btn{padding:4px 16px;font-size:12px;flex:none}
 
 
 /* ============ v0.9.0 化身行迹 · 云游斗法 ============ */
