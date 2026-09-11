@@ -46,13 +46,13 @@
   <div class="en">IDLE XIUXIAN</div>
 
   <div class="meta">
-    <span class="chip">v1.10.0 r2</span>
+    <span class="chip">v1.10.1</span>
     <span class="chip">Android 7.0+</span>
     <span class="chip">资源全内置</span>
   </div>
 
-  <a class="btn" href="./xianren-xiuxian-v1.10.0-r2.apk" download="闲人修仙-v1.10.0-r2.apk">下载安装包</a>
-  <div class="size">APK · 4.3 MB · 已签名 · 2026-09-12 00:55 构建</div>
+  <a class="btn" href="./xianren-xiuxian-v1.10.1.apk" download="闲人修仙-v1.10.1.apk">下载安装包</a>
+  <div class="size">APK · 4.3 MB · 已签名 · 2026-09-12 01:38 构建</div>
 
   <div class="note">
     <b>安装说明</b><br>
@@ -66,10 +66,14 @@
     · 存档体系换新：单一 g1 编码 + 服务端权威账本，云存档更小更稳。<br>
     · 立绘与图标全面 webp 化，包体从 5.2 MB 降到 4.3 MB。<br>
     <br>
-    <b>r2 修了什么</b><br>
-    · 修复热更新失效：CDN 对页面地址返回 308 重定向，而系统网络库不跟随 308，
-    导致每次更新都卡在校验失败上。现在改为手动跟随重定向。<br>
-    · 更新过程更稳：下载失败自动重试、校验通过才落盘、不再删除正在被读取的旧资源。
+    · 内置资源已同步到 v1.10.1，装完即是最新版，不用等热更。<br>
+    <br>
+    <b>热更新修了什么</b><br>
+    · 原来几乎每次更新都失败：CDN 对页面地址返回 308 重定向，而系统网络库只跟随 300~307，
+    更新会卡在校验失败上，且失败是静默的 —— 看起来就像"热更根本没跑"。<br>
+    · 现在：手动跟随重定向；下载失败自动重试；校验通过才落盘；不再删除正在被读取的旧资源。<br>
+    · 回到前台也会检查更新（5 分钟节流），App 挂一整天不重启也能拿到新资源。<br>
+    · 更新成功或失败都会弹提示，并把资源版本写进 <code>window.__ota</code>，方便自查。
     
     <br>
     <b>说明</b><br>
@@ -77,7 +81,7 @@
     后续资源更新由 App 内置热更自动完成，无需重新下载安装包。
   </div>
 
-  <div class="hash">SHA-256<br>96f1d6787f996c0ad478fb047acf0fa9d8432851c45a3aba8b27586b2cb7006f</div>
+  <div class="hash">SHA-256<br>a2bffc323d2e41e7f51a243e3587c3c12a396039972283958f85d81d5be73bd0</div>
 
   <div class="foot">
     源码与安装包均托管于开源仓库 ·
