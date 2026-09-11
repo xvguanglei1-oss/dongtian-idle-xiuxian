@@ -53,11 +53,11 @@
     "assets/sound/swing.mp3": "90d43e97f4c03c4578368fe927152d0dd587fbe7cd4d54963320c54d68609066",
     "assets/sound/win.mp3": "ffdf24c675745017a997f0d65686feb5eef373b42a44aab8747e3b7c79f1b0bc",
     "bg.js": "d61cf11f268274f8bcdbea5aac1da08eb3f58b59e82b650b0d1f178803343954",
-    "dt-theme.css": "6bfe9fb6090be862d7bb928e9e0c7ebc6134e304651afcbff62b461e5720b966",
+    "dt-theme.css": "48909641ac5dba6ddb1fdf24baf1d871bbe3a19fc4a3f63a843c91ced0e8c6dd",
     "fx2d.js": "dbb9540db9984ac06f08d75490099497c9ce1d59dfe5de91ee32b0d5a6db0670",
-    "game.js": "6da9834b89d0874b147c609aced6ec5c64d90cac97e5f363236e18b887166bf8",
+    "game.js": "d499b9d4285ebcdc8a1e43738a60a02d851d4ddc870e625498fef5d4c7fe1b6a",
     "index.html": "dab6e804ea4b4dc8b9171e1f006e2c6ed67ec77160927d2e472757ec52ea987c"
   },
-  "rev": "7bf3a5e0d0a897d2",
+  "rev": "9d7e084f37720331",
   "version": "1.9.8"
 }
