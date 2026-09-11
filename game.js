@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.9g";
+const GAME_VER = "v1.9.9h";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -1397,6 +1397,67 @@ function zUnpack(s) {
   if (s.startsWith("z1:")) { try { return JSON.parse(LZString.decompressFromBase64(s.slice(3))); } catch (e) { return null; } }
   try { return JSON.parse(s); } catch (e) { return s; }      // 旧版未压缩 JSON
 }
+/* ============ v1.9.9h 云链路 g1 短档: 默认值剪枝 + 原生 gzip ============
+ * 只用于网络路径(上传/下发); 本地 localStorage 仍走同步 z1(save/load 不动, 零竞态)。
+ *   上行: state 与 G1_TPL 深度对比, 「与默认相同」的字段整段不传 → gzip → base64("g1:")
+ *   下行: gunzip → JSON.parse → 与 G1_TPL 合并补齐缺失字段(=默认值)
+ * 剪枝/merge 对未知键(模板外)一律原样保留 —— 字段演进天然向后兼容。
+ * 老 WebView 无 CompressionStream / 编码中途异常 → 自动回退 z1(服务器本就双解)。 */
+const _hasCS = typeof CompressionStream === "function" && typeof DecompressionStream === "function";
+const G1_TPL = { realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], journal: [], milestones: {},
+  peakSpirit: 0, bestArtQ: -1, lastTs: 0, mats: {}, pills: {}, buffs: [], travel: null, mails: [],
+  offlineBoostUntil: 0, pages: {}, name: "", _pn: "", _named: 0, _settledAt: 0 };
+function g1prune(v, tpl) {
+  if (v === null || typeof v !== "object" || tpl === null || typeof tpl !== "object" || Array.isArray(tpl)) {
+    return JSON.stringify(v) === JSON.stringify(tpl) ? undefined : v;   // 数组整体比; 误判不同=多存, 安全方向
+  }
+  const out = {}; let n = 0;
+  for (const k in v) {
+    const val = v[k];
+    if (val === undefined) continue;
+    if (Object.prototype.hasOwnProperty.call(tpl, k)) {
+      const pv = g1prune(val, tpl[k]);
+      if (pv !== undefined) { out[k] = pv; n++; }
+    } else { out[k] = val; n++; }                        // 模板外键(动态/运行时字段)必存
+  }
+  return n ? out : undefined;
+}
+function g1merge(v, tpl) {
+  if (v === null || typeof v !== "object" || Array.isArray(v) ||
+      tpl === null || typeof tpl !== "object" || Array.isArray(tpl)) return v === undefined ? tpl : v;
+  const out = Object.assign({}, tpl);
+  for (const k in v) {
+    const val = v[k];
+    out[k] = (val !== undefined && typeof val === "object" && val !== null && !Array.isArray(val) &&
+              Object.prototype.hasOwnProperty.call(tpl, k)) ? g1merge(val, tpl[k]) : val;
+  }
+  return out;
+}
+function g1b64(u8) { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function g1unb64(s) { const bin = atob(s), u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return u8; }
+async function g1Pack(o) {
+  const cs = new CompressionStream("gzip");
+  const stream = new Blob([JSON.stringify(g1prune(o, G1_TPL) ?? {})]).stream().pipeThrough(cs);
+  return "g1:" + g1b64(new Uint8Array(await new Response(stream).arrayBuffer()));
+}
+async function g1Unpack(s) {
+  const ds = new DecompressionStream("gzip");
+  const stream = new Blob([g1unb64(s.slice(3))]).stream().pipeThrough(ds);
+  return g1merge(JSON.parse(await new Response(stream).text()), G1_TPL);
+}
+/* 云端收发统一口: 发包按 _cldFmt(g1 优先, 旧后端 400 降 z1), 收包 g1/z1/裸 JSON 全识别 */
+let _cldFmt = "g1";
+async function cldPack(o) {
+  if (_cldFmt !== "g1" || !_hasCS) return zPack(o);
+  try { return await g1Pack(o); } catch (e) { return zPack(o); }
+}
+async function zUnpackAny(s) {
+  if (typeof s === "string" && s.startsWith("g1:")) {
+    if (!_hasCS) return null;
+    try { return await g1Unpack(s); } catch (e) { return null; }
+  }
+  return zUnpack(s);
+}
 const JRN_CAP = 300;   // 修行录总量上限(保险丝); 实际有界靠 trimJournal 的分流裁剪
 /* v1.9.2 日志瘦身: 旧逻辑按条数一刀切, 而斗法/纪事每十来秒就写一条带全文的叙事,
  * 上限很快滚满 —— 实测线上最大档 88% 字节是这类文本, 且最老的主线剧情(sid)
@@ -1575,8 +1636,8 @@ async function cldPull(forceImport) {        // v1.7.29 forceImport: 用户主�
   if (!window.fetch) { cldUI("off"); return; }
   cldUI("sync");
   try {
-    const r = await cldApi("GET", undefined, "fmt=z1");
-    if (r && r.data) r.data = zUnpack(r.data);
+    const r = await cldApi("GET", undefined, "fmt=" + _cldFmt);   // v1.9.9h: g1 优先(服务器会按能力转旧格式)
+    if (r && r.data) r.data = await zUnpackAny(r.data);
     if (r.found && r.data) {
 
       const cs = (r.ts || 0);               // 服务端存档时间(权威)
@@ -4282,14 +4343,14 @@ async function stayMailCheck() {
     const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&stay=1", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ __z: zPack(cloudSnap(state)) }),
+      body: JSON.stringify({ __z: await cldPack(cloudSnap(state)) }),
       signal: ctl.signal,
     });
     clearTimeout(tm);
     if (!r.ok) return;
     const j = await r.json();
     if (j && j.ok && j.data) {
-      const c0 = zUnpack(j.data);
+      const c0 = await zUnpackAny(j.data);
       if (c0 && adoptKeep(c0)) { updateHUD(); mailDot(); }
       if (j.stay && j.stay.id && ((j.stay.mats && j.stay.mats.length) || j.stay.page)) {
         showTravelMail(j.stay);
@@ -4300,6 +4361,15 @@ async function stayMailCheck() {
 }
 /* ==================== v0.8.0 丹方残页(Cloud Settle) 辅助 ==================== */
 async function cloudSettle() {
+  const r0 = await settleOnce();
+  /* v1.9.9h: g1 是新协议 —— 若后端尚是旧版(不识 g1 → 400) 自动降回 z1, 会话内重试一次 */
+  if (!r0 && _cldFmt === "g1") {
+    const e = cld.lastErr || "";
+    if (e.indexOf("400") > -1 || e.indexOf("bad_json") > -1) { _cldFmt = "z1"; return settleOnce(); }
+  }
+  return r0;
+}
+async function settleOnce() {
   if (!window.fetch || !cld.id) return null;
   cldUI("sync");
   const t0 = Date.now();
@@ -4313,7 +4383,7 @@ async function cloudSettle() {
     const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&settle=1", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ __z: zPack(snap) }),
+      body: JSON.stringify({ __z: await cldPack(snap) }),
       signal: ctl.signal,
     });
     clearTimeout(tm);
@@ -4327,7 +4397,7 @@ async function cloudSettle() {
       if (j.rate) _rate = { exp: +j.rate.exp || 0, spirit: +j.rate.spirit || 0 };
       /* v1.8.1: 先判定本轮是否「真归来」, 再 adopt —— adoptKeep 据此决定是否保留本地 travel */
       _travelReturned = !!(j.gains && j.gains.travel);
-      const j0 = zUnpack(j.data);
+      const j0 = await zUnpackAny(j.data);
       if (!adoptKeep(j0)) return null;
       _travelReturned = false;
       _pred.exp = 0; _pred.spirit = 0;     // 账本已被服务端权威值覆盖 → 本地预测清零, 从新账本重新开始
