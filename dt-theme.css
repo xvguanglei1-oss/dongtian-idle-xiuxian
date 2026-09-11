@@ -1382,7 +1382,8 @@
   .gx-cross{position:relative;width:236px;height:236px;margin:4px auto 8px}
   .gx-cell{position:absolute;width:64px;height:64px;border-radius:12px;cursor:pointer;
     border:1px solid rgba(201,168,106,.22);background:rgba(10,13,22,.5);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    transition:opacity .25s,transform .25s,filter .25s}
   .gx-cell:active{transform:scale(.94)}
   .gx-cell.up{top:0;left:86px}
   .gx-cell.left{top:86px;left:0}
