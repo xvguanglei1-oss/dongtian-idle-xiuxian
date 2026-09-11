@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>闲人修仙 v1.10.1</title>
+<title>闲人修仙 v1.10.2</title>
 <meta name="description" content="闲人修仙：主身巡猎斗法、分身云游寻宝，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -135,7 +135,8 @@
   /* v1.7.46 按钮内进度: SVG clipPath 复用墨形, 填充宽度即进度(聚灵阵=灵石/升级价, 突破=修为/所需) */
   .btn .prog{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;
     mix-blend-mode:multiply;isolation:isolate}   /* v1.7.49: 与按钮底色相乘 → 恒为"本色加深", 任何状态(金/红/禁用灰调)都不割裂 */
-  .ver-float{position:fixed;right:9px;bottom:4px;z-index:10;pointer-events:none}
+  /* v1.10.2: 右移躲屏幕圆角(原来 right:9px 的尾字被圆角吃掉), 并叠一层 safe-area 兜底 */
+  .ver-float{position:fixed;right:calc(26px + env(safe-area-inset-right, 0px));bottom:4px;z-index:10;pointer-events:none}
   /* ==================== v1.7.58 开屏页(大厂式: 品牌居中 + 进度百分比 + 忠告沉底) ==================== */
   #splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;
     justify-content:center;padding:0 28px;overflow:hidden;cursor:pointer;-webkit-tap-highlight-color:transparent;
@@ -404,7 +405,7 @@
     box-shadow:0 2px 10px rgba(0,0,0,.55);cursor:grab;touch-action:none}
   .dim-knob svg{width:20px;height:20px;display:block}
 </style>
-<link rel="stylesheet" href="dt-theme.css?v=v1.10.1">
+<link rel="stylesheet" href="dt-theme.css?v=v1.10.2">
 </head>
 <body>
 <!-- v1.7.58 开屏页: 品牌 + 进度 + 健康游戏忠告(load 完成或点击后淡出) -->
@@ -427,7 +428,7 @@
     <p>合理安排时间，享受健康生活。</p>
   </div>
 
-  <div class="sp-foot"><span id="spVer">v1.10.1</span></div>
+  <div class="sp-foot"><span id="spVer">v1.10.2</span></div>
 </div>
 
 <!-- v1.8.0 连接中断遮罩: 心跳连续失败时盖住 —— 不让玩家在已经和服务端脱节的账本上继续玩 -->
@@ -513,7 +514,7 @@
   <button class="btn" id="btnTravel" onclick="openTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">云游</span></button>
 </div>
 
-<div class="ver-float"><span class="ver-tag" id="verTag">v1.10.1</span></div>
+<div class="ver-float"><span class="ver-tag" id="verTag">v1.10.2</span></div>
 
 <canvas id="burst"></canvas>
 <div class="flash" id="flash"></div>
@@ -689,7 +690,7 @@
   </div>
 </div>
 
-<script src="game.js?v=v1.10.1"></script>
+<script src="game.js?v=v1.10.2"></script>
 
 </body>
 </html>
