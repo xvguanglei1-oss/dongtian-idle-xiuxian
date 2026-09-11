@@ -122,11 +122,11 @@
     "assets/sound/swing.mp3": "90d43e97f4c03c4578368fe927152d0dd587fbe7cd4d54963320c54d68609066",
     "assets/sound/win.mp3": "ffdf24c675745017a997f0d65686feb5eef373b42a44aab8747e3b7c79f1b0bc",
     "bg.js": "d61cf11f268274f8bcdbea5aac1da08eb3f58b59e82b650b0d1f178803343954",
-    "dt-theme.css": "5b6351851b3a3ffd454988d120da007721e9f633c8937eeca152c25bd560a969",
+    "dt-theme.css": "72e2bffad92c6f222493a7cca83fb24f35319d649baeb67fe09e88bb3790cad7",
     "fx2d.js": "dbb9540db9984ac06f08d75490099497c9ce1d59dfe5de91ee32b0d5a6db0670",
-    "game.js": "a4bd9100f2457a9776e85fb2bddc96f43c8a1acbd4cddd3daa74017219ea0c26",
+    "game.js": "8cbcbd71979dfaa01c6f2acc10dce79d92b418f5f1edb6e631abac0a1829bafb",
     "index.html": "ab7c7fb59dadf000c67e193dfaad5038caa4d469192efc9bd953131c7bfd53ee"
   },
-  "rev": "be89b9be2bfe7cb8",
+  "rev": "f80a7c23d00b0528",
   "version": "1.9.8"
 }

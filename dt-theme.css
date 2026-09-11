@@ -1397,7 +1397,6 @@
   .gx-cell.down em{bottom:calc(100% + 7px);left:50%;transform:translateX(-50%)}
   .gx-cell.left em{left:calc(100% + 6px);top:50%;transform:translateY(-50%);writing-mode:vertical-rl}
   .gx-cell.right em{right:calc(100% + 6px);top:50%;transform:translateY(-50%);writing-mode:vertical-rl}
-  .gx-cell .st{position:absolute;right:3px;top:2px;font-size:8px;letter-spacing:0}
   .gx-core{position:absolute;top:86px;left:86px;width:64px;height:64px;border-radius:50%;
     border:1px solid rgba(216,176,106,.4);background:rgba(216,176,106,.07);
     display:flex;flex-direction:column;align-items:center;justify-content:center}

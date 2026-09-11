@@ -5238,10 +5238,6 @@ function renderEquip() {                 // v1.9.8 十字格工作台: 四正方
     p: '<svg viewBox="0 0 32 32"><path d="M17.8 3.4 C22.6 4.6 26 8.6 26.2 13.6 C26.4 19 22.6 23.6 17.4 24.6 C11.8 25.6 6.6 21.8 5.8 16.4 C5 11 8.8 6.2 14.2 5.2" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M13.6 3.4 C14.4 2 16.8 2 17.6 3.4 C18 4.2 17.6 5 16.6 5.2 L14.8 5.2 C13.8 5 13.4 4.2 13.6 3.4 Z" fill="currentColor"/><path d="M15.4 25.2 C15 27.2 15.2 29.2 16 31" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M12.8 24.6 C12 26.4 11.8 28.4 12.2 30.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".8"/></svg>',
     s: '<svg viewBox="0 0 32 32"><path d="M9 4.6 C13.6 3 18.8 3 23.2 4.6 C24.8 6.2 24.8 8.8 23.2 10.3 C18.8 11.9 13.6 11.9 9 10.3 C7.4 8.8 7.4 6.2 9 4.6 Z" fill="currentColor" opacity=".95"/><path d="M9.6 11.4 C13.8 12.7 18.4 12.7 22.6 11.5 C23.8 17 23.7 22.6 22.4 27.9 C18.4 29.4 13.8 29.4 9.7 28 C8.4 22.5 8.4 17 9.6 11.4 Z" fill="currentColor" opacity=".5"/><path d="M12 20.2 C13.3 18.4 15.3 18.6 16.3 20 C17.6 18.5 19.7 18.7 20.7 20.3 C21.5 21.7 20.7 23.3 19.1 23.5 L13.3 23.5 C11.9 23.3 11.4 21.6 12 20.2 Z" fill="rgba(8,12,20,.55)"/></svg>',
   };
-  const starOf = (q) => {                              // q 颗实心 + 余下空心; q>5 不溢出
-    const n = Math.max(0, Math.min(5, q | 0));
-    return "★".repeat(n) + "☆".repeat(Math.max(0, 5 - n));
-  };
   const sc = (a) => Math.round(artScore(a));
   const SLOTI = ["w", "a", "p", "s"];
   /* 方位映射: 左=兵器(惯用手) 上=护体(衣) 右=功法(典) 下=灵佩(佩) —— 与模板定稿一致 */
@@ -5259,7 +5255,7 @@ function renderEquip() {                 // v1.9.8 十字格工作台: 四正方
     const q = a.q;
     total += sc(a);
     cross += `<div class="gx-cell ${pos} qc${q}${_eqSel === i ? " sel" : ""}" title="${(QUALITY[q] || QUALITY[0]).name} · ${a.name}" onclick="pickArt(${i})">
-      <span class="st">${starOf(q + 1)}</span><span class="ico"><img class="icoim" src="assets/modals/art-ico/${slotI}${q}.webp" alt="" onerror="this.remove()">${ICON[slotI]}</span><em>${SLOTN[i]}</em></div>`;
+      <span class="ico"><img class="icoim" src="assets/modals/art-ico/${slotI}${q}.webp" alt="" onerror="this.remove()">${ICON[slotI]}</span><em>${SLOTN[i]}</em></div>`;
   }
   /* v1.9.8b 法宝执照: 选中宝位 → 十字中央浮出文书卡(名/品级/各项属性/战力朱印), 四格让位变暗 */
   let lic = "";
