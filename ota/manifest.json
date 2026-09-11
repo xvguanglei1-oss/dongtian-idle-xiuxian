@@ -124,9 +124,9 @@
     "bg.js": "d61cf11f268274f8bcdbea5aac1da08eb3f58b59e82b650b0d1f178803343954",
     "dt-theme.css": "72e2bffad92c6f222493a7cca83fb24f35319d649baeb67fe09e88bb3790cad7",
     "fx2d.js": "dbb9540db9984ac06f08d75490099497c9ce1d59dfe5de91ee32b0d5a6db0670",
-    "game.js": "8cbcbd71979dfaa01c6f2acc10dce79d92b418f5f1edb6e631abac0a1829bafb",
-    "index.html": "ab7c7fb59dadf000c67e193dfaad5038caa4d469192efc9bd953131c7bfd53ee"
+    "game.js": "4b73978db9adbc754a12fa932e4b80cd41a1f190ee4d8409c05a61cf7d8405de",
+    "index.html": "d0d704e315168d29f0cd89f2ccc676f467c22ea9ca0e6826765271a2bb75ac6e"
   },
-  "rev": "f80a7c23d00b0528",
-  "version": "1.9.8"
+  "rev": "3a70566c6ed1ab98",
+  "version": "1.9.9"
 }

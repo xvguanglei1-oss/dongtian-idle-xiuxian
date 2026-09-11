@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.8d";
+const GAME_VER = "v1.9.9";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -200,7 +200,7 @@ const TOTAL_SEGS = BIGS.reduce((s, b) => s + b.segs, 0);   // 54 段(凡人1 + �
  * 境界体系: 每大境 1 段(凡人)~13 段(炼气), 其余各 4 段。后期境界不够用 → 在 BIGS/MON_NAMES/
  *   REALM_DAYS/bigSub 各追加一境即可向上续接, 无需改动本注释或任何达成天数约定。
  * SEG_SCALE : 修为需求系数锚点(调大可压慢全盘, 调小加快全盘; 当前=4)
- * arrMult   : 聚灵阵收益 前10级+35%/11~20级+18%/21~30级+8%, 30级封顶, 防止后期产出失控
+ * arrMult   : 聚灵阵收益 前10级+22%/11~20级+12%/21~30级+5%, 30级封顶(v1.9.9 削: 原35/18/8% 与装备倍率叠乘失控)
  * SPIRIT_RATE/ARRAY_COST: 灵石秒产与阵升级花费, 约束阵等级节奏
  */
 const REALM_DAYS = [0.15, 5, 4.8, 6, 6.8, 7.25, 9.5, 11.5, 14, 17, 21, 26]; // 与 BIGS 一一对应(共12境), 权重自 凡人→天仙
@@ -208,7 +208,7 @@ const SEG_SCALE = 4;
 const ARRAY_MAX_LV = 32;   // v1.7.42: 聚灵阵收益封顶级(arrMult 33+ 不再增长), 防灵石无底洞
 const arrMult = lv => {
   let m = 1;
-  for (let k = 2; k <= lv; k++) m += k <= 11 ? 0.35 : (k <= 21 ? 0.18 : (k <= 31 ? 0.08 : 0));
+  for (let k = 2; k <= lv; k++) m += k <= 11 ? 0.22 : (k <= 21 ? 0.12 : (k <= 31 ? 0.05 : 0));
   return m;
 };
 const SPIRIT_RATE = lv => 0.5 + 0.34 * lv;
@@ -1694,7 +1694,9 @@ async function bootCloud() {
 
 /* ============ 数值 ============ */
 function realmMult() { return Math.pow(bigIdx() + 1, 2.05); } // 大境界指数
-function artMult() { return state.arts.reduce((m, a) => m * a.mult, 1); }
+function artMult() { /* v1.9.9 累乘→弱化加算: 4件玄天级(3.8)从 55x 压到 3.5x, 6件从 3011x 压到 6.9x —— 累乘乘区随装备成长指数爆炸(实测 42h 炼气→化神圆满), 需求曲线追不上; 同式已同步服务端 game-core.js rateNowOf */
+  return 1 + state.arts.reduce((m, a) => m + ((a.mult || 1) - 1), 0) * 0.35;
+}
 function buffMult() {
   const t = Date.now();
   /* v1.9.0: 清理只丢"已过期"的; 累加出来的多段同 mult 药力一律保留 ——
@@ -3864,7 +3866,7 @@ function pillCabinetHTML() {
   if (!pk.length) return `<div class="al-sec">丹药匣</div><div class="al-empty">尚无丹药——材料齐了即可开炉。</div>`;
   const row = pk.map(id => {
     const rp = RECIPES[id];
-    const fn = rp.d.split("：").pop();          // v1.9.8d: 服用信息(效果摘要), 图标下方两行截断
+    const fn = rp.d.split("：").pop();          // v1.9.9: 服用信息(效果摘要), 图标下方两行截断
     return `<span class="al-pill" title="${rp.d}">${pillIco(id, 44)}<span class="nm">${rp.n}</span><span class="fx">${fn}</span><b>×${state.pills[id]}</b><button class="take" onclick="consumePill('${id}')">服</button></span>`;
   }).join("");
   return `<div class="al-sec">丹药匣 <i>点“服”即用</i></div><div class="al-grid">${row}</div>`;
@@ -3885,7 +3887,7 @@ const alHave = m => (state.mats || {})[m] || 0;
 const alInFurn = m => cauldron[m] || 0;
 const alIcoCls = t => t === "兽材" ? "beast" : (t === "灵液" || t === "仙泉" || t === "仙晶") ? "liquid" : "plant";
 const alIco = (m, sz) => `<span class="ico ${alIcoCls(MATS[m].t)}"${sz ? ` style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px"` : ""}><img class="icoim" src="assets/modals/ico/${m}.webp" alt="" onerror="this.remove()">${MATS[m].n[0]}</span>`;
-/* v1.9.8d 成品丹图片图标: 39 味丹药全量 webp(首字色块兜底), pillbg 棕金底与丹房同源 */
+/* v1.9.9 成品丹图片图标: 39 味丹药全量 webp(首字色块兜底), pillbg 棕金底与丹房同源 */
 const pillIco = (id, sz) => `<span class="ico pillbg"${sz ? ` style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px"` : ""}><img class="icoim" src="assets/modals/ico/${id}.webp" alt="" onerror="this.remove()">${RECIPES[id].n[RECIPES[id].n.length - 2] || "丹"}</span>`;
 const recipeCan = id => Object.keys(RECIPES[id].need).every(m => alHave(m) >= RECIPES[id].need[m]);
 function renderFurn() {
@@ -3932,7 +3934,7 @@ function renderCabinet() {
   if (wrap) wrap.style.display = pk.length ? "" : "none";
   el.innerHTML = pk.map(id => {
     const rp = RECIPES[id];
-    const fn = rp.d.split("：").pop();          // v1.9.8d: 服用信息行
+    const fn = rp.d.split("：").pop();          // v1.9.9: 服用信息行
     return `<div class="pillb" title="${rp.d}" onclick="consumePill('${id}')">
       ${pillIco(id)}<span class="nm">${rp.n}</span><span class="fx">${fn}</span><b>×${state.pills[id]}</b><em>服</em></div>`;
   }).join("");
