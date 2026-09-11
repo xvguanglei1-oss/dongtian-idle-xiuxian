@@ -5,6 +5,17 @@
     "assets/cultivator_robe.png": "9ebf04fc48fc151f8f1da295a125a096cd4e78e0cab0600d29ef1dbfd6d2c08c",
     "assets/lz-string.min.js": "95f4d1cbf099f57161b664bc048426ec3df92637801a4c79116e83315aa787e7",
     "assets/main-bg.jpg": "30bda2c355760f1364da3a11f01f31cd7928babeb565ed064d0c41f66b8fb0d8",
+    "assets/modals/art-alchemy.webp": "8f41a7496ea8ce18b4782f4567d0dd8a36de577a6c4578d09d75647780aff788",
+    "assets/modals/art-battle.webp": "b537ffa56a3aafe715cc918589a5b0b9e1d6eda68fdadc7b3178c27d6589b658",
+    "assets/modals/art-equip.webp": "f83f92fdf11e4f86d4149ce45d7b9ebc8c51226ad5814df180dbbb7b99e1b9a7",
+    "assets/modals/art-furnace.webp": "bffa212a8a1aa50c3f311e10ada9171b2db9ccb6567d5c430f1467635f27c6a3",
+    "assets/modals/art-mail.webp": "69a69f1470c8b227d0c9922a5f5fdad0e081532c6de67ab2dc4eeb093789da23",
+    "assets/modals/art-offline.webp": "accced6a67c6381fbe866104d971a05d1ba0ff661cc9ba35562fbb9ff4f794d7",
+    "assets/modals/art-story.webp": "2ac96d0b92beb64bc3d5a4f5fb8bb2348eefbe44312773ceca4004b33fbd366d",
+    "assets/modals/art-travel.webp": "c81127c18f55cd5ea4d4b7fff48540fb2c1809e6c3e1f45ca4bde18d3ddc69fc",
+    "assets/modals/bg-equip.webp": "d2bed60b86f0f3b9050bbcf32180ad08c2fa81be146590b22d14eccacde04cca",
+    "assets/modals/bg-mail.webp": "76bbf8a982eec1c118ed1c4b11a34226679c8e6d92d87aefd05fe2b54351d59f",
+    "assets/modals/bg-travel.webp": "3df78dced060a84961412a2206ccd7c2498474255473ccf79163dee5f6218a70",
     "assets/monsters/m0_wolf.png": "6789c303957e665440519b98aa680a7f9308f960dcd5bca0576a3552e8bafbe8",
     "assets/monsters/m1_shanyao.png": "0d7c9b8b9b2517d6755c94d0ca9a79d151ade5d7ab9bcc82bb8fbc5169ca4e06",
     "assets/monsters/m2_xiongpi.png": "86f588d45ece7630b92f029163ac68e23180821d145879389eca08245b3ab510",
@@ -21,11 +32,11 @@
     "assets/sound/swing.mp3": "90d43e97f4c03c4578368fe927152d0dd587fbe7cd4d54963320c54d68609066",
     "assets/sound/win.mp3": "ffdf24c675745017a997f0d65686feb5eef373b42a44aab8747e3b7c79f1b0bc",
     "bg.js": "d61cf11f268274f8bcdbea5aac1da08eb3f58b59e82b650b0d1f178803343954",
-    "dt-theme.css": "538f615928b0a7666c3961407e91e91f818dfcd3f3063821953895276a4cf81a",
+    "dt-theme.css": "2aad23e451dcf0d3e4739c680ab5a4362c5f77bc314fb3f4039835e76518165b",
     "fx2d.js": "dbb9540db9984ac06f08d75490099497c9ce1d59dfe5de91ee32b0d5a6db0670",
-    "game.js": "9835722c9c4127ca20662e068f804ddb50a853629f436479c7db84aa6acf71f6",
-    "index.html": "769d7f11211f8f7082ea32c83262ff459e765f8d79256e25d685c7f188ea7dd2"
+    "game.js": "065b876d7f4751cfa9ff6196b180fdbed19c77e15e26d800ed5d8625f74bf07d",
+    "index.html": "dab6e804ea4b4dc8b9171e1f006e2c6ed67ec77160927d2e472757ec52ea987c"
   },
-  "rev": "5ad8918edb58d583",
-  "version": "1.9.6"
+  "rev": "707ed7b2e127cc2d",
+  "version": "1.9.8"
 }
