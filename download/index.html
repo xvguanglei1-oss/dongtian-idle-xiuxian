@@ -46,13 +46,13 @@
   <div class="en">IDLE XIUXIAN</div>
 
   <div class="meta">
-    <span class="chip">v1.10.0</span>
+    <span class="chip">v1.10.0 r2</span>
     <span class="chip">Android 7.0+</span>
     <span class="chip">资源全内置</span>
   </div>
 
-  <a class="btn" href="./xianren-xiuxian-v1.10.0.apk" download="闲人修仙-v1.10.0.apk">下载安装包</a>
-  <div class="size">APK · 4.3 MB · 已签名 · 2026-09-12 构建</div>
+  <a class="btn" href="./xianren-xiuxian-v1.10.0-r2.apk" download="闲人修仙-v1.10.0-r2.apk">下载安装包</a>
+  <div class="size">APK · 4.3 MB · 已签名 · 2026-09-12 00:55 构建</div>
 
   <div class="note">
     <b>安装说明</b><br>
@@ -66,12 +66,18 @@
     · 存档体系换新：单一 g1 编码 + 服务端权威账本，云存档更小更稳。<br>
     · 立绘与图标全面 webp 化，包体从 5.2 MB 降到 4.3 MB。<br>
     <br>
+    <b>r2 修了什么</b><br>
+    · 修复热更新失效：CDN 对页面地址返回 308 重定向，而系统网络库不跟随 308，
+    导致每次更新都卡在校验失败上。现在改为手动跟随重定向。<br>
+    · 更新过程更稳：下载失败自动重试、校验通过才落盘、不再删除正在被读取的旧资源。
+    
+    <br>
     <b>说明</b><br>
     游戏本体离线可玩；云存档、道号、风云榜需联网。
     后续资源更新由 App 内置热更自动完成，无需重新下载安装包。
   </div>
 
-  <div class="hash">SHA-256<br>85591a5d3a933d9a057d6efc46a2c3f5f70118834dac41aba1eafd019422ae75</div>
+  <div class="hash">SHA-256<br>96f1d6787f996c0ad478fb047acf0fa9d8432851c45a3aba8b27586b2cb7006f</div>
 
   <div class="foot">
     源码与安装包均托管于开源仓库 ·
