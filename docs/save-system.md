@@ -1,4 +1,4 @@
-# 《闲人修仙》存档体系规范（v1.10.0 终态）
+# 《闲人修仙》存档体系规范（v1.10.1）
 
 > 版本 v2.0 · 2026-09-11 · 全新设计（greenfield），**无任何历史格式兼容**。
 > 本文档是存档相关后续开发的行为基准：任何 agent/开发者改存档相关代码前必读，改完对齐本文。
@@ -61,6 +61,16 @@ function migrate(s) { /* while 链式升级, 已在 game.js */ }
 2. 加**语义变化**的字段（老值含义变了/结构变了）：`CUR_VER+1`，写 `MIGRATIONS[新ver]`，**已发布的迁移函数永不删除、永不修改**。
 3. `state.ver` 只由 `migrate()` 写，别处不许碰。
 4. `adopt()` 只做防御性钳制（范围/类型），**永远不再塞历史转换逻辑**。
+
+### 加字段 Checklist（照抄即可，防漏）
+
+- [ ] `game.js`：`state` 初始字面量加默认值
+- [ ] `game.js`：`G1_TPL` 加同款默认值（类型要对：计数 0 / 开关 false / 列表 [] / 字典 {}）
+- [ ] `game.js`：`adopt()` 加类型/范围钳制（数字 `fin()`、数组 `Array.isArray`、字典 `typeof==="object"`）
+- [ ] `save-server.js`：`G1_TPL` 同步加（settle 前补齐，防 Core.settle 读到 undefined）
+- [ ] `save-server.js`：若是**玩家可得数值资源** → `sanitize()` 加上限（材料/丹药走 `clampDict` 已自动覆盖；独立字段手动加）
+- [ ] 双侧模板改完 → `node test-g1.js` + `node test-v7.js` + 浏览器 `_probe_e2e.html`
+- [ ] **纯客户端呈现字段**（不参与服务端结算）可只改 game.js 侧模板 —— 服务端模板缺失只会导致 settle 时该字段为 undefined，仅当 Core.settle 读它才有害
 
 ---
 
@@ -136,12 +146,28 @@ anchor = min( max( 服务端旧档 state.lastTs,  row.last_settle ), now )
 | 威胁 | 对策（已实现） |
 |---|---|
 | 直改内存/封包刷数值 | 服务端 `sanitize` 全量钳制（realmIdx/exp/spirit/arrayLv/arts/journal 上限） |
+| 直刷材料/丹药/残页/里程碑 | v7.1 `clampDict`：mats/pills/milestones/pages 值钳 [0,1e9]、键名 ≤40 字符、每字典 ≤512 键；**不做键名白名单**（客户端先行加料必须放行） |
+| buff 洪泛/Infinity 污染结算 | v7.1 buffs 过滤非对象 + `slice(0,64)` + mult[1,10]/start/until[0,now+2e9] |
+| 伪造信件超量附件 | v7.1 mails `slice(0,50)`（=MAIL_CAP）+ 元素须带合法 id + 信内 mats 每件钳 [1,1e5]（与 travel.bag 同规；claim 是客户端本地入账，钳在源头） |
+| sid 主线洪泛撑档 | v7.1 journal 主线项上限 500（从新到旧收满即止）+ 叙事 30 条 |
+| 道号绕过格式校验 | v7.1 直写路径与 /api/name 同一正则，不过则 `name=""/_named=0`（非字符串一律空，堵 `[object Object]` 占名） |
 | 重复结算刷离线收益 | 结算锚 + `last_settle` 单调 + `MIN_SETTLE_DT` 抖动保护 |
 | 旧档回滚重放 | 锚取服务端旧档与 `last_settle` 的较大者，客户端谎报无效 |
 | 伪造信匣 | 信匣存在性以服务端旧档为准；无旧档清空 |
 | 抢注/冒用道号 | names 表 UNIQUE + 409 + 直写剥离 |
 | 存档损坏 | gzip CRC32 校验，损坏即拒绝（不自愈，靠每日快照兜底） |
-| 深度炸弹/超大包 | `MAX_DEPTH=80`、`MAX_BODY=512KB` |
+| gzip 炸弹（512KB 解压膨胀千倍） | v7.1 `gunzipSync(..., {maxOutputLength: 2MB})` 超限即拒 |
+| 深度炸弹/超大包 | `MAX_DEPTH=80`（模板外键深嵌套 → 400 too_deep；已知计数 dict 先被 clampDict 消毒）、`MAX_BODY=512KB` |
+| 榜单 XSS | 前端所有存档/榜单动态字符串进 innerHTML 前必过 `esc()`（v1.9.4 起的铁规） |
+
+### 攻击面实测记录（2026-09-12, v7.1）
+
+- 深度嵌套 2000/6000/20000/100000 层（模板外键）→ 全部 `400 too_deep`，服务器存活；
+- 60 万层（压在 512KB 内）→ JSON.parse 栈限制先抛 → `400 bad_format`；
+- gzip 炸弹 50MB/200MB 膨胀 → 解压层拒绝 `400 bad_format`；
+- `name:{} / 12345 / ["x"] / "<script>…"` 直写 → 全部剥离为空，names 表零污染；
+- `mats:1e15 / pills:9e9 / buffs 2 万条` 直写 → 回读 `1e9 / 1e9 / 64 条`，档明文 429KB → 3.4KB；
+- 正常玩家全结构档（arts/journal/milestones/mails/buffs/travel）写入回读零误伤。
 
 ---
 
@@ -153,6 +179,7 @@ anchor = min( max( 服务端旧档 state.lastTs,  row.last_settle ), now )
 - **测试**（改任何存档代码后必跑）：
   - `node test-g1.js`（编码层 11 项）
   - `node test-v7.js`（服务器 41 项：roundtrip/格式拒绝/锚/信匣/占名/榜单/坏请求）
+  - 攻击性测试（v7.1 起的钳制回归）：深嵌套/ gzip 炸弹 / name 类型注入 / mats 洪泛，见上节实测记录，脚本思路可复用
   - 浏览器 E2E：`_probe_e2e.html`（真 CompressionStream + 真服务器全链路 7 项，不入库）
 
 ---

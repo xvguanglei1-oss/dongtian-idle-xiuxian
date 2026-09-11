@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.10.0";
+const GAME_VER = "v1.10.1";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3995,17 +3995,29 @@ function renderCraftBtn() {
   b.disabled = !(selRecipe && fitsRecipe());
 }
 function renderAlch() { renderFurn(); renderBag(); renderRecipes(); renderCabinet(); renderCraftBtn(); }
+/* v1.10.1: 点击报材料名 —— 移动端没有 title 悬停, 点背包格/炉内格时浮注显示 名字 · 类型 · 来源, 1.5s 自淡 */
+let alTipT = 0;
+function alTip(id, m) {
+  const el = $(id), M = MATS[m];
+  if (!el || !M) return;
+  el.innerHTML = `<b>${M.n}</b><i>${M.t} · ${M.src}</i>`;
+  el.classList.add("on");
+  clearTimeout(alTipT);
+  alTipT = setTimeout(() => el.classList.remove("on"), 1500);
+}
 function putMat(m) {
   if (alHave(m) - alInFurn(m) <= 0) return;
   cauldron[m] = alInFurn(m) + 1;
   if (selRecipe && !fitsRecipe()) selRecipe = null;
   renderAlch();
+  alTip("bagTip", m);
 }
 function takeMat(m) {
   if (!cauldron[m]) return;
   cauldron[m]--; if (!cauldron[m]) delete cauldron[m];
   if (selRecipe && !fitsRecipe()) selRecipe = null;
   renderAlch();
+  alTip("furnTip", m);
 }
 function loadRecipe(id) {
   if (!recipeCan(id)) { pushMsg("main", "材料不齐，丹炉难以为继"); return; }

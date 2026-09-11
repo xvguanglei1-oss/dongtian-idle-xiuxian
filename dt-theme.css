@@ -1334,11 +1334,21 @@
     display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden}
   .slot:active{transform:scale(.94)}
   .slot em{font-style:normal;font-size:9px;color:#5a6377;letter-spacing:1px}
-  .slot b{position:absolute;right:3px;bottom:1px;font-size:9px;color:#e0c084;font-weight:normal}
+  /* v1.10.1 数量角标: 小字胶囊盖在图标右下(图标尺寸不动); 修复 icoim z-index:1 盖住数字的看不清 */
+  .slot b{position:absolute;right:2px;bottom:2px;z-index:3;font-size:9.5px;line-height:13px;color:#ffe9bd;font-weight:normal;
+    background:rgba(8,11,18,.78);border:1px solid rgba(201,168,106,.35);border-radius:6px;padding:0 3px;pointer-events:none}
   .bagpane{width:182px;flex:none;height:216px;display:flex;flex-direction:column;padding:8px;overflow:hidden}
   .bag-scroll{flex:1;overflow-y:auto;scrollbar-width:none;min-height:0;
     mask-image:linear-gradient(180deg,#000 88%,transparent 100%);-webkit-mask-image:linear-gradient(180deg,#000 88%,transparent 100%)}
   .bag-scroll::-webkit-scrollbar{display:none}
+/* v1.10.1 点击报材料名: 浮注(背包盖在底部空位行上 / 炉子盖在炉图上), 不占布局, 1.5s 自淡 */
+  .bag-tip,.fig-tip{position:absolute;left:10px;right:10px;bottom:12px;z-index:6;display:flex;align-items:baseline;justify-content:center;gap:6px;
+    background:rgba(10,14,22,.9);border:1px solid rgba(201,168,106,.38);border-radius:8px;padding:5px 8px;
+    box-shadow:0 4px 14px rgba(0,0,0,.5);pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .16s ease,transform .16s ease}
+  .bag-tip.on,.fig-tip.on{opacity:1;transform:none}
+  .bag-tip b,.fig-tip b{font-weight:normal;font-size:11.5px;color:#f0e6cd;letter-spacing:1px}
+  .bag-tip i,.fig-tip i{font-style:normal;font-size:9px;color:#9aa3b5;letter-spacing:.5px}
+  .fig-tip{left:7px;right:7px;bottom:7px;padding:4px 7px}
   .bag-grid{display:grid;grid-template-columns:repeat(3,50px);grid-auto-rows:50px;gap:7px;width:164px}
   .cell{position:relative;border-radius:8px;border:1px solid rgba(201,168,106,.1);
     background:linear-gradient(180deg,rgba(22,28,43,.85),rgba(14,19,33,.85));
@@ -1346,7 +1356,9 @@
   .cell:active{transform:scale(.94);border-color:rgba(201,168,106,.4)}
   .cell.empty{cursor:default}
   .cell.empty em{font-style:normal;font-size:8.5px;color:rgba(90,99,119,.55);letter-spacing:2px}
-  .cell b{position:absolute;right:3px;bottom:1px;font-size:9px;color:#e0c084;font-weight:normal;text-shadow:0 1px 2px rgba(0,0,0,.8)}
+  /* v1.10.1 同 .slot b: 角标胶囊盖图标右下, z-index 压过 icoim(1), 不缩图标 */
+  .cell b{position:absolute;right:2px;bottom:2px;z-index:3;font-size:9.5px;line-height:13px;color:#ffe9bd;font-weight:normal;
+    background:rgba(8,11,18,.78);border:1px solid rgba(201,168,106,.35);border-radius:6px;padding:0 3px;pointer-events:none;text-shadow:none}
   .ico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;
     font-size:14px;color:#f0e9d6;text-shadow:0 1px 2px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.09);
     box-sizing:border-box;flex:none;overflow:hidden}
@@ -1388,7 +1400,8 @@
   .pillb .ico{width:44px;height:44px;font-size:19px;border-radius:9px}
   .pillb .nm{font-size:10px;color:#e9e2d0;letter-spacing:.5px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pillb .fx{font-size:8.5px;color:#8b94a8;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .pillb b{position:absolute;right:3px;bottom:2px;font-size:9px;color:#e0c084;font-weight:normal;text-shadow:0 1px 2px rgba(0,0,0,.8)}
+  .pillb b{position:absolute;right:2px;bottom:2px;z-index:3;font-size:9.5px;line-height:13px;color:#ffe9bd;font-weight:normal;
+    background:rgba(8,11,18,.78);border:1px solid rgba(201,168,106,.35);border-radius:6px;padding:0 3px;pointer-events:none;text-shadow:none}
   .pillb em{position:absolute;left:3px;top:2px;font-style:normal;font-size:8px;color:#c96a5a}
 /* ---- 主 CTA(炼制/收下机缘等) ---- */
   .cta{margin-top:11px;display:flex;justify-content:center}
