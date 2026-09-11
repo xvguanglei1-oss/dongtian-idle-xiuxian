@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>闲人修仙 v1.9.9g</title>
+<title>闲人修仙 v1.9.8</title>
 <meta name="description" content="闲人修仙：主身巡猎斗法、分身云游寻宝，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -404,7 +404,7 @@
     box-shadow:0 2px 10px rgba(0,0,0,.55);cursor:grab;touch-action:none}
   .dim-knob svg{width:20px;height:20px;display:block}
 </style>
-<link rel="stylesheet" href="dt-theme.css?v=v1.9.9g">
+<link rel="stylesheet" href="dt-theme.css?v=v1.9.8">
 </head>
 <body>
 <!-- v1.7.58 开屏页: 品牌 + 进度 + 健康游戏忠告(load 完成或点击后淡出) -->
@@ -427,7 +427,7 @@
     <p>合理安排时间，享受健康生活。</p>
   </div>
 
-  <div class="sp-foot"><span id="spVer">v1.9.9g</span></div>
+  <div class="sp-foot"><span id="spVer">v1.9.8</span></div>
 </div>
 
 <!-- v1.8.0 连接中断遮罩: 心跳连续失败时盖住 —— 不让玩家在已经和服务端脱节的账本上继续玩 -->
@@ -513,7 +513,7 @@
   <button class="btn" id="btnTravel" onclick="openTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">云游</span></button>
 </div>
 
-<div class="ver-float"><span class="ver-tag" id="verTag">v1.9.9g</span></div>
+<div class="ver-float"><span class="ver-tag" id="verTag">v1.9.8</span></div>
 
 <canvas id="burst"></canvas>
 <div class="flash" id="flash"></div>
@@ -689,7 +689,70 @@
 </div>
 
 <script src="assets/lz-string.min.js"></script>
-<script src="game.js?v=v1.9.9g"></script>
+<script>var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",e={};function t(r,o){if(!e[r]){e[r]={};for(var n=0;n<r.length;n++)e[r][r.charAt(n)]=n}return e[r][o]}var i={compressToBase64:function(r){if(null==r)return"";var n=i._compress(r,6,function(r){return o.charAt(r)});switch(n.length%4){default:case 0:return n;case 1:return n+"===";case 2:return n+"==";case 3:return n+"="}},decompressFromBase64:function(r){return null==r?"":""==r?null:i._decompress(r.length,32,function(n){return t(o,r.charAt(n))})},compressToUTF16:function(o){return null==o?"":i._compress(o,15,function(o){return r(o+32)})+" "},decompressFromUTF16:function(r){return null==r?"":""==r?null:i._decompress(r.length,16384,function(o){return r.charCodeAt(o)-32})},compressToUint8Array:function(r){for(var o=i.compress(r),n=new Uint8Array(2*o.length),e=0,t=o.length;e<t;e++){var s=o.charCodeAt(e);n[2*e]=s>>>8,n[2*e+1]=s%256}return n},decompressFromUint8Array:function(o){if(null==o)return i.decompress(o);for(var n=new Array(o.length/2),e=0,t=n.length;e<t;e++)n[e]=256*o[2*e]+o[2*e+1];var s=[];return n.forEach(function(o){s.push(r(o))}),i.decompress(s.join(""))},compressToEncodedURIComponent:function(r){return null==r?"":i._compress(r,6,function(r){return n.charAt(r)})},decompressFromEncodedURIComponent:function(r){return null==r?"":""==r?null:(r=r.replace(/ /g,"+"),i._decompress(r.length,32,function(o){return t(n,r.charAt(o))}))},compress:function(o){return i._compress(o,16,function(o){return r(o)})},_compress:function(r,o,n){if(null==r)return"";var e,t,i,s={},u={},a="",p="",c="",l=2,f=3,h=2,d=[],m=0,v=0;for(i=0;i<r.length;i+=1)if(a=r.charAt(i),Object.prototype.hasOwnProperty.call(s,a)||(s[a]=f++,u[a]=!0),p=c+a,Object.prototype.hasOwnProperty.call(s,p))c=p;else{if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++),s[p]=f++,c=String(a)}if(""!==c){if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++)}for(t=2,e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;for(;;){if(m<<=1,v==o-1){d.push(n(m));break}v++}return d.join("")},decompress:function(r){return null==r?"":""==r?null:i._decompress(r.length,32768,function(o){return r.charCodeAt(o)})},_decompress:function(o,n,e){var t,i,s,u,a,p,c,l=[],f=4,h=4,d=3,m="",v=[],g={val:e(0),position:n,index:1};for(t=0;t<3;t+=1)l[t]=t;for(s=0,a=Math.pow(2,2),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 2:return""}for(l[3]=c,i=c,v.push(c);;){if(g.index>o)return"";for(s=0,a=Math.pow(2,d),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(c=s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 2:return v.join("")}if(0==f&&(f=Math.pow(2,d),d++),l[c])m=l[c];else{if(c!==h)return null;m=i+i.charAt(0)}v.push(m),l[h++]=i+m.charAt(0),i=m,0==--f&&(f=Math.pow(2,d),d++)}}};return i}();"function"==typeof define&&define.amd?define(function(){return LZString}):"undefined"!=typeof module&&null!=module?module.exports=LZString:"undefined"!=typeof angular&&null!=angular&&angular.module("LZString",[]).factory("LZString",function(){return LZString});
+/* ==== 探针 mock: 假档+假云后端, 让门禁直通进游戏 ==== */
+function z1pack(o){ return "z1:" + LZString.compressToBase64(JSON.stringify(o)); }
+window.__FAKE_SAVE = {
+  lastTs: Date.now(), realmIdx: 53, arts: [
+    {name:"金雷飞剑", q:5, slot:0, tp:"w", a:120, d:20, h:300, fx:[{k:"atk",v:12},{k:"crit",v:8}], lv:2, mult:3.8, t:Date.now()},
+    {name:"龙鳞软铠", q:3, slot:1, tp:"a", a:30, d:150, h:800, fx:[{k:"hp",v:10}], lv:1, mult:2.0, t:Date.now()},
+    {name:"避尘佩", q:4, slot:2, tp:"p", a:18, d:60, h:400, fx:[{k:"dodge",v:6}], lv:0, mult:2.7, t:Date.now()},
+    {name:"御剑心经", q:2, slot:3, tp:"s", a:40, d:25, h:200, fx:[{k:"atk",v:6}], lv:0, mult:1.58, t:Date.now()}
+  ], journal: [], arrayLv: 1, spirit: 1e12, exp: 1e12, pName: "试丹童",
+  mats: {huangjing:99,shexian:99,zihou:99,xuancan:99,jiuyou:99,wenxin:99,longxue:99,qianyu:99,duen:99,zilei:99,hanpo:99,hongmeng:99,yaodan:99,lingxue:99,yaopo:99,jiaojiao:99,mogu:99,qiongjing:99,lingru:99,dihuo:99,taiqing:99},
+  pills: {buqi:4,jinzui:2,yuqing:3,guyuan:2,yuying:2,wendao:2,hlong:3,zhuji:2,xisui:5,jiangchen:1,ningyuan:2,yingbian:1,yinghua:1,tongshen:2,hunyuan:1,taiyi:1,yuxu:1,xuling:1,polv:1,linghe:1,shengyu:1,hedao:2,jingmo:1,duemo:1,zhenmo:1,yinlei:1,cuilei:1,yingjie:1,ningxian:1,xianpo:1,yinxian:1,guiyuan:1,taichu:1,bianhua:1,tianyuan:2,jiuzhuan:1,taishang:1,jiutian:1,hunwu:1,guixu:1,feiling:1,zhenyuan:1,xiansui:1,wanji:1,jiulei:1},
+  pages: {b0:99,b1:99,b2:99,b3:99,b4:99,b5:99,b6:99,b7:99,b8:99,b9:99,b10:99,b11:99},
+  buffs: [], offlineBoostUntil: Date.now() + 3600e3
+};
+window.fetch = function(url, opt){
+  const u = String(url || "");
+  const j = o => Promise.resolve({ ok:true, status:200, json:()=>Promise.resolve(o) });
+  if (u.indexOf("/api/save") > -1) {
+    if (opt && opt.method === "PUT")
+      return j({ok:true, ts:Date.now(), serverTime:Date.now(), gains:{settled:false}, data: z1pack(window.__FAKE_SAVE)});
+    return j({found:true, ts:Date.now(), data: z1pack(window.__FAKE_SAVE)});
+  }
+  if (u.indexOf("rank") > -1) return j({list:[],total:0});
+  return j({});
+};
+/* 门禁通过后开丹房窗 */
+setTimeout(function(){ try { const h=location.hash||"";
+    if(h.indexOf("m")>-1) {
+      state.mails = [
+        {id:"t1", loc:"b0qnt", ts:Date.now()-3600e3, mats:[{id:"huangjing",q:2},{id:"yaodan",q:1}], page:1},
+        {id:"t2", loc:"b0qil", ts:Date.now()-7200e3, mats:[]},
+        {id:"t3", loc:"b0qfc", ts:Date.now()-86400e3, mats:[{id:"shexian",q:3}]}
+      ];
+      openMail();
+    } else if(h.indexOf("e")>-1) { openEquip(); try{ var s2=document.querySelector("#equipBody .gx-lic"); }catch(e){} pickArt(0); }
+    if(h.indexOf("n")>-1){ try{ closeAlchemy(); }catch(e){} }
+    if(h.indexOf("m")>-1) setTimeout(function(){ try {
+      var out=[];
+      document.querySelectorAll(".btn.seal").forEach(function(b,i){
+        var r=b.getBoundingClientRect(), cs=getComputedStyle(b);
+        var lab=b.querySelector(".label"), lr=lab?lab.getBoundingClientRect():{width:0};
+        out.push("#"+i+" ["+(b.textContent||"").trim().slice(0,6)+"] btn="+Math.round(r.width)+"px label="+Math.round(lr.width)+"px"+
+          " cssW="+cs.width+" flex="+cs.flex+" pad="+cs.padding+" span="+(b.offsetParent?b.offsetParent.className:"?"));
+      });
+      var bar=document.querySelector("#mailBulkBar");
+      if(bar) out.push("bulkbar w="+Math.round(bar.getBoundingClientRect().width));
+      var pre=document.createElement("pre"); pre.id="BTN-DIAG"; pre.style.cssText="position:fixed;left:0;bottom:0;z-index:99999;background:#000;color:#0f0;font-size:10px;margin:0;padding:4px;max-width:100%;white-space:pre-wrap";
+      pre.textContent="BTN-DIAG\n"+out.join("\n");
+      document.body.appendChild(pre);
+      document.title="BTN-DIAG "+out.length;
+    } catch(e){ document.title="DIAG-ERR "+e.message; } }, 6500);
+    setTimeout(function(){ try { document.querySelectorAll("img").forEach(function(im){
+      if(!im.complete || im.naturalWidth===0) console.log("BROKEN-IMG: ["+im.className+"] "+im.getAttribute("src"));
+    }); } catch(e){} }, 6000);
+  } catch(e) {}
+  setTimeout(function(){ try { var b=window.__SCROLL_TARGET||1;
+    var m=document.querySelector("#alchemyModal .card");
+    var sc=m&&(m.querySelector(".modal-bd")||m.querySelector(".story-body")||m);
+    if(sc) sc.scrollTop = b<0 ? sc.scrollHeight : sc.scrollHeight*b;
+  } catch(e){} }, 700); }, 5000);
+</script>
+<script>window.__SCROLL_TARGET=parseFloat((location.hash||"#1").slice(1))||1;</script>
+<script src="game.js?v=v1.9.8"></script>
 
 </body>
 </html>

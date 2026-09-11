@@ -1,10 +1,7 @@
 {
   "files": {
-    "assets/cultivator_body.png": "ac8a8b07ca96548ca83b629ea9fb040c9518e8f3b66d0eb05faf60ec429a1e5c",
     "assets/cultivator_body.webp": "a72d9d498231d77e7f8d131152f06059ddca1091e83889c38c3224ae26927b94",
-    "assets/cultivator_hair.png": "d0de83e8f35679a4c99ecb70f7e12717cb3b2d5f287ef06c4c26d1466aa6d099",
     "assets/cultivator_hair.webp": "4e83df9dfe253be84dbbfb0a183b283ef75c9c362c522d24b012e3c2070c639d",
-    "assets/cultivator_robe.png": "9ebf04fc48fc151f8f1da295a125a096cd4e78e0cab0600d29ef1dbfd6d2c08c",
     "assets/cultivator_robe.webp": "30b6bdf27221803a1a91d901e9c691b884c70287002bb0b5688d9684e34faf59",
     "assets/lz-string.min.js": "95f4d1cbf099f57161b664bc048426ec3df92637801a4c79116e83315aa787e7",
     "assets/main-bg.jpg": "30bda2c355760f1364da3a11f01f31cd7928babeb565ed064d0c41f66b8fb0d8",
@@ -125,11 +122,11 @@
     "assets/sound/swing.mp3": "90d43e97f4c03c4578368fe927152d0dd587fbe7cd4d54963320c54d68609066",
     "assets/sound/win.mp3": "ffdf24c675745017a997f0d65686feb5eef373b42a44aab8747e3b7c79f1b0bc",
     "bg.js": "d61cf11f268274f8bcdbea5aac1da08eb3f58b59e82b650b0d1f178803343954",
-    "dt-theme.css": "c71710ce733492071720dbc3a16d3d0a7d5aab1cba605c7e9d6cc8c25408c1a0",
+    "dt-theme.css": "4ef070f262f51d843089a37cbdef62221174514e47cf4f45ede84d6adc61f8c3",
     "fx2d.js": "dbb9540db9984ac06f08d75490099497c9ce1d59dfe5de91ee32b0d5a6db0670",
-    "game.js": "75e2e999315b403aea526edf4d15d817cac75747775910e23bc6f11a1d99f262",
-    "index.html": "5ba7cbb5b40be819ecbb632b755ba98682671956af656f1ca2ac7f28d32b7f7e"
+    "game.js": "ab12a9adedb1231193dc1534555a71f3942cfbf28229ba791422adac8c758800",
+    "index.html": "c303ee60259371548b9d5df3d76ead8444ed924d0669d581b27b654768eda532"
   },
-  "rev": "291e801a72803801",
+  "rev": "31bd70386690e3e6",
   "version": "1.9.9"
 }
