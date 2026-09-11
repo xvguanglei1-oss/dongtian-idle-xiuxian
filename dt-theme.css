@@ -1389,8 +1389,8 @@
   .gx-cell.right{top:86px;right:0}
   .gx-cell.down{top:172px;left:86px}
   .gx-cell.sel{outline:1px solid rgba(233,226,208,.55);outline-offset:2px;filter:brightness(1.14)}
-  .gx-cell .ico{width:34px;height:34px;border-radius:8px;color:inherit}
-  .gx-cell .ico svg{width:22px;height:22px}
+  .gx-cell .ico{width:44px;height:44px;border-radius:9px;color:inherit}
+  .gx-cell .ico svg{width:28px;height:28px}
   .gx-cell em{font-style:normal;font-size:8px;color:#5a6377;letter-spacing:2px}
   .gx-cell .st{position:absolute;right:3px;top:2px;font-size:8px;letter-spacing:0}
   .gx-core{position:absolute;top:86px;left:86px;width:64px;height:64px;border-radius:50%;
@@ -1449,7 +1449,7 @@
     box-shadow:0 10px 30px rgba(0,0,0,.6);padding:11px 13px 12px;
     animation:licIn .24s ease-out}
   @keyframes licIn{from{opacity:0;transform:translate(-50%,-50%) scale(.82)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
-  .gx-lic .lh{display:flex;align-items:baseline;gap:6px;padding-bottom:7px;margin-bottom:7px;
+  .gx-lic .lh{display:flex;align-items:center;gap:8px;padding-bottom:7px;margin-bottom:7px;
     border-bottom:1px dashed rgba(216,176,106,.3)}
   .gx-lic .lh b{font-size:13px;letter-spacing:1px;font-weight:normal}
   .gx-lic .lh i{font-style:normal;font-size:8.5px;color:#8b94a8;letter-spacing:1px;margin-left:auto;white-space:nowrap}

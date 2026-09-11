@@ -5253,13 +5253,13 @@ function renderEquip() {                 // v1.9.8 十字格工作台: 四正方
     const slotI = SLOTI[(typeof (a && a.slot) === "number" && a.slot < 4) ? a.slot : i];
     if (!a) {
       cross += `<div class="gx-cell ${pos}" style="cursor:default" title="${SLOTN[i]} · 空位">
-        <span class="ico" style="opacity:.32">${ICON[slotI]}</span><em>${SLOTN[i]} · 空</em></div>`;
+        <span class="ico" style="opacity:.32"><img class="icoim" src="assets/modals/art-ico/${slotI}0.webp" alt="" onerror="this.remove()">${ICON[slotI]}</span><em>${SLOTN[i]} · 空</em></div>`;
       continue;
     }
     const q = a.q;
     total += sc(a);
     cross += `<div class="gx-cell ${pos} qc${q}${_eqSel === i ? " sel" : ""}" title="${(QUALITY[q] || QUALITY[0]).name} · ${a.name}" onclick="pickArt(${i})">
-      <span class="st">${starOf(q + 1)}</span><span class="ico">${ICON[slotI]}</span><em>${SLOTN[i]}</em></div>`;
+      <span class="st">${starOf(q + 1)}</span><span class="ico"><img class="icoim" src="assets/modals/art-ico/${slotI}${q}.webp" alt="" onerror="this.remove()">${ICON[slotI]}</span><em>${SLOTN[i]}</em></div>`;
   }
   /* v1.9.8b 法宝执照: 选中宝位 → 十字中央浮出文书卡(名/品级/各项属性/战力朱印), 四格让位变暗 */
   let lic = "";
@@ -5270,7 +5270,7 @@ function renderEquip() {                 // v1.9.8 十字格工作台: 四正方
     const slotIdx = (typeof a.slot === "number" && a.slot < 4) ? a.slot : _eqSel;
     lic = `<div class="gx-lic">
       <div class="lclose" onclick="closeLic(event)">✕</div>
-      <div class="lh"><b style="color:${qcol}">${a.name}</b><i>${qn}·${SLOTN[slotIdx]} ★${q + 1}${a.lv ? " lv" + a.lv : ""}</i></div>
+      <div class="lh"><span class="ico" style="width:38px;height:38px;font-size:17px;flex:none"><img class="icoim" src="assets/modals/art-ico/${SLOTI[slotIdx] || "w"}${q}.webp" alt="" onerror="this.remove()">${ICON[SLOTI[slotIdx]] || ICON.w}</span><b style="color:${qcol}">${a.name}</b><i>${qn}·${SLOTN[slotIdx]} ★${q + 1}${a.lv ? " lv" + a.lv : ""}</i></div>
       <div class="lr"><span>攻</span><b>+${a.a || 0}</b></div>
       <div class="lr"><span>防</span><b>+${a.d || 0}</b></div>
       <div class="lr"><span>血</span><b>+${a.h || 0}</b></div>
