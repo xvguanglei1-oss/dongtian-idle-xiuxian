@@ -1230,3 +1230,190 @@
 
 /* ---------- 印章落纸: 微调进墨形纸面内 ---------- */
 #offlineModal .card::after{top:26px;right:16px}
+
+/* ================= v1.9.7 弹窗装裱画片 —— 手札里贴一张画: 细金双裱线, 下缘渐隐入纸 ================= */
+  .modal-art{position:relative;min-width:0;margin:12px 0 2px;height:138px;overflow:hidden;
+    border:1px solid rgba(201,168,106,.24);outline:1px solid rgba(201,168,106,.08);outline-offset:3px;
+    filter:drop-shadow(0 4px 10px rgba(0,0,0,.35))}
+  .modal-art img{width:100%;height:100%;max-width:100%;min-width:0;object-fit:cover;object-position:center 30%;display:block}
+  .modal-art::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(14,19,33,0) 42%,rgba(14,19,33,.94) 96%)}
+  .modal-art + h3{margin-top:-16px;position:relative;z-index:2;text-shadow:0 2px 8px rgba(0,0,0,.7)}
+/* 内容区限高: 滚动而非翻页, 底部渐隐提示还有下文 */
+  .story-body{max-height:44vh;overflow-y:auto;
+    mask-image:linear-gradient(180deg,#000 86%,transparent 99%);
+    -webkit-mask-image:linear-gradient(180deg,#000 86%,transparent 99%)}
+/* 丹药匣: 横条流 → 三列格匣(借鉴背包格) */
+  .al-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .al-grid .al-pill{flex-direction:column;justify-content:center;gap:3px;padding:10px 5px 8px;text-align:center;min-height:64px}
+  .al-grid .al-pill b{font-size:11.5px}
+  .al-grid .al-pill .take{position:absolute;top:4px;right:4px;width:24px;height:22px;padding:0;font-size:11px}
+
+/* v1.9.7b: tip 行宽约束 + 卡内容矩形裁切防溢出墨形 */
+  .story-card .story-tip{padding:0 6px}
+  .story-card{overflow:hidden;min-width:0}
+/* v1.9.7b: 未激活弹窗彻底离屏, 防子元素(装裱画)渲染泄漏 */
+  .modal:not(.show){display:none !important}
+
+/* ==================== v1.9.8 弹窗工程化骨架 —— 圆角卡·四角饰·底图隐现·半透明面板 ====================
+   全部挂 .story-card 作用域; 底图隐现: .story-card 设 --bgart 即铺(离线/修行录等不设则无图) */
+  .card.story-card{
+    --cnr:rgba(216,176,106,.75);
+    background:
+      linear-gradient(var(--cnr),var(--cnr)) 0 0/16px 2px no-repeat,
+      linear-gradient(var(--cnr),var(--cnr)) 0 0/2px 16px no-repeat,
+      linear-gradient(var(--cnr),var(--cnr)) 100% 0/16px 2px no-repeat,
+      linear-gradient(var(--cnr),var(--cnr)) 100% 0/2px 16px no-repeat,
+      linear-gradient(var(--cnr),var(--cnr)) 0 100%/16px 2px no-repeat,
+      linear-gradient(var(--cnr),var(--cnr)) 0 100%/2px 16px no-repeat,
+      linear-gradient(var(--cnr),var(--cnr)) 100% 100%/16px 2px no-repeat,
+      linear-gradient(var(--cnr),var(--cnr)) 100% 100%/2px 16px no-repeat,
+      radial-gradient(120% 90% at 50% 0%, rgba(201,168,106,.05), transparent 55%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.045'/%3E%3C/svg%3E"),
+      linear-gradient(180deg,#121724,#0e1320) !important;
+    border:1px solid rgba(201,168,106,.22) !important;
+    border-radius:14px !important;
+    box-shadow:0 14px 40px rgba(0,0,0,.55) !important;
+    padding:13px 13px 13px !important;
+    height:auto !important;max-height:min(92vh,820px) !important;
+    text-align:left !important}
+  .card.story-card>*{position:relative;z-index:1}
+  .card.story-card::before{content:"";position:absolute;inset:0;z-index:0;border-radius:14px;pointer-events:none;
+    background:var(--bgart,none) center 30%/cover no-repeat;opacity:.2}
+/* 标题行 + 关闭 ✕ */
+  .mhead{display:flex;align-items:center;justify-content:space-between;padding:1px 3px 10px}
+  .mhead h3{margin:0;font-size:16.5px;letter-spacing:7px;color:#e0c084;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+  .mhead h3 i{font-style:normal;color:#8b94a8;font-size:10px;letter-spacing:2px;margin-left:8px;vertical-align:2px}
+  .xbtn{width:26px;height:26px;border-radius:50%;border:1px solid rgba(201,168,106,.22);background:rgba(10,13,22,.5);
+    color:#8b94a8;font-size:13px;line-height:24px;text-align:center;cursor:pointer;user-select:none;flex:none;padding:0}
+  .xbtn:active{transform:scale(.92);color:#e9e2d0}
+/* 半透明面板 + 小节题 */
+  .story-card .pane{position:relative;border:1px solid rgba(201,168,106,.16);border-radius:10px;
+    background:rgba(22,28,43,.6);padding:8px}
+  .story-card .cap{font-size:10.5px;letter-spacing:2px;color:#c9a86a;opacity:.85;margin:0 1px 7px}
+  .story-card .cap i{font-style:normal;color:#5a6377;letter-spacing:1px;font-size:9px;margin-left:5px}
+/* ---- 丹房工作台: 左炉右囊 ---- */
+  .workgrid{display:flex;gap:9px;margin:2px 0 2px}
+  .story-card .pane.furn{width:155px;flex:none;height:216px;display:flex;flex-direction:column;padding:8px;overflow:hidden}
+  .furn-fig{position:relative;height:88px;border-radius:8px;overflow:hidden;flex:none;
+    border:1px solid rgba(201,168,106,.14);background:#0d111c}
+  .furn-fig img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+  .furn-fig::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,transparent 55%,rgba(13,17,28,.92) 96%)}
+  .slots{display:grid;grid-template-columns:repeat(3,41px);grid-auto-rows:41px;gap:7px;margin-top:auto}
+  .slot{position:relative;border-radius:8px;border:1px dashed rgba(201,168,106,.22);background:rgba(10,13,22,.4);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden}
+  .slot:active{transform:scale(.94)}
+  .slot em{font-style:normal;font-size:9px;color:#5a6377;letter-spacing:1px}
+  .slot b{position:absolute;right:3px;bottom:1px;font-size:9px;color:#e0c084;font-weight:normal}
+  .bagpane{width:182px;flex:none;height:216px;display:flex;flex-direction:column;padding:8px;overflow:hidden}
+  .bag-scroll{flex:1;overflow-y:auto;scrollbar-width:none;min-height:0;
+    mask-image:linear-gradient(180deg,#000 88%,transparent 100%);-webkit-mask-image:linear-gradient(180deg,#000 88%,transparent 100%)}
+  .bag-scroll::-webkit-scrollbar{display:none}
+  .bag-grid{display:grid;grid-template-columns:repeat(3,50px);grid-auto-rows:50px;gap:7px;width:164px}
+  .cell{position:relative;border-radius:8px;border:1px solid rgba(201,168,106,.1);
+    background:linear-gradient(180deg,rgba(22,28,43,.85),rgba(14,19,33,.85));
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;overflow:hidden}
+  .cell:active{transform:scale(.94);border-color:rgba(201,168,106,.4)}
+  .cell.empty{cursor:default}
+  .cell.empty em{font-style:normal;font-size:8.5px;color:rgba(90,99,119,.55);letter-spacing:2px}
+  .cell b{position:absolute;right:3px;bottom:1px;font-size:9px;color:#e0c084;font-weight:normal;text-shadow:0 1px 2px rgba(0,0,0,.8)}
+  .ico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+    font-size:14px;color:#f0e9d6;text-shadow:0 1px 2px rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.09);
+    box-sizing:border-box;flex:none}
+  .ico.plant{background:linear-gradient(160deg,#3d6b58,#24443a)}
+  .ico.beast{background:linear-gradient(160deg,#7a4038,#4a2622)}
+  .ico.liquid{background:linear-gradient(160deg,#6d5a33,#40331c)}
+  .ico.pillbg{background:linear-gradient(160deg,#54432a,#2e2415)}
+/* ---- 丹方: 可炼才可见, 紧凑行卡, 点卡入炉 ---- */
+  .rp-list{display:flex;flex-direction:column;gap:6px}
+  .rp-card{display:flex;align-items:center;gap:8px;border-radius:9px;padding:5px 9px 5px 6px;cursor:pointer;
+    background:rgba(24,30,46,.62);border:1px solid rgba(201,168,106,.14)}
+  .rp-card:active{transform:scale(.985)}
+  .rp-card.sel{border-color:rgba(216,176,106,.75);box-shadow:0 0 0 1px rgba(216,176,106,.35);background:rgba(48,39,24,.62)}
+  .rp-ico{width:28px;height:28px;border-radius:7px;flex:none;display:flex;align-items:center;justify-content:center;
+    font-size:13px;color:#f5edd8;text-shadow:0 1px 2px rgba(0,0,0,.55);
+    background:linear-gradient(160deg,#54432a,#2e2415);border:1px solid rgba(216,176,106,.28)}
+  .rp-bd{flex:1;min-width:0;display:flex;align-items:baseline;gap:7px}
+  .rp-bd .nm{font-size:12px;color:#e9e2d0;letter-spacing:1px;flex:none;white-space:nowrap}
+  .rp-bd .ds{font-size:9.5px;color:#8b94a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .rp-arrow{flex:none;font-size:9px;color:#5a6377;letter-spacing:2px;writing-mode:vertical-lr;line-height:1}
+  .rp-card.sel .rp-arrow{color:#e0c084}
+/* ---- 丹药匣 ---- */
+  .cab-grid{display:grid;grid-template-columns:repeat(4,41px);gap:7px;justify-content:center}
+  .pillb{position:relative;width:41px;height:41px;border-radius:8px;border:1px solid rgba(201,168,106,.14);
+    background:rgba(15,20,33,.9);display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .pillb .ico{width:22px;height:22px;font-size:11px;border-radius:5px}
+  .pillb b{position:absolute;right:2px;bottom:1px;font-size:8.5px;color:#e0c084;font-weight:normal}
+  .pillb em{position:absolute;left:2px;top:2px;font-style:normal;font-size:8px;color:#c96a5a}
+/* ---- 主 CTA(炼制/收下机缘等) ---- */
+  .cta{margin-top:11px;display:flex;justify-content:center}
+  .cta button{width:min(62%,240px);padding:9px 0 10px;border-radius:10px;cursor:pointer;font-family:inherit;
+    font-size:14.5px;letter-spacing:10px;text-indent:10px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);
+    background:linear-gradient(180deg,#c14a3c,#9c2f26);border:1px solid rgba(255,190,150,.35);
+    box-shadow:0 4px 14px rgba(185,52,42,.35), inset 0 1px 0 rgba(255,255,255,.15)}
+  .cta button:active{transform:scale(.97)}
+  .cta button:disabled{color:#6d7688;cursor:not-allowed;text-shadow:none;
+    background:linear-gradient(180deg,#1c2436,#151b29);border:1px solid rgba(201,168,106,.18);box-shadow:none}
+/* ---- 装备十字格(品级呈现 qc0-5) ---- */
+  .gx-sum{display:flex;align-items:stretch;gap:6px;margin-bottom:9px}
+  .gx-grid{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .gx-grid div{border-radius:8px;border:1px solid rgba(201,168,106,.12);background:rgba(10,13,22,.36);
+    padding:6px 0;text-align:center}
+  .gx-grid em{display:block;font-style:normal;font-size:8px;color:#5a6377;letter-spacing:1px}
+  .gx-grid b{font-size:10.5px;color:#e9e2d0;font-weight:normal}
+  .gx-cross{position:relative;width:236px;height:236px;margin:4px auto 8px}
+  .gx-cell{position:absolute;width:64px;height:64px;border-radius:12px;cursor:pointer;overflow:hidden;
+    border:1px solid rgba(201,168,106,.22);background:rgba(10,13,22,.5);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .gx-cell:active{transform:scale(.94)}
+  .gx-cell.up{top:0;left:86px}
+  .gx-cell.left{top:86px;left:0}
+  .gx-cell.right{top:86px;right:0}
+  .gx-cell.down{top:172px;left:86px}
+  .gx-cell.sel{outline:1px solid rgba(233,226,208,.55);outline-offset:2px;filter:brightness(1.14)}
+  .gx-cell .ico{width:34px;height:34px;border-radius:8px;color:inherit}
+  .gx-cell .ico svg{width:22px;height:22px}
+  .gx-cell em{font-style:normal;font-size:8px;color:#5a6377;letter-spacing:2px}
+  .gx-cell .st{position:absolute;right:3px;top:2px;font-size:8px;letter-spacing:0}
+  .gx-core{position:absolute;top:86px;left:86px;width:64px;height:64px;border-radius:50%;
+    border:1px solid rgba(216,176,106,.4);background:rgba(216,176,106,.07);
+    display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .gx-core b{font-size:15px;color:#e0c084;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+  .gx-core em{font-style:normal;font-size:7.5px;color:#5a6377;letter-spacing:2px}
+  .gx-detail{min-height:86px;padding:9px 11px}
+  .gx-detail .big{display:flex;align-items:baseline;gap:8px}
+  .gx-detail .big .nm{font-size:13px;color:#e9e2d0;letter-spacing:1px}
+  .gx-detail .big .pw{margin-left:auto;font-size:12px;color:#e0c084}
+  .gx-detail .fx{font-size:10px;color:#86b5a2;margin-top:4px;letter-spacing:.5px}
+  .gx-detail .ops{display:flex;gap:7px;margin-top:7px}
+  .gx-detail .ops button{font-family:inherit;font-size:10px;letter-spacing:2px;cursor:pointer;
+    color:#0a0d16;background:linear-gradient(180deg,#d8b06a,#b08c4a);border:none;border-radius:7px;padding:4px 12px}
+/* 品级呈现 qc0-5: 边框/星色/格底光/特效逐级递进 (与 QUALITY 六档对齐) */
+  .gx-cell.qc0{border-color:rgba(170,178,192,.38);color:#aab2c0}
+  .gx-cell.qc1{border-color:rgba(107,157,245,.55);color:#6b9df5;box-shadow:inset 0 0 14px rgba(107,157,245,.12)}
+  .gx-cell.qc2{border-color:rgba(63,201,162,.6);color:#3fc9a2;animation:gxb2 3.2s ease-in-out infinite}
+  .gx-cell.qc3{border-color:rgba(224,180,90,.78);color:#e0b45a;animation:gxb3 2.4s ease-in-out infinite}
+  .gx-cell.qc4{border-color:rgba(192,138,240,.78);color:#c08af0;animation:gxb4 2s ease-in-out infinite}
+  .gx-cell.qc5{border-color:rgba(255,82,87,.85);color:#ff5257;animation:gxb5 1.6s ease-in-out infinite}
+  @keyframes gxb2{0%,100%{box-shadow:inset 0 0 10px rgba(63,201,162,.06),0 0 0 rgba(63,201,162,0)}
+    50%{box-shadow:inset 0 0 16px rgba(63,201,162,.18),0 0 13px rgba(63,201,162,.28)}}
+  @keyframes gxb3{0%,100%{box-shadow:inset 0 0 12px rgba(224,180,90,.1),0 0 6px rgba(224,180,90,.12)}
+    50%{box-shadow:inset 0 0 20px rgba(224,180,90,.24),0 0 19px rgba(224,180,90,.4)}}
+  @keyframes gxb4{0%,100%{box-shadow:inset 0 0 12px rgba(192,138,240,.1),0 0 6px rgba(192,138,240,.14)}
+    50%{box-shadow:inset 0 0 20px rgba(192,138,240,.26),0 0 18px rgba(192,138,240,.42)}}
+  @keyframes gxb5{0%,100%{box-shadow:inset 0 0 14px rgba(255,82,87,.14),0 0 8px rgba(255,82,87,.2)}
+    50%{box-shadow:inset 0 0 22px rgba(255,82,87,.3),0 0 24px rgba(255,82,87,.5)}}
+/* ---- 离线: 横幅 + 朱印(修 390 溢出: 印章相对横幅定位) ---- */
+  .off-fig{position:relative;height:118px;border-radius:10px;overflow:hidden;margin-bottom:10px;
+    border:1px solid rgba(201,168,106,.16)}
+  .off-fig img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+  .off-fig::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(13,17,28,.18) 28%,rgba(13,17,28,.95) 92%)}
+  .off-fig .t{position:absolute;left:0;right:0;bottom:7px;z-index:1;text-align:center;font-size:14.5px;
+    color:#e9e2d0;letter-spacing:3px;text-shadow:0 2px 8px rgba(0,0,0,.95),0 0 14px rgba(0,0,0,.8)}
+  .off-fig .t i{font-style:normal;display:block;font-size:9px;color:#8b94a8;letter-spacing:2px;margin-top:3px}
+  .off-seal{position:absolute;top:8px;right:9px;z-index:2;transform:rotate(7deg);
+    border:2px solid rgba(185,52,42,.85);color:#e0705f;border-radius:7px;padding:3px 7px;
+    font-size:10px;letter-spacing:2px;background:rgba(14,19,33,.55);text-shadow:0 1px 3px rgba(0,0,0,.7)}
+  .off-hunt{font-size:9.5px;color:#5a6377;text-align:center;padding:8px 0 1px;letter-spacing:1px}

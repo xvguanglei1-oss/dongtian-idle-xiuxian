@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>闲人修仙 v1.9.6</title>
+<title>闲人修仙 v1.9.8</title>
 <meta name="description" content="闲人修仙：主身巡猎斗法、分身云游寻宝，离线亦在成长。">
 <link rel="icon" href="data:,">
 <style>
@@ -404,7 +404,7 @@
     box-shadow:0 2px 10px rgba(0,0,0,.55);cursor:grab;touch-action:none}
   .dim-knob svg{width:20px;height:20px;display:block}
 </style>
-<link rel="stylesheet" href="dt-theme.css?v=v1.9.6">
+<link rel="stylesheet" href="dt-theme.css?v=v1.9.8">
 </head>
 <body>
 <!-- v1.7.58 开屏页: 品牌 + 进度 + 健康游戏忠告(load 完成或点击后淡出) -->
@@ -427,7 +427,7 @@
     <p>合理安排时间，享受健康生活。</p>
   </div>
 
-  <div class="sp-foot"><span id="spVer">v1.9.6</span></div>
+  <div class="sp-foot"><span id="spVer">v1.9.8</span></div>
 </div>
 
 <!-- v1.8.0 连接中断遮罩: 心跳连续失败时盖住 —— 不让玩家在已经和服务端脱节的账本上继续玩 -->
@@ -513,7 +513,7 @@
   <button class="btn" id="btnTravel" onclick="openTravel()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">云游</span></button>
 </div>
 
-<div class="ver-float"><span class="ver-tag" id="verTag">v1.9.6</span></div>
+<div class="ver-float"><span class="ver-tag" id="verTag">v1.9.8</span></div>
 
 <canvas id="burst"></canvas>
 <div class="flash" id="flash"></div>
@@ -531,41 +531,43 @@
 <div class="realm-up" id="realmUp"><div class="t" id="realmUpT">筑基</div><div class="s">天人感应 · 修为暴涨</div></div>
 
 <div class="modal" id="offlineModal">
-  <div class="card">
-    <h3>游历归来</h3>
+  <div class="card story-card">
+    <div class="off-fig">
+      <img src="assets/modals/art-offline.webp" alt="" aria-hidden="true">
+      <div class="off-seal" id="offSeal" style="display:none"></div>
+      <div class="t" id="offTitle">游历归来<i>化身替你行走的账，都回来了</i></div>
+    </div>
     <div id="offlineText">离线…</div>
     <div class="off-tale" id="offlineTale" style="display:none"></div>
-    <button class="btn primary" onclick="closeOffline()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M12 9 C28 3 44 10 60 6 C76 2 92 8 108 6 C124 4 140 8 158 6 C174 4 192 8 197 16 C199 26 198 34 195 41 C193 46 196 52 182 53 C168 55 154 50 140 53 C124 56 110 50 96 53 C82 56 68 51 56 53 C42 55 30 50 20 52 C8 54 2 46 3 38 C3 28 2 20 5 15 C7 12 9 10 12 9 Z"/></svg><span class="label">收下机缘</span></button>
+    <div class="cta"><button onclick="closeOffline()">收下机缘</button></div>
   </div>
 </div>
 
 <div class="modal" id="storyModal">
   <div class="card story-card">
-    <h3>修行录 · 我的仙途</h3>
+    <div class="mhead"><h3>修行录<i>MY PATH</i></h3><button class="xbtn" onclick="closeStory()">✕</button></div>
     <p class="story-tip">这里只记下你亲身走过的路 —— 开篇、突破、离线游历，一步一迹。未历之境，仙途自不会提前示人。</p>
     <div class="chips-row" id="storyChips"></div>
     <div class="story-body" id="storyBody">
     </div>
-    <button class="btn primary story-close" onclick="closeStory()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M14 7 C30 2 40 12 56 6 C72 1 84 9 100 6 C118 3 132 8 150 5 C166 3 184 6 194 12 C199 20 196 28 197 36 C198 44 194 50 180 52 C166 54 150 49 136 53 C120 57 104 50 90 54 C76 58 62 52 48 55 C34 57 20 52 10 53 C2 52 3 44 4 36 C5 27 3 19 6 14 C7 11 10 9 14 7 Z"/></svg><span class="label">合上修行录</span></button>
+    <button class="btn primary story-close" onclick="closeStory()"><svg class="skin" viewBox="0 0 200 60" preserveAspectRatio="none" aria-hidden="true"><path class="ink" d="M14 7 C30 2 40 12 56 6 C72 1 84 9 100 6 C118 3 132 8 150 5 C166 3 184 6 194 12 C199 20 196 28 197 36 C198 44 194 50 180 52 C166 54 150 49 136 53 C120 57 104 50 90 54 C76 58 62 52 48 55 C34 57 20 52 10 53 C2 52 3 44 4 36 C5 27 3 19 6 14 C7 11 10 9 14 7 Z"/></svg><span class="label">合 上</span></button>
   </div>
 </div>
 
 
 <div class="modal" id="travelModal">
-  <div class="card story-card">
-    <h3>云游</h3>
+  <div class="card story-card" style="--bgart:url(assets/modals/bg-travel.webp)">
+    <div class="mhead"><h3>云 游<i>TRAVEL</i></h3><button class="xbtn" onclick="closeTravel()">✕</button></div>
     <p class="story-tip" style="color:#8b94a8">化身替你下山跑腿 —— 遣它出门，关了页它也在走。<br>拾到的药草、灵石与丹方残页都收进<b style="color:#c9b98a">丹房行囊</b>，随时可去开炉炼丹。</p>
     <div class="story-body" id="travelBody"></div>
-    <button class="btn primary story-close" onclick="closeTravel()">合 上</button>
   </div>
 </div>
 
 <div class="modal" id="rankModal">
   <div class="card story-card">
-    <h3><svg viewBox="0 0 20 20" style="width:16px;height:16px;vertical-align:-3px;margin-right:5px;color:#d8b06a" aria-hidden="true"><path d="M5.4 4.4 C8.4 3.6 11.6 3.6 14.6 4.4 C15.4 5 15.6 5.8 15.4 6.6 C14.8 9.8 13.6 12.4 12 14.2 L14.4 16.4 C13.8 16.9 13.1 17.1 12.4 17 L10 15.2 L7.6 17 C6.9 17.1 6.2 16.9 5.6 16.4 L8 14.2 C6.4 12.4 5.2 9.8 4.6 6.6 C4.4 5.8 4.6 5 5.4 4.4 Z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M4.6 6.8 C3.6 6.6 2.8 6 2.6 5 M15.4 6.8 C16.4 6.6 17.2 6 17.4 5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>洞天风云榜</h3>
+    <div class="mhead"><h3>风云榜<i>RANK</i></h3><button class="xbtn" onclick="closeRank()">✕</button></div>
     <p class="story-tip" style="color:#8b94a8">主身已见锋芒的十位修士 —— 按当前境界与修为排定，每刻刷新。</p>
     <div class="story-body" id="rankBody"><div class="al-empty" style="color:#6d7688">云端未连接，稍后再看……</div></div>
-    <button class="btn primary story-close" onclick="closeRank()">合 上</button>
   </div>
 </div>
 
@@ -588,10 +590,25 @@
 
 <div class="modal" id="alchemyModal">
   <div class="card story-card">
-    <h3>丹房 · 炼丹</h3>
-    <p class="story-tip" style="color:#8b94a8">行囊里是化身云游捎回的药草灵石，丹方残页凑齐可解锁失传古丹。<br>炉火看顾得当，丹药可助修行、冲境、增益离线。</p>
-    <div class="story-body" id="alchemyBody"></div>
-    <button class="btn primary story-close" onclick="closeAlchemy()">合 上</button>
+    <div class="mhead"><h3>丹 房<i>ALCHEMY</i></h3><button class="xbtn" onclick="closeAlchemy()">✕</button></div>
+    <div class="workgrid">
+      <div class="pane furn">
+        <div class="cap">丹 炉</div>
+        <div class="furn-fig"><img src="assets/modals/art-furnace.webp" alt="" aria-hidden="true"></div>
+        <div class="slots" id="furnSlots"></div>
+      </div>
+      <div class="pane bagpane">
+        <div class="cap">背 包<i id="bagN"></i></div>
+        <div class="bag-scroll"><div class="bag-grid" id="bagGrid"></div></div>
+      </div>
+    </div>
+    <div class="cap" style="margin:10px 1px 7px">丹 方<i>材料齐则现 · 点之入炉</i></div>
+    <div class="rp-list" id="rpList"></div>
+    <div id="cabWrap" style="display:none;margin-top:9px">
+      <div class="cap">丹 药 匣<i>点 “服” 即用</i></div>
+      <div class="cab-grid" id="cabGrid"></div>
+    </div>
+    <div class="cta"><button id="craftBtn" disabled onclick="doCraft()">炼 制</button></div>
   </div>
 </div>
 
@@ -616,24 +633,22 @@
 </div>
 
 <div class="modal" id="mailModal">
-  <div class="card story-card">
-    <h3>鸿雁信匣</h3>
+  <div class="card story-card" style="--bgart:url(assets/modals/bg-mail.webp)">
+    <div class="mhead"><h3>信 匣<i>MAIL</i></h3><button class="xbtn" onclick="closeMail()">✕</button></div>
     <p class="story-tip" style="color:#8b94a8">化身在外行走，每满 <b style="color:#a98a5a">30 分钟</b> 托雁足寄回一封书信。<br>展信收取，物什才算真正归你。<br>匣中至多存 <b style="color:#a98a5a">50</b> 封——满了化身便停笔，拆几封它自会续上。</p>
     <div class="mail-bulkbar" id="mailBulkBar">
       <span class="mb-count" id="mailBulkCount"></span>
       <button class="btn primary seal" type="button" onclick="collectAllMail()"><span class="label">一键收取</span></button>
     </div>
     <div class="story-body" id="mailBody"></div>
-    <button class="btn primary story-close" onclick="closeMail()">合 上</button>
   </div>
 </div>
 
 
 <div class="modal" id="equipModal">
-  <div class="card story-card">
-    <h3>法宝 · 装备</h3>
-    <div class="story-body" id="equipBody"></div>
-    <button class="btn primary story-close" onclick="closeEquip()">合 上</button>
+  <div class="card story-card" style="--bgart:url(assets/modals/bg-equip.webp)">
+    <div class="mhead"><h3>法 宝<i>ARTIFACTS</i></h3><button class="xbtn" onclick="closeEquip()">✕</button></div>
+    <div id="equipBody"></div>
   </div>
 </div>
 
@@ -674,7 +689,7 @@
 </div>
 
 <script src="assets/lz-string.min.js"></script>
-<script src="game.js?v=v1.9.6"></script>
+<script src="game.js?v=v1.9.8"></script>
 
 </body>
 </html>

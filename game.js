@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.6";
+const GAME_VER = "v1.9.8";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3865,7 +3865,7 @@ function pillCabinetHTML() {
     const rp = RECIPES[id];
     return `<span class="al-pill" title="${rp.d}">${rp.n}<b>×${state.pills[id]}</b><button class="take" onclick="consumePill('${id}')">服</button></span>`;
   }).join("");
-  return `<div class="al-sec">丹药匣 <i>点“服”即用</i></div><div>${row}</div>`;
+  return `<div class="al-sec">丹药匣 <i>点“服”即用</i></div><div class="al-grid">${row}</div>`;
 }
 function openTravel() {
   const m = $("travelModal"); if (!m) return;
@@ -3874,13 +3874,99 @@ function openTravel() {
   m.classList.add("show");
   travelBtnLbl();
 }
+function closeAlchemy() { const m = $("alchemyModal"); if (m) m.classList.remove("show"); }
+/* ==================== v1.9.8 丹房工程化工作台 ====================
+ * 左炉右囊: 点囊入炉 → 点丹方卡自动配料(可炼才可见) → 炼制 → 丹药匣服丹。
+ * 与 alch-lab2 定稿一字同构; 材料图标未定稿, 格内首字色块占位, 定稿后换 <img> 不动布局。 */
+let cauldron = {}, selRecipe = null;                    // 炉内材料 / 当前选中方(关弹窗不清, 重开仍在)
+const alHave = m => (state.mats || {})[m] || 0;
+const alInFurn = m => cauldron[m] || 0;
+const alIcoCls = t => t === "兽材" ? "beast" : (t === "灵液" || t === "仙泉" || t === "仙晶") ? "liquid" : "plant";
+const alIco = (m, sz) => `<span class="ico ${alIcoCls(MATS[m].t)}"${sz ? ` style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px"` : ""}>${MATS[m].n[0]}</span>`;
+const recipeCan = id => Object.keys(RECIPES[id].need).every(m => alHave(m) >= RECIPES[id].need[m]);
+function renderFurn() {
+  const el = $("furnSlots"); if (!el) return;
+  const mids = Object.keys(cauldron).filter(m => cauldron[m] > 0);
+  let h = mids.map(m => `<div class="slot" title="${MATS[m].n} · 点之退回" onclick="takeMat('${m}')">
+      ${alIco(m, 24)}<b>×${cauldron[m]}</b></div>`).join("");
+  for (let i = mids.length; i < 3; i++) h += `<div class="slot"><em>空</em></div>`;
+  el.innerHTML = h;
+}
+function renderBag() {
+  const nEl = $("bagN"), el = $("bagGrid"); if (!el) return;
+  const own = Object.keys(MATS).filter(m => alHave(m) > 0);
+  if (nEl) nEl.textContent = `${own.length} / ${Object.keys(MATS).length}`;
+  let h = own.map(m => `<div class="cell" title="${MATS[m].n} · ${MATS[m].src}" onclick="putMat('${m}')">
+      ${alIco(m)}<b>×${alHave(m) - alInFurn(m)}</b></div>`).join("");
+  const pad = (3 - own.length % 3) % 3;
+  for (let i = 0; i < pad + 3; i++) h += `<div class="cell empty"><em>空</em></div>`;
+  el.innerHTML = h;
+}
+function renderRecipes() {
+  const el = $("rpList"); if (!el) return;
+  const bi = bigIdx();
+  const ok = Object.keys(RECIPES).filter(id => {
+    const rp = RECIPES[id];
+    if (rp.big > bi) return false;                        // 境界未至不示
+    if (rp.h && !hiddenUnlocked(rp.big)) return false;    // 残卷未齐不示
+    return recipeCan(id);                                 // 材料齐则现
+  });
+  el.innerHTML = ok.length ? ok.map(id => {
+    const rp = RECIPES[id];
+    const need = Object.keys(rp.need).map(m => `${MATS[m].n}${rp.need[m]}`).join(" · ");
+    const fn = rp.d.split("：").pop();                    // 只展示功能: 取「:」后段
+    return `<div class="rp-card${selRecipe === id ? " sel" : ""}" title="${rp.n} · ${rp.d}｜需 ${need}" onclick="loadRecipe('${id}')">
+      <div class="rp-ico">${rp.n[rp.n.length - 2] || "丹"}</div>
+      <div class="rp-bd"><span class="nm">${rp.n}</span><span class="ds">${fn}</span></div>
+      <div class="rp-arrow">${selRecipe === id ? "在炉" : "入炉"}</div></div>`;
+  }).join("") : `<div class="al-empty" style="border:1px dashed rgba(201,168,106,.16);border-radius:10px;padding:13px;text-align:center;font-style:normal">
+    <b style="font-size:12px;color:#8b94a8;letter-spacing:2px;font-weight:normal">暂 无 可 炼 丹 方</b></div>`;
+}
+function renderCabinet() {
+  const wrap = $("cabWrap"), el = $("cabGrid"); if (!el) return;
+  const pk = Object.keys(state.pills || {}).filter(id => RECIPES[id] && state.pills[id] > 0);
+  if (wrap) wrap.style.display = pk.length ? "" : "none";
+  el.innerHTML = pk.map(id => {
+    const rp = RECIPES[id];
+    return `<div class="pillb" title="${rp.d}" onclick="consumePill('${id}')">
+      <span class="ico pillbg">${rp.n[rp.n.length - 2] || "丹"}</span><b>×${state.pills[id]}</b><em>服</em></div>`;
+  }).join("");
+}
+function fitsRecipe() {
+  if (!selRecipe) return false;
+  const need = RECIPES[selRecipe].need, ks = Object.keys(need);
+  return ks.every(m => alInFurn(m) === need[m]) && Object.keys(cauldron).filter(m => cauldron[m] > 0).length === ks.length;
+}
+function renderCraftBtn() {
+  const b = $("craftBtn"); if (!b) return;
+  b.disabled = !(selRecipe && fitsRecipe());
+}
+function renderAlch() { renderFurn(); renderBag(); renderRecipes(); renderCabinet(); renderCraftBtn(); }
+function putMat(m) {
+  if (alHave(m) - alInFurn(m) <= 0) return;
+  cauldron[m] = alInFurn(m) + 1;
+  if (selRecipe && !fitsRecipe()) selRecipe = null;
+  renderAlch();
+}
+function takeMat(m) {
+  if (!cauldron[m]) return;
+  cauldron[m]--; if (!cauldron[m]) delete cauldron[m];
+  if (selRecipe && !fitsRecipe()) selRecipe = null;
+  renderAlch();
+}
+function loadRecipe(id) {
+  if (!recipeCan(id)) { pushMsg("main", "材料不齐，丹炉难以为继"); return; }
+  selRecipe = selRecipe === id ? null : id;
+  cauldron = {};
+  if (selRecipe) for (const m in RECIPES[id].need) cauldron[m] = RECIPES[id].need[m];
+  renderAlch();
+}
+function doCraft() { if (selRecipe && fitsRecipe()) craftPill(selRecipe); }
 function openAlchemy() {
   const m = $("alchemyModal"); if (!m) return;
-  const box = $("alchemyBody"); if (!box) return;
-  box.innerHTML = matBagHTML() + craftAreaHTML() + pillCabinetHTML();
+  renderAlch();
   m.classList.add("show");
 }
-function closeAlchemy() { const m = $("alchemyModal"); if (m) m.classList.remove("show"); }
 /* consumePill/craftPill 后只刷新当前打开的面板 */
 function refreshOpenPanel() {
   const am = $("alchemyModal"), tm = $("travelModal");
@@ -4101,6 +4187,8 @@ function craftPill(id) {
   state.pills[id] = (state.pills[id] || 0) + 1;
   pushMsg("main", `丹炉开火，一炉<span class="r">${rp.n}</span>成了，药香满室。`);
   pushMsg("avatar", `阿青闻到药香，在丹炉边蹲成一团，尾巴尖轻轻晃`);
+  /* v1.9.8 工程化工作台: 成丹即清炉, 重开工作台 */
+  selRecipe = null; cauldron = {};
   save(); cloudSoon(); updateHUD(); refreshOpenPanel();
 }
 
@@ -4264,18 +4352,24 @@ function presentSettle(r) {
     if (H.melted) bits.push(`<b>${H.melted}</b> 件投炉熔作灵石 +${fmt(H.meltSp || 0)}`);
     huntExtra = `<div class="off-hunt">${bits.join("；")}。</div>`;
   }
-  const jumpRow = (gg.jumps && gg.jumps > 0)
-    ? `<div class="off-badge">修为精进 · 连破 ${gg.jumps} 境</div>` : "";
+  /* v1.9.8: 连破境 → 横幅右上朱印; 闭关时长 → 横幅标题带(各一行小字) */
+  const sealEl = $("offSeal");
+  if (sealEl) {
+    if (gg.jumps && gg.jumps > 0) { sealEl.style.display = ""; sealEl.textContent = `连破 ${gg.jumps} 境`; }
+    else sealEl.style.display = "none";
+  }
+  const offTEl = $("offTitle");
+  if (offTEl) offTEl.innerHTML =
+    `闭关 ${hh ? hh + " 时" + (mm ? " " : "") : ""}${mm ? mm + " 分" : (hh ? "" : "片刻")}<i>化身替你行走的账，都回来了</i>`;
   /* v1.9.0: 信匣满则化身停笔, 只提一句(细节在云游面板) */
   const bagTip = (state.travel && state.travel.loc && (state.mails || []).length >= MAIL_CAP)
     ? `<div class="off-hunt" style="color:#a98a5a">鸿雁信匣已满 ${MAIL_CAP} 封，化身暂时停笔 —— 拆几封它便续上。</div>` : "";
   $("offlineText").innerHTML =
-    `<div class="off-hero">闭关 <b>${hh ? hh + " 小时" + (mm ? " " : "") : ""}${mm ? mm + " 分钟" : (hh ? "" : "片刻")}</b></div>` +
     `<div class="off-rows">` +
     `<div class="off-row"><span class="o-ico">${icoExp}</span><span class="ol">周天运转 · 修为</span><b class="ov">+${fmt(gg.exp)}</b></div>` +
     `<div class="off-row"><span class="o-ico">${icoSpi}</span><span class="ol">聚灵阵 · 灵石</span><b class="ov jade">+${fmt(gg.spirit)}</b></div>` +
     huntRows +
-    `</div>` + jumpRow + huntExtra + bagTip;
+    `</div>` + huntExtra + bagTip;
   // 离线际遇叙事(每满 1 时辰一段, 至多 3 段; 纯叙事)
   const bi = Math.min(bigIdx(), MAIN_STORY.length - 1);
   const bigName = realm().big;
@@ -5126,77 +5220,67 @@ function openEquip() {
   m.classList.add("show");
 }
 function closeEquip() { const m = $("equipModal"); if (m) m.classList.remove("show"); }
-function renderEquip() {                 // v1.7.19 装备面板·去圆圈, 顶部品质行 + 战力右置
+function renderEquip() {                 // v1.9.8 十字格工作台: 四正方格上下左右 + 中央总战力, 点格显属性
   const box = $("equipBody"); if (!box) return;
   const eb = equipBonus();
   const arr = (state.arts || []).slice(-6);
   const SLOTN = SLOT_TYPES.map(t => t.n);
-  // 部位小图标(无圆圈, 16px 随品质色) —— v1.9.5 手绘重画: 斜锋长剑/兽首圆盾/玉玦灵佩/云纹书卷
+  // 部位图标 —— v1.9.5 手绘: 斜锋长剑/兽首圆盾/玉玦灵佩/云纹书卷 (原样沿用)
   const ICON = {
     w: '<svg viewBox="0 0 32 32"><path d="M23.6 2.6 C25.2 3.4 27 5.2 28 6.8 C22.4 13.6 15.6 20.2 9.4 24.8 C8.2 23.9 7.2 22.8 6.4 21.5 C11.7 15.2 17.4 8.8 23.6 2.6 Z" fill="currentColor"/><path d="M24.4 1.6 C25.6 2.2 26.8 3.2 27.8 4.4 C28.2 3.8 28.5 3 28.4 2.4 C27.5 1.6 26.3 1.2 25.2 1 Z" fill="currentColor" opacity=".8"/><path d="M7.2 20.8 C9.4 20.6 11.6 22.2 12.2 24.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6.6 23.8 C5.4 25.4 4.6 27.2 4.4 29.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8.2 25 C7.6 26.6 7.6 28.2 8.2 29.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".75"/></svg>',
     a: '<svg viewBox="0 0 32 32"><path d="M16 2.6 C21 4.2 25.2 6 27.2 8.2 C28.2 14.2 26.8 20.8 23.2 25 C21 27.6 18.6 29.2 16 30.2 C13.2 29 10.6 27.2 8.4 24.4 C5.2 20.2 4 14 4.8 8.2 C7 6 11 4.2 16 2.6 Z" fill="currentColor"/><path d="M16 6.4 C16.1 13 16.1 20 16 26.4" stroke="rgba(8,12,20,.5)" stroke-width="1.7" fill="none" stroke-linecap="round"/><circle cx="10.6" cy="12.4" r="1.35" fill="rgba(8,12,20,.5)"/><circle cx="21.4" cy="12.4" r="1.35" fill="rgba(8,12,20,.5)"/></svg>',
     p: '<svg viewBox="0 0 32 32"><path d="M17.8 3.4 C22.6 4.6 26 8.6 26.2 13.6 C26.4 19 22.6 23.6 17.4 24.6 C11.8 25.6 6.6 21.8 5.8 16.4 C5 11 8.8 6.2 14.2 5.2" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><path d="M13.6 3.4 C14.4 2 16.8 2 17.6 3.4 C18 4.2 17.6 5 16.6 5.2 L14.8 5.2 C13.8 5 13.4 4.2 13.6 3.4 Z" fill="currentColor"/><path d="M15.4 25.2 C15 27.2 15.2 29.2 16 31" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M12.8 24.6 C12 26.4 11.8 28.4 12.2 30.4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".8"/></svg>',
     s: '<svg viewBox="0 0 32 32"><path d="M9 4.6 C13.6 3 18.8 3 23.2 4.6 C24.8 6.2 24.8 8.8 23.2 10.3 C18.8 11.9 13.6 11.9 9 10.3 C7.4 8.8 7.4 6.2 9 4.6 Z" fill="currentColor" opacity=".95"/><path d="M9.6 11.4 C13.8 12.7 18.4 12.7 22.6 11.5 C23.8 17 23.7 22.6 22.4 27.9 C18.4 29.4 13.8 29.4 9.7 28 C8.4 22.5 8.4 17 9.6 11.4 Z" fill="currentColor" opacity=".5"/><path d="M12 20.2 C13.3 18.4 15.3 18.6 16.3 20 C17.6 18.5 19.7 18.7 20.7 20.3 C21.5 21.7 20.7 23.3 19.1 23.5 L13.3 23.5 C11.9 23.3 11.4 21.6 12 20.2 Z" fill="rgba(8,12,20,.55)"/></svg>',
   };
-  const SLOTI = ["w", "a", "p", "s"];
   const starOf = (q) => {                              // q 颗实心 + 余下空心; q>5 不溢出
     const n = Math.max(0, Math.min(5, q | 0));
     return "★".repeat(n) + "☆".repeat(Math.max(0, 5 - n));
   };
-  const pill = (f) => `<span class="pill k-${f.k}"><i class="bg"></i><span class="nm">${FX_TXT[f.k] || f.k}</span><b>+${f.v}%</b></span>`;
   const sc = (a) => Math.round(artScore(a));
-  let rows = "";
-  for (let i = 0; i < 4; i++) {
+  const SLOTI = ["w", "a", "p", "s"];
+  /* 方位映射: 左=兵器(惯用手) 上=护体(衣) 右=功法(典) 下=灵佩(佩) —— 与模板定稿一致 */
+  const CELLPOS = [{ pos: "left", i: 0 }, { pos: "up", i: 1 }, { pos: "right", i: 3 }, { pos: "down", i: 2 }];
+  let cross = "";
+  let total = 0;
+  for (const { pos, i } of CELLPOS) {
     const a = arr[i];
+    const slotI = SLOTI[(typeof (a && a.slot) === "number" && a.slot < 4) ? a.slot : i];
     if (!a) {
-      rows += `<div class="eq-card empty">
-        <div class="eq-head">
-          <span class="eq-ico dim">${ICON[SLOTI[i]]}</span>
-          <span class="eq-slot dim">${SLOTN[i]} · 空位</span>
-        </div>
-        <div class="eq-name dim">待小青出炉新宝填此槽</div>
-      </div>`; continue;
+      cross += `<div class="gx-cell ${pos}" style="cursor:default" title="${SLOTN[i]} · 空位">
+        <span class="ico" style="opacity:.32">${ICON[slotI]}</span><em>${SLOTN[i]} · 空</em></div>`;
+      continue;
     }
     const q = a.q;
-    const qn = (QUALITY[q] || QUALITY[0]).name;
-    const slotI = SLOTI[(typeof a.slot === "number" && a.slot < 4) ? a.slot : i] || SLOTI[i];
-    const fx = (a.fx && a.fx.length) ? `<div class="eq-fx">${a.fx.map(pill).join("")}</div>` : "";
-    rows += `<div class="eq-card qc${q}">
-      <div class="eq-glow"></div>
-      <div class="eq-head">
-        <span class="eq-ico">${ICON[slotI]}</span>
-        <span class="eq-quality">${qn}</span>
-        <span class="eq-star">${starOf(q + 1)}</span>
-        <span class="eq-slot">${SLOTN[i]} · lv${a.lv || 1}</span>
-      </div>
-      <div class="eq-name">${a.name}</div>
-      <div class="eq-foot">
-        <div class="eq-stats">
-          <span class="st st-a"><i>攻</i><b>${a.a || 0}</b></span>
-          <span class="st st-d"><i>防</i><b>${a.d || 0}</b></span>
-          <span class="st st-h"><i>血</i><b>${a.h || 0}</b></span>
-        </div>
-        <div class="eq-power"><span class="p-l">战力</span><span class="p-v">${sc(a)}</span></div>
-      </div>
-      ${fx}
-    </div>`;
+    total += sc(a);
+    cross += `<div class="gx-cell ${pos} qc${q}${_eqSel === i ? " sel" : ""}" title="${(QUALITY[q] || QUALITY[0]).name} · ${a.name}" onclick="pickArt(${i})">
+      <span class="st">${starOf(q + 1)}</span><span class="ico">${ICON[slotI]}</span><em>${SLOTN[i]}</em></div>`;
   }
-  const agg = eb.agg || {};
-  const aggTxt = (["crit", "critB", "critD", "pen", "dodge", "life", "atk", "hp", "dfn"])
-    .filter(k => agg[k])
-    .map(k => `<span class="pill k-${k}"><i class="bg"></i><span class="nm">${FX_TXT[k]}</span><b>+${agg[k]}%</b></span>`).join("");
-  const rec = _eqRecycle.length
-    ? `<div class="eq-rec"><span class="rh">近记熔炼</span>${_eqRecycle.map(r => `<span class="rl">${r}</span>`).join("")}</div>`
-    : "";
+  /* 详情: 未选中 → 引导语; 选中 → 品名(品级色) + 三维/词条 + 战力 */
+  let detail;
+  if (_eqSel < 0 || !arr[_eqSel]) {
+    detail = `<div style="text-align:center;font-size:10.5px;color:#5a6377;letter-spacing:2px;padding:22px 0 18px">点 击 宝 位 · 查 看 属 性</div>`;
+  } else {
+    const a = arr[_eqSel];
+    const q = a.q, qn = (QUALITY[q] || QUALITY[0]).name;
+    const qcol = { 0: "#aab2c0", 1: "#6b9df5", 2: "#3fc9a2", 3: "#e0b45a", 4: "#c08af0", 5: "#ff5257" }[q] || "#e9e2d0";
+    const base = [a.a ? `攻 +${a.a}` : "", a.d ? `防 +${a.d}` : "", a.h ? `血 +${a.h}` : ""].filter(Boolean).join(" · ");
+    const fxs = (a.fx || []).map(f => `${FX_TXT[f.k] || f.k} +${f.v}%`).join(" · ");
+    const lvTxt = a.lv ? ` · lv${a.lv}` : "";
+    detail = `<div class="big"><span class="nm" style="color:${qcol}">${a.name}<span style="font-size:9px;opacity:.9;margin-left:6px">${starOf(q + 1)}</span></span>
+      <span style="font-size:9px;color:${qcol};opacity:.8">${qn}${lvTxt}</span><span class="pw">战力 ${sc(a)}</span></div>
+      <div class="fx">${[base, fxs].filter(Boolean).join(" · ") || "尚未开光"}</div>
+      <div style="font-size:9px;color:#5a6377;margin-top:7px;letter-spacing:1px">阿青会自动择优：胜过身上同部位旧宝才换上，旧件熔回灵石。</div>`;
+  }
   box.innerHTML = `
-    <div class="eq-sum">
-      <div class="row1">修为加成 <b>×${artMult().toFixed(2)}</b><span class="spt">·</span>装备　攻 <b>+${eb.atk}</b>　防 <b>+${eb.def}</b>　血 <b>+${eb.hp}</b></div>
-      <div class="row2">${aggTxt || `<span class="nodim">尚未获得任何词条加成</span>`}</div>
-    </div>
-    <div class="eq-list">${rows}</div>
-    <div class="eq-note">阿青出炉新宝会自动择优：胜过身上同部位旧宝才换上，旧件熔回灵石，全程无需你费心。<br>词条数值已并入战斗结算（会心/暴击/爆伤/破甲/闪避/吸血/攻防血%），逐条见上。</div>
-    ${rec}`;
+    <div class="pane gx-sum"><div class="gx-grid">
+      <div><em>攻</em><b>+${eb.atk}</b></div><div><em>防</em><b>+${eb.def}</b></div>
+      <div><em>血</em><b>+${eb.hp}</b></div><div><em>修为</em><b>×${artMult().toFixed(2)}</b></div>
+    </div></div>
+    <div class="gx-cross">${cross}<div class="gx-core"><b>${total}</b><em>战 力</em></div></div>
+    <div class="pane gx-detail">${detail}</div>`;
 }
+let _eqSel = -1;                          // 当前查看的宝位(-1 无)
+function pickArt(i) { _eqSel = _eqSel === i ? -1 : i; renderEquip(); }
 
 
 /* ============ v1.0.2 数值整体重做(同尺+加法) ============ */
