@@ -5255,7 +5255,24 @@ function renderEquip() {                 // v1.9.8 十字格工作台: 四正方
     cross += `<div class="gx-cell ${pos} qc${q}${_eqSel === i ? " sel" : ""}" title="${(QUALITY[q] || QUALITY[0]).name} · ${a.name}" onclick="pickArt(${i})">
       <span class="st">${starOf(q + 1)}</span><span class="ico">${ICON[slotI]}</span><em>${SLOTN[i]}</em></div>`;
   }
-  /* 详情: 未选中 → 引导语; 选中 → 品名(品级色) + 三维/词条 + 战力 */
+  /* v1.9.8b 法宝执照: 选中宝位 → 十字中央浮出文书卡(名/品级/各项属性/战力朱印), 四格让位变暗 */
+  let lic = "";
+  if (_eqSel >= 0 && arr[_eqSel]) {
+    const a = arr[_eqSel];
+    const q = a.q, qn = (QUALITY[q] || QUALITY[0]).name;
+    const qcol = { 0: "#aab2c0", 1: "#6b9df5", 2: "#3fc9a2", 3: "#e0b45a", 4: "#c08af0", 5: "#ff5257" }[q] || "#e9e2d0";
+    const slotIdx = (typeof a.slot === "number" && a.slot < 4) ? a.slot : _eqSel;
+    lic = `<div class="gx-lic">
+      <div class="lclose" onclick="closeLic(event)">✕</div>
+      <div class="lh"><b style="color:${qcol}">${a.name}</b><i>${qn}·${SLOTN[slotIdx]} ★${q + 1}${a.lv ? " lv" + a.lv : ""}</i></div>
+      <div class="lr"><span>攻</span><b>+${a.a || 0}</b></div>
+      <div class="lr"><span>防</span><b>+${a.d || 0}</b></div>
+      <div class="lr"><span>血</span><b>+${a.h || 0}</b></div>
+      ${(a.fx || []).map(f => `<div class="lr"><span>${FX_TXT[f.k] || f.k}</span><b class="teal">+${f.v}%</b></div>`).join("")}
+      <div class="lseal"><em>战力 ${sc(a)}</em></div>
+    </div>`;
+  }
+  /* 下方属性清单: 未选 → 引导语; 选中 → 各项属性两列逐行 */
   let detail;
   if (_eqSel < 0 || !arr[_eqSel]) {
     detail = `<div style="text-align:center;font-size:10.5px;color:#5a6377;letter-spacing:2px;padding:22px 0 18px">点 击 宝 位 · 查 看 属 性</div>`;
@@ -5263,24 +5280,27 @@ function renderEquip() {                 // v1.9.8 十字格工作台: 四正方
     const a = arr[_eqSel];
     const q = a.q, qn = (QUALITY[q] || QUALITY[0]).name;
     const qcol = { 0: "#aab2c0", 1: "#6b9df5", 2: "#3fc9a2", 3: "#e0b45a", 4: "#c08af0", 5: "#ff5257" }[q] || "#e9e2d0";
-    const base = [a.a ? `攻 +${a.a}` : "", a.d ? `防 +${a.d}` : "", a.h ? `血 +${a.h}` : ""].filter(Boolean).join(" · ");
-    const fxs = (a.fx || []).map(f => `${FX_TXT[f.k] || f.k} +${f.v}%`).join(" · ");
-    const lvTxt = a.lv ? ` · lv${a.lv}` : "";
-    detail = `<div class="big"><span class="nm" style="color:${qcol}">${a.name}<span style="font-size:9px;opacity:.9;margin-left:6px">${starOf(q + 1)}</span></span>
-      <span style="font-size:9px;color:${qcol};opacity:.8">${qn}${lvTxt}</span><span class="pw">战力 ${sc(a)}</span></div>
-      <div class="fx">${[base, fxs].filter(Boolean).join(" · ") || "尚未开光"}</div>
-      <div style="font-size:9px;color:#5a6377;margin-top:7px;letter-spacing:1px">阿青会自动择优：胜过身上同部位旧宝才换上，旧件熔回灵石。</div>`;
+    detail = `<div class="cap" style="margin:0 1px 7px"><span style="color:${qcol}">${a.name}</span> · 各项属性</div>
+      <div class="stgrid">
+        <div class="sr"><span>攻 击</span><b>+${a.a || 0}</b></div>
+        <div class="sr"><span>防 御</span><b>+${a.d || 0}</b></div>
+        <div class="sr"><span>气 血</span><b>+${a.h || 0}</b></div>
+        <div class="sr"><span>品 阶</span><b style="color:${qcol}">${qn} ★${q + 1}</b></div>
+        ${(a.fx || []).map(f => `<div class="sr"><span>${FX_TXT[f.k] || f.k}</span><b class="teal">+${f.v}%</b></div>`).join("")}
+      </div>
+      <div style="font-size:9px;color:#5a6377;margin-top:8px;letter-spacing:1px">阿青会自动择优：胜过身上同部位旧宝才换上，旧件熔回灵石。</div>`;
   }
   box.innerHTML = `
     <div class="pane gx-sum"><div class="gx-grid">
       <div><em>攻</em><b>+${eb.atk}</b></div><div><em>防</em><b>+${eb.def}</b></div>
       <div><em>血</em><b>+${eb.hp}</b></div><div><em>修为</em><b>×${artMult().toFixed(2)}</b></div>
     </div></div>
-    <div class="gx-cross">${cross}<div class="gx-core"><b>${total}</b><em>战 力</em></div></div>
+    <div class="gx-cross${lic ? " licOn" : ""}">${cross}<div class="gx-core" onclick="closeLic(event)"><b>${total}</b><em>战 力</em></div>${lic}</div>
     <div class="pane gx-detail">${detail}</div>`;
 }
 let _eqSel = -1;                          // 当前查看的宝位(-1 无)
 function pickArt(i) { _eqSel = _eqSel === i ? -1 : i; renderEquip(); }
+function closeLic(e) { if (e) e.stopPropagation(); _eqSel = -1; renderEquip(); }
 
 
 /* ============ v1.0.2 数值整体重做(同尺+加法) ============ */

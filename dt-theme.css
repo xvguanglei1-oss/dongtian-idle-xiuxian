@@ -1259,6 +1259,8 @@
    全部挂 .story-card 作用域; 底图隐现: .story-card 设 --bgart 即铺(离线/修行录等不设则无图) */
   .card.story-card{
     --cnr:rgba(216,176,106,.75);
+    width:min(372px,calc(100vw - 18px)) !important;
+    max-width:min(372px,calc(100vw - 18px)) !important;min-width:0 !important;   /* v1.9.8b 宽度双钳: 防 min-content 撑破(装备属性长文) */
     background:
       linear-gradient(var(--cnr),var(--cnr)) 0 0/16px 2px no-repeat,
       linear-gradient(var(--cnr),var(--cnr)) 0 0/2px 16px no-repeat,
@@ -1417,3 +1419,40 @@
     border:2px solid rgba(185,52,42,.85);color:#e0705f;border-radius:7px;padding:3px 7px;
     font-size:10px;letter-spacing:2px;background:rgba(14,19,33,.55);text-shadow:0 1px 3px rgba(0,0,0,.7)}
   .off-hunt{font-size:9.5px;color:#5a6377;text-align:center;padding:8px 0 1px;letter-spacing:1px}
+
+/* ==================== v1.9.8b 装备「法宝执照」—— 点击宝位, 十字中央浮出文书卡 ====================
+   度牒式双线裱框 + 品名 + 各项属性逐行 + 战力朱印; 四格同时让位变暗, 再点同格收起 */
+  .gx-cross{transition:filter .25s}
+  .gx-cross.licOn .gx-cell{opacity:.22;transform:scale(.9);pointer-events:none}
+  .gx-cross.licOn .gx-cell.sel{opacity:.32}
+  .gx-cross.licOn .gx-core{opacity:0}
+  .gx-lic{position:absolute;top:50%;left:50%;z-index:3;width:196px;transform:translate(-50%,-50%);
+    border:1px solid rgba(216,176,106,.55);outline:1px solid rgba(216,176,106,.22);outline-offset:3px;
+    border-radius:10px;background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E"),
+      linear-gradient(180deg,rgba(24,30,46,.96),rgba(14,19,33,.96));
+    box-shadow:0 10px 30px rgba(0,0,0,.6);padding:11px 13px 12px;
+    animation:licIn .24s ease-out}
+  @keyframes licIn{from{opacity:0;transform:translate(-50%,-50%) scale(.82)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+  .gx-lic .lh{display:flex;align-items:baseline;gap:6px;padding-bottom:7px;margin-bottom:7px;
+    border-bottom:1px dashed rgba(216,176,106,.3)}
+  .gx-lic .lh b{font-size:13px;letter-spacing:1px;font-weight:normal}
+  .gx-lic .lh i{font-style:normal;font-size:8.5px;color:#8b94a8;letter-spacing:1px;margin-left:auto;white-space:nowrap}
+  .gx-lic .lr{display:flex;align-items:center;justify-content:space-between;padding:3.5px 0}
+  .gx-lic .lr span{font-size:10px;color:#8b94a8;letter-spacing:2px}
+  .gx-lic .lr b{font-size:11.5px;color:#e9e2d0;font-weight:normal;letter-spacing:.5px}
+  .gx-lic .lr b.teal{color:#86b5a2}
+  .gx-lic .lseal{margin-top:8px;display:flex;justify-content:flex-end}
+  .gx-lic .lseal em{font-style:normal;transform:rotate(6deg);border:2px solid rgba(185,52,42,.8);color:#e0705f;
+    border-radius:6px;padding:2px 8px;font-size:9.5px;letter-spacing:1.5px;background:rgba(14,19,33,.5)}
+  .gx-lic .lclose{position:absolute;top:5px;right:7px;width:20px;height:20px;border-radius:50%;cursor:pointer;
+    color:#5a6377;font-size:10px;line-height:19px;text-align:center}
+  .gx-lic .lclose:active{color:#e9e2d0}
+/* 下方属性清单: 两列逐项(点选宝位后列出全部词条) */
+  .gx-detail .stgrid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px}
+  .gx-detail .stgrid .sr{display:flex;align-items:baseline;justify-content:space-between;gap:6px;
+    border-bottom:1px dashed rgba(201,168,106,.1);padding:3px 1px}
+  .gx-detail .stgrid .sr span{font-size:9.5px;color:#8b94a8;letter-spacing:1.5px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .gx-detail .stgrid .sr b{font-size:10.5px;color:#e9e2d0;font-weight:normal;white-space:nowrap}
+  .gx-detail .stgrid .sr b.teal{color:#86b5a2}
