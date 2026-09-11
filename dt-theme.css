@@ -1327,6 +1327,9 @@
   .ico.beast{background:linear-gradient(160deg,#7a4038,#4a2622)}
   .ico.liquid{background:linear-gradient(160deg,#6d5a33,#40331c)}
   .ico.pillbg{background:linear-gradient(160deg,#54432a,#2e2415)}
+/* v1.9.8c 材料图片图标: 图铺满色块(背景与格底同源已归一), 加载失败 remove() 自动回退首字色块 */
+  .ico{position:relative}
+  .ico .icoim{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;z-index:1}
 /* ---- 丹方: 可炼才可见, 紧凑行卡, 点卡入炉 ---- */
   .rp-list{display:flex;flex-direction:column;gap:6px}
   .rp-card{display:flex;align-items:center;gap:8px;border-radius:9px;padding:5px 9px 5px 6px;cursor:pointer;

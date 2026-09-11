@@ -3877,12 +3877,12 @@ function openTravel() {
 function closeAlchemy() { const m = $("alchemyModal"); if (m) m.classList.remove("show"); }
 /* ==================== v1.9.8 丹房工程化工作台 ====================
  * 左炉右囊: 点囊入炉 → 点丹方卡自动配料(可炼才可见) → 炼制 → 丹药匣服丹。
- * 与 alch-lab2 定稿一字同构; 材料图标未定稿, 格内首字色块占位, 定稿后换 <img> 不动布局。 */
+ * 与 alch-lab2 定稿一字同构; 材料图标定稿 assets/modals/ico/{key}.webp 铺满色块, 加载失败 remove() 回退首字色块。 */
 let cauldron = {}, selRecipe = null;                    // 炉内材料 / 当前选中方(关弹窗不清, 重开仍在)
 const alHave = m => (state.mats || {})[m] || 0;
 const alInFurn = m => cauldron[m] || 0;
 const alIcoCls = t => t === "兽材" ? "beast" : (t === "灵液" || t === "仙泉" || t === "仙晶") ? "liquid" : "plant";
-const alIco = (m, sz) => `<span class="ico ${alIcoCls(MATS[m].t)}"${sz ? ` style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px"` : ""}>${MATS[m].n[0]}</span>`;
+const alIco = (m, sz) => `<span class="ico ${alIcoCls(MATS[m].t)}"${sz ? ` style="width:${sz}px;height:${sz}px;font-size:${Math.round(sz * .45)}px"` : ""}><img class="icoim" src="assets/modals/ico/${m}.webp" alt="" onerror="this.remove()">${MATS[m].n[0]}</span>`;
 const recipeCan = id => Object.keys(RECIPES[id].need).every(m => alHave(m) >= RECIPES[id].need[m]);
 function renderFurn() {
   const el = $("furnSlots"); if (!el) return;
@@ -5272,23 +5272,23 @@ function renderEquip() {                 // v1.9.8 十字格工作台: 四正方
       <div class="lseal"><em>战力 ${sc(a)}</em></div>
     </div>`;
   }
-  /* 下方属性清单: 未选 → 引导语; 选中 → 各项属性两列逐行 */
+  /* v1.9.8c 下方面板: 角色「道身」各项总属性(裸身+装备+词条合并后的面板值), 常显不随选中变化 */
   let detail;
-  if (_eqSel < 0 || !arr[_eqSel]) {
-    detail = `<div style="text-align:center;font-size:10.5px;color:#5a6377;letter-spacing:2px;padding:22px 0 18px">点 击 宝 位 · 查 看 属 性</div>`;
-  } else {
-    const a = arr[_eqSel];
-    const q = a.q, qn = (QUALITY[q] || QUALITY[0]).name;
-    const qcol = { 0: "#aab2c0", 1: "#6b9df5", 2: "#3fc9a2", 3: "#e0b45a", 4: "#c08af0", 5: "#ff5257" }[q] || "#e9e2d0";
-    detail = `<div class="cap" style="margin:0 1px 7px"><span style="color:${qcol}">${a.name}</span> · 各项属性</div>
-      <div class="stgrid">
-        <div class="sr"><span>攻 击</span><b>+${a.a || 0}</b></div>
-        <div class="sr"><span>防 御</span><b>+${a.d || 0}</b></div>
-        <div class="sr"><span>气 血</span><b>+${a.h || 0}</b></div>
-        <div class="sr"><span>品 阶</span><b style="color:${qcol}">${qn} ★${q + 1}</b></div>
-        ${(a.fx || []).map(f => `<div class="sr"><span>${FX_TXT[f.k] || f.k}</span><b class="teal">+${f.v}%</b></div>`).join("")}
-      </div>
-      <div style="font-size:9px;color:#5a6377;margin-top:8px;letter-spacing:1px">阿青会自动择优：胜过身上同部位旧宝才换上，旧件熔回灵石。</div>`;
+  {
+    const lv = (state.realmIdx || 0) + 1;
+    const hs = finalStats({ hp: 100 + 330 * lv, atk: 10 + 46 * lv, def: 5 + 26 * lv },
+      { hp: eb.hp || 0, atk: eb.atk || 0, def: eb.def || 0 }, eb.agg);
+    const ag = eb.agg || {};
+    const rn = ["会心", "暴击", "爆伤", "破甲", "闪避", "吸血"];
+    const rk = ["crit", "critB", "critD", "pen", "dodge", "life"];
+    var _detRows =
+      `<div class="sr"><span>气 血</span><b>${fmt(hs.hp)}</b></div>` +
+      `<div class="sr"><span>攻 击</span><b>${fmt(hs.atk)}</b></div>` +
+      `<div class="sr"><span>防 御</span><b>${fmt(hs.def)}</b></div>` +
+      `<div class="sr"><span>修 为</span><b class="teal">×${artMult().toFixed(2)}</b></div>` +
+      rk.map((k, i) => `<div class="sr"><span>${rn[i]}</span><b${ag[k] ? ` class="teal"` : ""}>${ag[k] ? "+" + ag[k] + "%" : "—"}</b></div>`).join("");
+    detail = `<div class="cap" style="margin:0 1px 7px">道 身 · 各项属性</div>
+      <div class="stgrid">${_detRows}</div>`;
   }
   box.innerHTML = `
     <div class="pane gx-sum"><div class="gx-grid">
