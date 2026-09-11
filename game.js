@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.9e";
+const GAME_VER = "v1.9.9f";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -3668,8 +3668,7 @@ function loop(dt) {
   }
   tickDsp(dt);
   tickAura(dt);
-  _hudAcc += dt; if (_hudAcc >= 0.1) { _hudAcc = 0; updateHUD(); }   // PERF-1: HUD ~10FPS
-  checkMilestones();
+  _hudAcc += dt; if (_hudAcc >= 0.1) { _hudAcc = 0; updateHUD(); realmPlot(); checkMilestones(); }   // PERF-1: HUD ~10FPS; PERF-2: realmPlot/checkMilestones 自每帧 60fps 降到 10fps(内部 reduce+journal 遍历每帧纯烧 CPU)
   if (Math.random() < dt * 0.35) adventure();
   if (Math.random() < dt * 0.06) mainMoment();
   tickBurst(dt);

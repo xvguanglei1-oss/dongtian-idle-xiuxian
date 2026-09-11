@@ -52,7 +52,7 @@
     color:#e8d6a4;text-shadow:0 1px 3px rgba(0,0,0,.5);
     cursor:pointer;-webkit-tap-highlight-color:transparent;
     filter:drop-shadow(0 4px 8px rgba(0,0,0,.35));
-    transition:transform .14s, filter .2s;
+    transition:transform .14s;
     vertical-align:middle;
   }
   .btn .skin{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
@@ -63,16 +63,16 @@
   #btnArray .skin{transform:scaleX(-1)}
   #btnBreak{--tilt:-.8deg}
   #btnArray{--tilt:.6deg}
-  .btn:hover{filter:drop-shadow(0 6px 12px rgba(0,0,0,.45)) brightness(1.08)}
-  .btn:active{transform:rotate(var(--tilt,0deg)) scale(.95);filter:brightness(.88)}
+  /* v1.9.9f: hover/active 不再动 filter —— 状态切换重算 drop-shadow 高斯是 WebView 点按卡顿元凶; 反馈交给 transform(合成器) */
+  .btn:hover{transform:translateY(-1px)}
+  .btn:active{transform:rotate(var(--tilt,0deg)) scale(.95)}
   .btn:disabled{opacity:.3;filter:saturate(.25) grayscale(.3)}
   /* 朱砂主按钮（渡劫/确认）—— 唯一高饱和 */
   .btn.primary{color:#f9edda;text-shadow:0 1px 3px rgba(70,10,0,.55)}
   .btn.primary .ink{fill:url(#gradCin);stroke:rgba(255,205,175,.6);stroke-width:1.4}
   /* 渡劫可点时：印泥脉动 */
   .btn.ready .ink{animation:inkBeat 1.5s ease-in-out infinite}
-  @keyframes inkBeat{0%,100%{filter:drop-shadow(0 0 1px rgba(230,90,55,0))}
-    50%{filter:drop-shadow(0 0 10px rgba(230,90,55,.9))}}
+  @keyframes inkBeat{0%,100%{opacity:.62}50%{opacity:1}}   /* v1.9.9f: filter 模糊脉动降为 opacity 脉动 */
 
     50%{box-shadow:inset 0 1px 0 rgba(255,220,200,.35),0 0 30px rgba(200,70,50,.6),0 6px 18px rgba(0,0,0,.45)}}
   /* 文本浮签里的高亮色：去荧光，转旧金/黛青 */
