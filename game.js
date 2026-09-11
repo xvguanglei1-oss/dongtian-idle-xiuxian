@@ -1,7 +1,7 @@
 /* 闲人修仙 —— game.js (双栏叙事) */
 "use strict";
 /* 版本号单一来源: 首页右上角小字 verTag 与缓存参数(game.js?v=)手工保持一致 */
-const GAME_VER = "v1.9.9h";
+const GAME_VER = "v1.10.0";
 (function () { const t = document.getElementById("verTag"); if (t) t.textContent = GAME_VER; })();
 
 /* ============ v1.7.9 声音系统(免费素材 + 合成兜底) ============
@@ -714,12 +714,12 @@ const MAIN_STORY = [
 ];
 
 /* ============ 存档 ============ */
-let state = { realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], journal: [],
+let state = { ver: 1, realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], journal: [],
   milestones: {}, peakSpirit: 0, bestArtQ: -1, lastTs: Date.now(),
   mats: {}, pills: {}, buffs: [], travel: null, mails: [], offlineBoostUntil: 0 };
 let breaking = false;
 let lastReadyHint = false;
-const SAVE_KEY = "dongtian_xiuxian_v2";
+const SAVE_KEY = "dongtian_save_v1";   // v1.10.0: 本地档明文 JSON(键名跟随 schema 大版本)
 const OFFLINE_CAP = 48 * 3600;   // 离线收益结算上限: 最多补 48 小时
 
 /* ==================== P0 分身云游 · 材料/地界/丹方 ==================== */
@@ -1272,37 +1272,16 @@ function adopt(s) {
     s.travel.bagPages = Math.max(0, Math.round(fin(s.travel.bagPages, 0)));
   }
   if (!Array.isArray(s.mails)) s.mails = [];
-  // 装备归一: 六槽旧档(兵兵护护佩诀)→四部位(兵护佩诀), 多余两件熔回灵石; 无属性旧件按部位补(确定性)
+  /* v1.10.0: 历史档迁移(六槽→四部位/缺属性老件确定性补全)已随旧档退役 —— adopt 只做
+   * 「schema v1 结构的防御性规整」: 类型钳制 + 缺省补默认, 不再背负任何代际转换。 */
   if (Array.isArray(s.arts)) {
-    const M4T = ["w", "a", "p", "s"];
-    if (s.arts.length > 4) {
-      const pick = [];
-      const order = [0, 2, 4, 5];                       // 六槽中保留 兵(0)/护(2)/佩(4)/诀(5)
-      for (const oi of order) { const it = s.arts[oi]; if (it) { it.slot = pick.length; it.tp = M4T[pick.length]; pick.push(it); } }
-      let rc = 0;
-      for (let i = 0; i < s.arts.length; i++) if (!pick.includes(s.arts[i])) rc += Math.round(40 * Math.pow(1.5, fin(s.arts[i].q, 0)));
-      if (rc > 0) s.spirit = fin(s.spirit, 0) + rc;
-      s.arts = pick;
-    }
-    s.arts.forEach((a, i) => {
+    s.arts.forEach(a => {
       if (!a || typeof a !== "object") return;
-      a.slot = Math.min(3, Math.max(0, fin(a.slot, i)));
+      a.slot = Math.min(3, Math.max(0, fin(a.slot, 0)));
       a.q = Math.min(5, Math.max(0, fin(a.q, 0)));
       a.lv = Math.max(1, Math.floor(fin(a.lv, 1)));
-      /* 关键: artMult() 累乘 a.mult; 老档缺/坏 mult 会产出 NaN, 经 rateNow 污染全部在线/离线收益。
-         缺省回退到当前品质基准, 保证数值有限可计算。 */
-      a.mult = fin(a.mult, (QUALITY[a.q] || QUALITY[0]).mult);
-      if (typeof a.a !== "number") {
-        a.tp = M4T[a.slot];
-        a.lv = (typeof s.realmIdx === "number" ? s.realmIdx : 0) + 1;
-        const q = a.q, M = eqMult(q), lv = a.lv, s2 = hashRand((a.name || "") + q + i);
-        if (i % 4 === 0) { a.a = Math.max(1, Math.round((2 + s2 * 8) * lv * M)); a.h = 0; a.d = 0; }
-        else if (i % 4 === 1) { a.h = Math.round((20 + s2 * 60) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 8) * lv * M)); a.a = 0; }
-        else if (i % 4 === 2) { a.h = Math.round((8 + s2 * 24) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 3) * lv * M)); a.a = Math.round((0.8 + s2 * 2.4) * lv * M); }
-        else { a.a = Math.round((1.2 + s2 * 3.6) * lv * M); a.d = Math.max(1, Math.round((1 + s2 * 3) * lv * M)); a.h = 0; }
-      } else {
-        a.a = Math.max(0, fin(a.a, 0)); a.d = Math.max(0, fin(a.d, 0)); a.h = Math.max(0, fin(a.h, 0));
-      }
+      a.mult = fin(a.mult, (QUALITY[a.q] || QUALITY[0]).mult);   // 防 NaN 污染收益链
+      a.a = Math.max(0, fin(a.a, 0)); a.d = Math.max(0, fin(a.d, 0)); a.h = Math.max(0, fin(a.h, 0));
     });
   }
   if (!s.pages || typeof s.pages !== "object") s.pages = {};
@@ -1390,23 +1369,16 @@ async function loadRank(force) {
   } catch (e) { body.innerHTML = '<div class="al-empty">云端未连接，榜单待命……</div>'; }
 }
 
-/* 短档存取: 全链路(LZString)压缩, 不裸存汉字正文; 旧档(未压缩 JSON)自动兼容 */
-function zPack(o) { return "z1:" + LZString.compressToBase64(JSON.stringify(o)); }
-function zUnpack(s) {
-  if (typeof s !== "string") return s;                       // 已是对象(老后端/云端老档)
-  if (s.startsWith("z1:")) { try { return JSON.parse(LZString.decompressFromBase64(s.slice(3))); } catch (e) { return null; } }
-  try { return JSON.parse(s); } catch (e) { return s; }      // 旧版未压缩 JSON
-}
-/* ============ v1.9.9h 云链路 g1 短档: 默认值剪枝 + 原生 gzip ============
- * 只用于网络路径(上传/下发); 本地 localStorage 仍走同步 z1(save/load 不动, 零竞态)。
- *   上行: state 与 G1_TPL 深度对比, 「与默认相同」的字段整段不传 → gzip → base64("g1:")
- *   下行: gunzip → JSON.parse → 与 G1_TPL 合并补齐缺失字段(=默认值)
+/* ============ v1.10.0 存档统一协议(全新设计, 无历史兼容) ============
+ * 本地: localStorage 明文 JSON(同步写, pagehide 可靠; schema 见 G1_TPL/ver)
+ * 云端: 唯一格式 g1 = "g1:" + base64(gzip(默认值剪枝后的 JSON))
+ *   上行: state 与 G1_TPL 深度对比, 「与默认相同」的字段整段不传 → gzip → base64
+ *   下行: gunzip → JSON.parse → 与 G1_TPL 合并补齐(=默认值)
  * 剪枝/merge 对未知键(模板外)一律原样保留 —— 字段演进天然向后兼容。
- * 老 WebView 无 CompressionStream / 编码中途异常 → 自动回退 z1(服务器本就双解)。 */
-const _hasCS = typeof CompressionStream === "function" && typeof DecompressionStream === "function";
+ * 服务器同样只认 g1(zlib 解压自带 CRC 完整性校验)。 */
 const G1_TPL = { realmIdx: 0, exp: 0, spirit: 0, arrayLv: 1, arts: [], journal: [], milestones: {},
   peakSpirit: 0, bestArtQ: -1, lastTs: 0, mats: {}, pills: {}, buffs: [], travel: null, mails: [],
-  offlineBoostUntil: 0, pages: {}, name: "", _pn: "", _named: 0, _settledAt: 0 };
+  offlineBoostUntil: 0, pages: {}, name: "", _pn: "", _named: 0, _settledAt: 0, ver: 1 };
 function g1prune(v, tpl) {
   if (v === null || typeof v !== "object" || tpl === null || typeof tpl !== "object" || Array.isArray(tpl)) {
     return JSON.stringify(v) === JSON.stringify(tpl) ? undefined : v;   // 数组整体比; 误判不同=多存, 安全方向
@@ -1445,19 +1417,6 @@ async function g1Unpack(s) {
   const stream = new Blob([g1unb64(s.slice(3))]).stream().pipeThrough(ds);
   return g1merge(JSON.parse(await new Response(stream).text()), G1_TPL);
 }
-/* 云端收发统一口: 发包按 _cldFmt(g1 优先, 旧后端 400 降 z1), 收包 g1/z1/裸 JSON 全识别 */
-let _cldFmt = "g1";
-async function cldPack(o) {
-  if (_cldFmt !== "g1" || !_hasCS) return zPack(o);
-  try { return await g1Pack(o); } catch (e) { return zPack(o); }
-}
-async function zUnpackAny(s) {
-  if (typeof s === "string" && s.startsWith("g1:")) {
-    if (!_hasCS) return null;
-    try { return await g1Unpack(s); } catch (e) { return null; }
-  }
-  return zUnpack(s);
-}
 const JRN_CAP = 300;   // 修行录总量上限(保险丝); 实际有界靠 trimJournal 的分流裁剪
 /* v1.9.2 日志瘦身: 旧逻辑按条数一刀切, 而斗法/纪事每十来秒就写一条带全文的叙事,
  * 上限很快滚满 —— 实测线上最大档 88% 字节是这类文本, 且最老的主线剧情(sid)
@@ -1480,22 +1439,38 @@ function trimJournal() {
 function save() {
   state.lastTs = Date.now();
   trimJournal();
-  try { localStorage.setItem(SAVE_KEY, zPack(state)); } catch (e) {}
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}   // 明文同步写: pagehide 可靠
 }
 function load() {
+  try { localStorage.removeItem("dongtian_xiuxian_v2"); } catch (e) {}          // v1.10.0 旧键退役
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return;
-    const s = zUnpack(raw);
+    const s = migrate(JSON.parse(raw));
     const c = adopt(s);
     if (c) {
       state = c; trimJournal();
-      /* v1.3.0 修: 启动瞬间 save() 会无条件把 lastTs 刷成「现在」, 把真实离线段吞掉,
-         导致离线结算算出 dt≈0, 离线收益形同虚设。
-         载入时先把存档里的原始 lastTs 存进 _lastTs0, 离线结算以它为基准。 */
+      /* 载入时先把存档里的原始 lastTs 存进 _lastTs0, 离线结算以它为基准 */
       state._lastTs0 = (s && s.lastTs) || c.lastTs || 0;
     }
   } catch (e) {}
+}
+
+/* ============ schema 版本与迁移链(规范: 永不删除已发布的迁移函数) ============
+ * 当前 v1。未来字段演进: 把 CUR_VER +1, 在 MIGRATIONS 填 `<新版本号>: s => {...}`
+ * (输入上一版对象, 原地补齐/改名/重构, 返回后由 adopt 规整)。 */
+const CUR_VER = 1;
+const MIGRATIONS = { /* 2: s => { s.newField = s.newField || 0; return s; } */ };
+function migrate(s) {
+  if (!s || typeof s !== "object") return s;
+  let v = (typeof s.ver === "number" && s.ver >= 1) ? Math.floor(s.ver) : 1;
+  while (v < CUR_VER) {
+    const fn = MIGRATIONS[v + 1];
+    if (!fn) break;
+    s = fn(s) || s; s.ver = v + 1; v++;
+  }
+  s.ver = CUR_VER;
+  return s;
 }
 
 /* ============ 云存档 (save.devgo.cn, ECS 隧道) ============
@@ -1616,7 +1591,7 @@ function cldAdoptCloud(s) {
   const c = adopt(s);
   if (!c) return false;
   state = c;
-  try { localStorage.setItem(SAVE_KEY, zPack(state)); } catch (e) {}
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
   updateRealmUI(); updateHUD(); updateArts(); realmPlot();
   /* v1.5.0: 云端档可能没有 autoHunt / travel 字段(老档), 采纳后按钮与行迹要跟着重绘,
      否则会出现"state 已变、开关还停在旧态"的错看 */
@@ -1636,8 +1611,8 @@ async function cldPull(forceImport) {        // v1.7.29 forceImport: 用户主�
   if (!window.fetch) { cldUI("off"); return; }
   cldUI("sync");
   try {
-    const r = await cldApi("GET", undefined, "fmt=" + _cldFmt);   // v1.9.9h: g1 优先(服务器会按能力转旧格式)
-    if (r && r.data) r.data = await zUnpackAny(r.data);
+    const r = await cldApi("GET");
+    if (r && r.data) r.data = await g1Unpack(r.data);
     if (r.found && r.data) {
 
       const cs = (r.ts || 0);               // 服务端存档时间(权威)
@@ -1650,7 +1625,7 @@ async function cldPull(forceImport) {        // v1.7.29 forceImport: 用户主�
         try { hadLocal = !!localStorage.getItem(SAVE_KEY); } catch (e) {}
         const adopted = cldAdoptCloud(r.data);
         state._cloudTs = cs;
-        try { localStorage.setItem(SAVE_KEY, zPack(state)); } catch (e) {}
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
         cld.ready = true; cld.lastOkTs = Date.now();
         if (forceImport) {
           cldFlash("已导入云端存档");
@@ -3736,7 +3711,7 @@ function loop(dt) {
 }
 
 /* ============ 启动 ============ */
-load();                       // 先读本地存档(只为拿到玩家码与本地档, 画面仍被开屏盖住)
+/* v1.10.0: 本地档读取迁移到 boot() 开头 await —— load 为同步明文 JSON, 仍极快 */
 
 /* v1.8.0 启动门禁:
  *   打开 → 本地渲染开屏 → 校验联网(顺便请服务端权威结算一次)
@@ -3812,6 +3787,7 @@ function startGame() {
 }
 
 async function boot() {
+  load();                      // v1.10.0: 先读本地档(明文 JSON 同步), 再走云端门禁
   let passed = false;
   try { passed = await bootGate(); } catch (e) { passed = false; }
   if (!passed) { splashFail(); return; }   // 连不通 → 停在失败页, 不进入游戏
@@ -4304,7 +4280,7 @@ function adoptKeep(st) {          // 采用结算后的存档, 但本地叙事(�
     c.travel = hadTravel;
   }
   state = c;
-  try { localStorage.setItem(SAVE_KEY, zPack(state)); } catch (e) {}
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); } catch (e) {}
   travelBtnLbl();            // 云端结算可能清 travel(化身归来) → 按钮文字同步
   renderPillHints();         // v1.9.8c.2: 结算合并后药力过期段已被服务端清掉 → 药力行同步
   mailDot();
@@ -4343,14 +4319,14 @@ async function stayMailCheck() {
     const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&stay=1", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ __z: await cldPack(cloudSnap(state)) }),
+      body: JSON.stringify({ __z: await g1Pack(cloudSnap(state)) }),
       signal: ctl.signal,
     });
     clearTimeout(tm);
     if (!r.ok) return;
     const j = await r.json();
     if (j && j.ok && j.data) {
-      const c0 = await zUnpackAny(j.data);
+      const c0 = await g1Unpack(j.data);
       if (c0 && adoptKeep(c0)) { updateHUD(); mailDot(); }
       if (j.stay && j.stay.id && ((j.stay.mats && j.stay.mats.length) || j.stay.page)) {
         showTravelMail(j.stay);
@@ -4361,15 +4337,6 @@ async function stayMailCheck() {
 }
 /* ==================== v0.8.0 丹方残页(Cloud Settle) 辅助 ==================== */
 async function cloudSettle() {
-  const r0 = await settleOnce();
-  /* v1.9.9h: g1 是新协议 —— 若后端尚是旧版(不识 g1 → 400) 自动降回 z1, 会话内重试一次 */
-  if (!r0 && _cldFmt === "g1") {
-    const e = cld.lastErr || "";
-    if (e.indexOf("400") > -1 || e.indexOf("bad_json") > -1) { _cldFmt = "z1"; return settleOnce(); }
-  }
-  return r0;
-}
-async function settleOnce() {
   if (!window.fetch || !cld.id) return null;
   cldUI("sync");
   const t0 = Date.now();
@@ -4383,7 +4350,7 @@ async function settleOnce() {
     const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&settle=1", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ __z: await cldPack(snap) }),
+      body: JSON.stringify({ __z: await g1Pack(snap) }),
       signal: ctl.signal,
     });
     clearTimeout(tm);
@@ -4397,7 +4364,7 @@ async function settleOnce() {
       if (j.rate) _rate = { exp: +j.rate.exp || 0, spirit: +j.rate.spirit || 0 };
       /* v1.8.1: 先判定本轮是否「真归来」, 再 adopt —— adoptKeep 据此决定是否保留本地 travel */
       _travelReturned = !!(j.gains && j.gains.travel);
-      const j0 = await zUnpackAny(j.data);
+      const j0 = await g1Unpack(j.data);
       if (!adoptKeep(j0)) return null;
       _travelReturned = false;
       _pred.exp = 0; _pred.spirit = 0;     // 账本已被服务端权威值覆盖 → 本地预测清零, 从新账本重新开始
@@ -4637,18 +4604,20 @@ function renderMailBox() {
 /* v1.8.4 收取信件的服务端确认: 把"这封信已被收"同步给服务端。
  * 不这么做的话, 下一次 settle 会拿服务端旧档的信匣去合并, 玩家收了信还会被"退回" → 重复收取。
  * claim 成功则由服务端落档(信已删); 失败(断网)只标脏, 下次心跳再补。 */
-function mailClaim(idOrAll) {
+async function mailClaim(idOrAll) {
   if (!window.fetch || !cld.id || !cld.ready) { cloudSoon(); return; }
-  fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&claim=" + encodeURIComponent(idOrAll), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ __z: zPack(cloudSnap(state)) }),
-  }).then(r => (r.ok ? r.json() : null)).then(j => {
+  try {
+    const r = await fetch(CLD_API + "?id=" + encodeURIComponent(cld.id) + "&claim=" + encodeURIComponent(idOrAll), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ __z: await g1Pack(cloudSnap(state)) }),
+    });
+    const j = r.ok ? await r.json() : null;
     if (j && j.ok && j.data) {
-      const c0 = zUnpack(j.data);
+      const c0 = await g1Unpack(j.data);
       if (c0 && adoptKeep(c0)) { mailDot(); updateHUD(); }
     } else { cloudSoon(); }
-  }).catch(() => { cloudSoon(); });
+  } catch (e) { cloudSoon(); }
 }
 function collectAllMail() {
   const ml = state.mails || [];

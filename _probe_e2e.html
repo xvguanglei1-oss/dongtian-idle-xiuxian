@@ -688,75 +688,63 @@
   </div>
 </div>
 
-/* ==== 探针 mock: 假档+假云后端, 让门禁直通进游戏 ==== */
-async function g1pack(o){
+<script>
+/* ==== E2E: 真服务器(127.0.0.1:8090) 全链路跑批 ==== */
+function g1pack(o){
   const cs = new CompressionStream("gzip");
   const stream = new Blob([JSON.stringify(o)]).stream().pipeThrough(cs);
-  const u8 = new Uint8Array(await new Response(stream).arrayBuffer());
-  let s = ""; for (const b of u8) s += String.fromCharCode(b);
-  return "g1:" + btoa(s);
+  const u8 = new Uint8Array(await2buf());
+  async function* await2buf(){ yield* []; }
+  return null;
 }
-window.__FAKE_SAVE = {
-  lastTs: Date.now(), realmIdx: 53, arts: [
-    {name:"金雷飞剑", q:5, slot:0, tp:"w", a:120, d:20, h:300, fx:[{k:"atk",v:12},{k:"crit",v:8}], lv:2, mult:3.8, t:Date.now()},
-    {name:"龙鳞软铠", q:3, slot:1, tp:"a", a:30, d:150, h:800, fx:[{k:"hp",v:10}], lv:1, mult:2.0, t:Date.now()},
-    {name:"避尘佩", q:4, slot:2, tp:"p", a:18, d:60, h:400, fx:[{k:"dodge",v:6}], lv:0, mult:2.7, t:Date.now()},
-    {name:"御剑心经", q:2, slot:3, tp:"s", a:40, d:25, h:200, fx:[{k:"atk",v:6}], lv:0, mult:1.58, t:Date.now()}
-  ], journal: [], arrayLv: 1, spirit: 1e12, exp: 1e12, pName: "试丹童",
-  mats: {huangjing:99,shexian:99,zihou:99,xuancan:99,jiuyou:99,wenxin:99,longxue:99,qianyu:99,duen:99,zilei:99,hanpo:99,hongmeng:99,yaodan:99,lingxue:99,yaopo:99,jiaojiao:99,mogu:99,qiongjing:99,lingru:99,dihuo:99,taiqing:99},
-  pills: {buqi:4,jinzui:2,yuqing:3,guyuan:2,yuying:2,wendao:2,hlong:3,zhuji:2,xisui:5,jiangchen:1,ningyuan:2,yingbian:1,yinghua:1,tongshen:2,hunyuan:1,taiyi:1,yuxu:1,xuling:1,polv:1,linghe:1,shengyu:1,hedao:2,jingmo:1,duemo:1,zhenmo:1,yinlei:1,cuilei:1,yingjie:1,ningxian:1,xianpo:1,yinxian:1,guiyuan:1,taichu:1,bianhua:1,tianyuan:2,jiuzhuan:1,taishang:1,jiutian:1,hunwu:1,guixu:1,feiling:1,zhenyuan:1,xiansui:1,wanji:1,jiulei:1},
-  pages: {b0:99,b1:99,b2:99,b3:99,b4:99,b5:99,b6:99,b7:99,b8:99,b9:99,b10:99,b11:99},
-  buffs: [], offlineBoostUntil: Date.now() + 3600e3
-};
-window.fetch = async function(url, opt){
-  const u = String(url || "");
-  const j = o => ({ ok:true, status:200, json:()=>Promise.resolve(o) });
-  if (u.indexOf("/api/save") > -1) {
-    if (opt && opt.method === "PUT")
-      return j({ok:true, ts:Date.now(), serverTime:Date.now(), gains:{settled:false}, data: await g1pack(window.__FAKE_SAVE)});
-    return j({found:true, ts:Date.now(), data: await g1pack(window.__FAKE_SAVE)});
-  }
-  if (u.indexOf("rank") > -1) return j({list:[],total:0});
-  return j({});
-};
-/* 门禁通过后开丹房窗 */
-setTimeout(function(){ try { const h=location.hash||"";
-    if(h.indexOf("m")>-1) {
-      state.mails = [
-        {id:"t1", loc:"b0qnt", ts:Date.now()-3600e3, mats:[{id:"huangjing",q:2},{id:"yaodan",q:1}], page:1},
-        {id:"t2", loc:"b0qil", ts:Date.now()-7200e3, mats:[]},
-        {id:"t3", loc:"b0qfc", ts:Date.now()-86400e3, mats:[{id:"shexian",q:3}]}
-      ];
-      openMail();
-    } else if(h.indexOf("e")>-1) { openEquip(); try{ var s2=document.querySelector("#equipBody .gx-lic"); }catch(e){} pickArt(0); }
-    if(h.indexOf("n")>-1){ try{ closeAlchemy(); }catch(e){} }
-    if(h.indexOf("m")>-1) setTimeout(function(){ try {
-      var out=[];
-      document.querySelectorAll(".btn.seal").forEach(function(b,i){
-        var r=b.getBoundingClientRect(), cs=getComputedStyle(b);
-        var lab=b.querySelector(".label"), lr=lab?lab.getBoundingClientRect():{width:0};
-        out.push("#"+i+" ["+(b.textContent||"").trim().slice(0,6)+"] btn="+Math.round(r.width)+"px label="+Math.round(lr.width)+"px"+
-          " cssW="+cs.width+" flex="+cs.flex+" pad="+cs.padding+" span="+(b.offsetParent?b.offsetParent.className:"?"));
-      });
-      var bar=document.querySelector("#mailBulkBar");
-      if(bar) out.push("bulkbar w="+Math.round(bar.getBoundingClientRect().width));
-      var pre=document.createElement("pre"); pre.id="BTN-DIAG"; pre.style.cssText="position:fixed;left:0;bottom:0;z-index:99999;background:#000;color:#0f0;font-size:10px;margin:0;padding:4px;max-width:100%;white-space:pre-wrap";
-      pre.textContent="BTN-DIAG\n"+out.join("\n");
-      document.body.appendChild(pre);
-      document.title="BTN-DIAG "+out.length;
-    } catch(e){ document.title="DIAG-ERR "+e.message; } }, 6500);
-    setTimeout(function(){ try { document.querySelectorAll("img").forEach(function(im){
-      if(!im.complete || im.naturalWidth===0) console.log("BROKEN-IMG: ["+im.className+"] "+im.getAttribute("src"));
-    }); } catch(e){} }, 6000);
-  } catch(e) {}
-  setTimeout(function(){ try { var b=window.__SCROLL_TARGET||1;
-    var m=document.querySelector("#alchemyModal .card");
-    var sc=m&&(m.querySelector(".modal-bd")||m.querySelector(".story-body")||m);
-    if(sc) sc.scrollTop = b<0 ? sc.scrollHeight : sc.scrollHeight*b;
-  } catch(e){} }, 700); }, 5000);
 </script>
-<script>window.__SCROLL_TARGET=parseFloat((location.hash||"#1").slice(1))||1;</script>
-<script src="game.js?v=v1.9.8"></script>
-
+<script>
+(async function runE2E() {
+  const out = [];
+  const T = (name, cond) => out.push((cond ? "ok  " : "FAIL ") + name);
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const g1pack = async o => {
+    const cs = new CompressionStream("gzip");
+    const stream = new Blob([JSON.stringify(o)]).stream().pipeThrough(cs);
+    const u8 = new Uint8Array(await new Response(stream).arrayBuffer());
+    let s = ""; for (const b of u8) s += String.fromCharCode(b);
+    return "g1:" + btoa(s);
+  };
+  try {
+    for (let i = 0; i < 48 && !(typeof state === "object" && cld.ready); i++) await sleep(250);   // 等 boot 门禁
+    T("1 门禁过+云档ready", typeof state === "object" && cld.ready === true);
+    T("2 玩家码格式 dt-12位", /^dt-[a-hjkmnpqrstuvwxyz2-9]{12}$/.test(cldId()));
+    const exp1 = state.exp;
+    const sr1 = await cloudSettle();
+    T("3 立即再settle → dt=0 防重放", sr1 && sr1.gains && sr1.gains.dt === 0 && state.exp === exp1);
+    state.lastTs = Date.now() - 3600e3;                    // 回滚攻击模拟
+    const sr2 = await cloudSettle();
+    T("4 回滚1h再settle → 仍dt=0(锚不回退)", sr2 && sr2.gains && sr2.gains.dt === 0);
+    const inp = $("renameInput");
+    inp.value = "端到端试炼";
+    await saveRename();
+    T("5 改名落档", state.name === "端到端试炼" && state._named === 1);
+    await cloudSettle();                                    // 把改名后的档推上云
+    const expB = state.exp, ridB = state.realmIdx, nameB = state.name;
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    state.exp = 0; state.realmIdx = 0; state.name = "";     // 糟蹋内存档模拟换设备
+    await cldPull(true);                                    // forceImport: 云为权威拉回
+    T("6 换设备继承(云档拉回)", state.exp === expB && state.realmIdx === ridB && state.name === nameB);
+    T("7 旧本地键已退役", localStorage.getItem("dongtian_xiuxian_v2") === null);
+    const raw = JSON.stringify(state), g1 = await g1pack(state);
+    out.push("info 新档裸JSON=" + raw.length + "B g1=" + g1.length + "B 压缩率=" + Math.max(0, Math.round(100 - g1.length / raw.length * 100)) + "%");
+  } catch (e) { out.push("EXCEPTION " + (e && (e.stack || e.message))); }
+  const nFail = out.filter(s => s.indexOf("FAIL") === 0).length;
+  const nOk = out.filter(s => s.indexOf("ok") === 0).length;
+  document.title = nFail ? "E2E-FAIL" : "E2E-PASS-" + nOk;
+  const pre = document.createElement("pre");
+  pre.id = "E2E";
+  pre.style.cssText = "position:fixed;left:0;top:0;z-index:99999;background:#000;color:#0f0;font-size:11px;margin:0;padding:6px;max-width:100%;white-space:pre-wrap";
+  pre.textContent = "E2E-RESULT\n" + out.join("\n");
+  document.body.appendChild(pre);
+})();
+</script>
+<script src="game.js?v=v1.10.0"></script>
+
 </body>
 </html>

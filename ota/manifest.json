@@ -3,7 +3,6 @@
     "assets/cultivator_body.webp": "a72d9d498231d77e7f8d131152f06059ddca1091e83889c38c3224ae26927b94",
     "assets/cultivator_hair.webp": "4e83df9dfe253be84dbbfb0a183b283ef75c9c362c522d24b012e3c2070c639d",
     "assets/cultivator_robe.webp": "30b6bdf27221803a1a91d901e9c691b884c70287002bb0b5688d9684e34faf59",
-    "assets/lz-string.min.js": "95f4d1cbf099f57161b664bc048426ec3df92637801a4c79116e83315aa787e7",
     "assets/main-bg.jpg": "30bda2c355760f1364da3a11f01f31cd7928babeb565ed064d0c41f66b8fb0d8",
     "assets/modals/art-alchemy.webp": "8f41a7496ea8ce18b4782f4567d0dd8a36de577a6c4578d09d75647780aff788",
     "assets/modals/art-battle.webp": "b537ffa56a3aafe715cc918589a5b0b9e1d6eda68fdadc7b3178c27d6589b658",
@@ -124,9 +123,9 @@
     "bg.js": "d61cf11f268274f8bcdbea5aac1da08eb3f58b59e82b650b0d1f178803343954",
     "dt-theme.css": "4ef070f262f51d843089a37cbdef62221174514e47cf4f45ede84d6adc61f8c3",
     "fx2d.js": "dbb9540db9984ac06f08d75490099497c9ce1d59dfe5de91ee32b0d5a6db0670",
-    "game.js": "d8d4523f066fea32c5591d86bc8cad405ce21ebd2cd643b7c7a0a05c4dd4ba4b",
-    "index.html": "7a7e5a6ac0bfb1e2b933877330b6b11d2909bc7a4916f75d049c418a487dfc3b"
+    "game.js": "b9c856004e4b3824bbf100e47cf930cc66995b0000d445ef94a99dab7cfd6e77",
+    "index.html": "ce6ca2d9697fdc4c2e1c5b450d7f4d56a41a91b7c29d4771ce076ffdbead9a58"
   },
-  "rev": "516fbf3a25154117",
-  "version": "1.9.9"
+  "rev": "c9a925b0e5e0e840",
+  "version": "1.10.0"
 }
